@@ -1,0 +1,16 @@
+ANTI-VIR.DAT TBAV checksum
+AUTOR.TXT how to report bugs
+CBE_MSG.EXE Send on/off messages to CBENABLER driver
+CBENABL0.DDP DDInstal script for socket 0
+CBENABL1.DDP DDInstal script for socket 1
+CBENABLE.SYM CardBus enabler driver
+CBENABLE.SYS optional debug info file for CBENABLE.SYM
+CBENABLE.TXT documentation
+CSCINFO.EXE show card informations
+MD5_SUM.ASC PGP signed MD5 checksums
+OEMHLP2.SYM Replace PCI search functions for CardBus
+OEMHLP2.SYS optional debug info file for OEMHLP2.SYM
+PPCMCIA.CMD batch file to patch \os2\pcmcia.sys
+PPCMCIA.EXE program file to patch \os2\pcmcia.sys
+PROGRAMM.DEU german list of my other programs
+PROGRAMM.ENG english list of my other programs

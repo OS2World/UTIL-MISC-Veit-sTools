@@ -1,0 +1,284 @@
+even 010
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+push_gs				macro
+                                  ;db 00f,0a8
+                                #em
+
+pop_gs				macro
+                                  ;db 00f,0a9
+                                #em
+
+pushad_                         macro
+                                  ;db 066
+                                  pusha
+                                #em
+
+popad_                          macro
+                                  ;db 66
+                                  popa
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+int_13_org:
+int_13_org_o		        dw ?
+int_13_org_s		        dw ?
+
+int_13_neu:                     pushf
+                                  cmp dl,b cs:[festplatten_nummer]
+                                  jz behandlung
+                                popf
+durchreichen:
+			        jmp d cs:[int_13_org]
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+rueckkkehr_mit_carry_wenn_ah_ungleich_0:
+				cmp ah,0
+                                clc
+                                if nz stc
+rueckkkehr:
+
+				push ax
+                                  push bp
+                                    mov bp,sp
+                                    lahf
+                                    mov [bp+8],ah
+                                  pop bp
+                                pop ax
+                                iret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+behandlung:
+                                popf
+                                cmp ah,000
+                                jnz nicht_funktion_13_00
+
+                                ; Reset Disk System
+                                mov ah,0
+				mov b cs:[fehler],ah
+				jmp rueckkkehr_mit_carry_wenn_ah_ungleich_0
+
+
+nicht_funktion_13_00:
+                                cmp ah,001
+                                jnz nicht_funktion_13_01
+
+                                ; Statusabfrage
+                                mov ah,b cs:[fehler]
+				mov b [fehler],0
+				jmp rueckkkehr_mit_carry_wenn_ah_ungleich_0
+
+
+nicht_funktion_13_01:
+                                ; Lesen
+                                cmp ah,002
+                                jnz nicht_funktion_13_02
+
+      funktion_13_02:
+      				pushad_
+				  push ds
+				    push_gs
+				      mov ds,cs
+
+				      mov b [cbb_08__], al
+				      mov b [cbb_07__],  0
+				      sub ah,ah
+				      shl ax,9
+				      mov w [datenblocklaenge+0], ax ; Datenl꼗ge lo
+				      mov w [datenblocklaenge+2],  0 ; Datenl꼗ge hi
+
+				      mov cs:[datenpuffer_zeiger+0],bx
+				      mov cs:[datenpuffer_zeiger+2],es
+
+				      mov ah,cl
+				      shr ah,6
+				      mov al,ch             ; ax=Zylinder
+
+				      push dx
+					mov bl,b [max_kopf]
+					sub bh,bh
+					inc bx              ; 63->64
+					mul bx              ; * K봯fe je Spur
+				      pop dx
+
+				      add al,dh             ; +einzelne K봯fe
+				      adc ah,0
+
+				      mul w [max_sektor]    ; * Sektoren
+				      sub ch,ch
+				      dec cx                ; -1
+				      add ax,cx             ; +einzelne Sektoren
+				      adc dx,0
+
+				      mov w [cbb_05__logisch0],al
+				      mov w [cbb_04__logisch1],ah
+				      mov w [cbb_03__logisch2],dl
+				      mov w [cbb_02__logisch3],dh
+
+				      call scsi_mgr_aufruf
+				    pop_gs
+				  pop ds
+				popad_
+
+                                mov ah,000
+				cmp b cs:[request_status],1 ; fertig ohne Fehler ?
+				if nz mov ah,001 ; invalid function/parameter
+				mov b cs:[fehler],ah
+				jmp rueckkkehr_mit_carry_wenn_ah_ungleich_0
+
+
+nicht_funktion_13_02:
+                                ; Schreiben
+                                cmp ah,003
+                                jnz nicht_funktion_13_03
+
+                                mov al,000 ; 0 Sektoren
+                                mov ah,003 ; 3=Schreibschutzfehler
+				mov b cs:[fehler],ah
+				jmp rueckkkehr_mit_carry_wenn_ah_ungleich_0
+
+nicht_funktion_13_03:
+				; Verify
+                                cmp ah,004
+				jnz nicht_funktion_13_04
+				
+                                jmp funktion_13_02
+
+nicht_funktion_13_04:
+				; Formatieren
+                                cmp ah,005
+                                jnz nicht_funktion_13_05
+
+      funktion_13_05:
+                                stc
+                                mov ah,003 ; Schreibschutz
+				mov b cs:[fehler],ah
+				jmp rueckkkehr_mit_carry_wenn_ah_ungleich_0
+
+nicht_funktion_13_05:
+				; Format (FESTPLATTE)
+                                cmp ah,006
+                                jz funktion_13_05
+
+nicht_funktion_13_06:
+				; Format (FESTPLATTE)
+                                cmp ah,007
+                                jz funktion_13_05
+
+				; Ermittle Laufwersparameter
+                                cmp ah,008
+                                jnz nicht_funktion_13_08
+
+
+				mov ah,000
+                                mov bl,010 ; "ATAPI floppy" ...
+                                mov cx,w cs:[max_zylinder]
+                                ror cx,8
+                                shl cl,6
+                                or cl,b cs:[max_sektor]
+                                mov dh,b cs:[max_kopf]
+                                mov dl,1
+				mov b cs:[fehler],ah
+				jmp rueckkkehr_mit_carry_wenn_ah_ungleich_0
+
+nicht_funktion_13_08:
+				; Get Disk Type
+                                cmp ah,015
+                                jnz nicht_funktion_13_15
+
+                                clc
+                                mov ah,003 ; Festplatte
+                                mov cx,w cs:[laufwerksgroesse+2]
+                                mov dx,w cs:[laufwerksgroesse+0]
+				mov b cs:[fehler],0
+				jmp rueckkkehr
+
+nicht_funktion_13_15:
+                                cmp ah,041 ; Erweitert * Install Check
+                                jb nicht_funktion_13_4x
+                                ;      042 ; Erweitert * Extended Read
+                                ;      043 ; Erweitert * Extended Write
+                                ;      044 ; Erweitert * Verify
+                                ;      045 ; Erweitert * Lock
+                                ;      046 ; Erweitert * Eject
+                                ;      047 ; Erweitert * Seek
+                                ;      048 ; Erweitert * Para
+                                cmp ah,049 ; Erweitert * Media Change
+                                ja nicht_funktion_13_4x
+				
+funktion_13_4x:
+                                mov ah,001 ; "unbekannt"
+				mov b cs:[fehler],ah
+                                jmp rueckkkehr_mit_carry_wenn_ah_ungleich_0
+
+nicht_funktion_13_4x:
+                                ; restliche Funktioen werden durchgereicht ...
+                                jmp durchreichen
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+scsi_mgr_aufruf:
+                                push cs
+                                  push scsi_request_block
+                                    call d cs:[scsimgr_addresse]
+                                add sp,2*2
+scsi_mgr_aufruf_warte_bearbeitung:
+                                cmp b cs:[request_status],0
+                                jz scsi_mgr_aufruf_warte_bearbeitung
+                                cmp b cs:[ziel_status],0
+                                ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+scsimgr_addresse:        	dd ?
+
+laufwerksgroesse:               dd ?
+
+max_zylinder:                   dw 0
+max_sektor:                     db 0
+                                db 0
+max_kopf:                       db 0
+                                db 0
+
+fehler:                         db 0 ;!!!!!!!!!!!!!!!!!!!!!!
+
+festplatten_nummer:             db ?
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+scsi_request_block:
+  request_nummer:               db 002 ; "EXEC_SIO"                    ; 00
+  request_status:               db ?
+  host_adapter_id:              db ?
+  request_flag:                 db   8 ; Transfer zum Host
+                                dd ?   ; reserviert
+  target_id:                    db   6 ; ?                             ; 08
+  logische_einheit:             db   0 ;
+  datenblocklaenge:             dd 512
+  sense_allocation_length:      db   0
+  datenpuffer_zeiger:           dd ?                                   ; 0F
+  naechste_anforderung:         dd   0
+  cdb_laenge:                   db  10 ;                               ; 17
+  host_adapter_status:          db ?
+  ziel_status:                  db ?
+  post_routine_address:         dd   0
+  real_mode_pos_ds:             dw   0
+  srb_pointer:                  dd   0   ; ????????????
+                                dw ? ; reserviert 24
+  srb_physical_address:         dd ?
+  scsimgr_workspace:            db 22 dup ?
+  ccb_00__befehl:               db 028 ; "Lesen 1"                     ; 40
+  cbb_01__flags:                db   0 ; Bit765=log. Einheit 4..0 = ?  ; 41
+  cbb_02__logisch3:             db   0                                 ; 42
+  cbb_03__logisch2:             db   0                                 ; 43
+  cbb_04__logisch1:             db   0                                 ; 44
+  cbb_05__logisch0:             db   0                                 ; 45
+  cbb_06__:                     db   0                                 ; 46
+  cbb_07__:                     db   0 ; high(blockcount)              ; 47
+  cbb_08__:                     db   1 ; low (blockcount)              ; 48
+  cbb_09__:                     db   0                                 ; 49
+                                db 040 dup 0 ; Platz genug ...
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+tsr_ende:

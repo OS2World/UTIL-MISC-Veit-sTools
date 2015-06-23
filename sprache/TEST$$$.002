@@ -1,0 +1,6 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_programm  :str_z;
+  textz_buch  :str_z;
+  textz_rechner  :str_z;

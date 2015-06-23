@@ -1,0 +1,185 @@
+even 16
+;***************************************************************************
+int_06_org:
+int_06_org_o            dw ?
+int_06_org_s            dw ?
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+pstr                    macro
+                          db (>a2->a1)
+  a1:
+                          #rx1l
+                            db #x
+                          #er
+  a2:
+                        #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; AL Bit 3..0
+; ge꼗dert: BX,AL Bit 7..4
+ausschrift_halbbyte:
+                        and al,00f
+                        add al,'0'
+                        cmp al,'9'
+                        if a add al,'A'-'9'-1
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; AL
+; ge꼗dert: BX
+ausschrift_zeichen:
+                        push ax
+                          mov ah,00e
+                          mov bx,0000f
+                          pushf
+                          call 0f000:0f065 ; INT 010  ... 101% IBM
+int10_aufruf              equ $-2-2
+                        pop ax
+                        ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; CS:SI
+; ge꼗dert: AX,BX,CX,SI
+ausschrift_text:
+                        push ds
+                          push cs
+                          pop ds
+                          cld
+                          lodsb
+                          mov ah,0
+                          mov cx,ax
+
+ausschrift_schleife:
+                          lodsb
+                          call ausschrift_zeichen
+                          loop ausschrift_schleife
+                        pop ds
+                        ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; AX
+; ge꼗dert: BX
+ausschrift_ax:
+                        xchg al,ah
+                        call ausschrift_al
+                        xchg al,ah
+                        ;||call ausschrift_al
+                        ;||ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; AL
+; ge꼗dert: BX
+ausschrift_al:
+                        push ax
+                          aam 010
+                          push ax
+                            xchg al,ah
+                            call ausschrift_halbbyte
+                          pop ax
+                          call ausschrift_halbbyte
+                        pop ax
+                        ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+int16_aufruf            macro
+                          pushf
+                          call 0f000:0e82e ; INT 016  ... 101% IBM
+                        #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+warten_auf_tastatur:
+                        sub cx,cx
+warten_auf_tastatur_schleife:
+                        in al,064
+                        out 0e1,al
+                        and al,002
+                        loop warten_auf_tastatur_schleife
+
+                        ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        ; pushf               [bp+4]
+                        ; push cs             [bp+2]
+                        ; push ip             [bp+0]
+int_06_neu:
+                        cli
+                        mov bp,sp
+
+                        mov si,text_meldung1
+                        call ausschrift_text
+
+                        mov ax,[bp+2]
+                        call ausschrift_ax
+
+                        mov al,':'
+                        call ausschrift_zeichen
+
+                        mov ax,[bp+0]
+                        call ausschrift_ax
+
+                        mov si,text_meldung2
+                        call ausschrift_text
+
+
+                        lds si,[bp+0]
+                        mov cx,10
+                        cld
+
+cs_ip_ausschrift_schleife:
+                        mov al,' '
+                        call ausschrift_zeichen
+
+                        lodsb
+                        call ausschrift_al
+
+                        loop cs_ip_ausschrift_schleife
+
+
+
+                        mov si,text_warte_auf_num5
+                        call ausschrift_text
+
+
+                        ; "enable keyboard"
+                        mov al,020
+                        out 020,al
+
+                        call warten_auf_tastatur
+                        mov al,0ae
+                        out 064,al
+                        call warten_auf_tastatur
+                        sti
+
+warte_auf_num5_schleife:
+
+                        mov ah,010
+                        int16_aufruf
+
+                        cmp ah,04c ; NUM-5
+                        jne warte_auf_num5_schleife
+
+
+                        mov si,text_enter
+                        call ausschrift_text
+
+                        mov ax,04cff
+                        int 021
+
+;***************************************************************************
+
+#if englisch
+
+text_meldung1:          pstr 'INT 06: invalid opcode',00d,00a,'CS:IP='
+
+text_meldung2:          pstr 00d,00a,'CS:[IP]='
+
+text_enter:             pstr 00d,00a
+
+text_warte_auf_num5:    pstr 00d,00a,'please press NUM-5 ',7
+
+#else
+
+text_meldung1:          pstr 'INT 06: Ung걄tiger Befehlscode',00d,00a,'CS:IP='
+
+text_meldung2:          pstr 00d,00a,'CS:[IP]='
+
+text_enter:             pstr 00d,00a
+
+text_warte_auf_num5:    pstr 00d,00a,'Bitte NUM-5 dr갷ken ',7
+
+#endif
+
+tsr_ende:
+
+;***************************************************************************

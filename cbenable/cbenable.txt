@@ -1,0 +1,331 @@
+This package is intended for making more use of CardBus cards.
+
+Included parts
+==============
+
+ * cbenable.sys - a device driver that uses OS/2 Card services to
+                  enable any CardBus card you insert in a slot
+                  and assign an IRQ line and and IO window.
+
+ * cbe_msg.exe  - send a on off message to cbenable.sys
+
+ * oemhlp2.sys  - some System BIOS do not scan on CardBus bus,
+                  if they are asked to look for a PCI device.
+                  Imagine that there would be a common PCI Chipset
+                  with drivers and no special CardBus client.
+                  if the device is present at boot time and the
+                  PCI driver uses the OEMHLP$ driver (included in
+                  OS2KRNL), chaning OEMHLP$ to OEMH2$ would let
+                  the PCI driver find the CardBus device.
+                  Of course you must make sure that the card
+                  is in the socket all the time...
+                  
+                  Additionally, this driver adds a write protection
+                  filter to a socket where an USB card is inserted.
+
+ * ppcmcia.exe  - original PCMCIA.SYS has a bug that prevents use
+                  of CardBus cards. This program patches PCMCIA.SYS.
+                  The patch was tested with version 10.056.
+                  PPCMCIA creates a backup file if it can not find one.
+
+ * cscinfo.exe  - simple program to show card informations
+
+
+Usage
+=====
+
+  1. First install Card Services version 5.0. 
+     cbenable.sys checks for version 5.00 (8.00 is broken).
+     
+     Make sure that you use
+
+     BaseDev=PCMCIA.SYS /R:500
+
+     in config.sys.
+
+  2. run ppcmcia.exe. It will patch PCMCIA.SYS on your boot drive,
+     it will try to find it in \os2\ and \os2\boot\.
+     You can specify the full path to PCMCIA.SYS if you run
+     from an maintenance partition.
+
+
+  3. Add CBENABLE.SYS and OEMHLP2.SYS to config.sys, OEMHLP2.SYS
+     CBENABLE.SYS must be after PCMCIA.SYS and socket drivers, 
+     but before drivers that excpect enabled devices (USB).
+
+     
+     BaseDev=OEMHLP2.SYS
+
+       OEMHLP2.SYS has no parameters.
+
+
+     BaseDev=CBENABLE.SYS <CardBusBridge Bus> <CS Socket> <IRQ>
+             [/Patch_Ti1225_Burst:<Ti1225_Burst>]
+             [/Patch_Ti1225_IRQMode:<Ti1225_IRQMode>]
+             [/FunctionID:<Function_code>]
+
+
+       <CardBusBridge Bus> are 3 values for Bus, Device and Function
+       of the CardBus bridge. You most likely have only one chip
+       and can let CBENABLE.SYS search for it by using * for each.
+
+       <CS Socket> is an number from 0 to 7.
+
+       <IRQ> can be
+        * NOIRQ: do not try to assign an IRQ to the device.
+          Requires support of the card driver, for example
+          rtsnd.os2. Avoid this option if possible..
+        * PCIIRQ: do not ask Card Services to allocate an
+          IRQ for the card, instead use PCI routing.
+          This is the recommended option. IRQ sharing possible.
+          To make this option work, use the BIOS setup or
+          the SPCIIRQ package to set an valid IRQ for the
+          CardBus bridge.
+        * a list of IRQ numbers separated by ",":
+          cbeanble will request IRQ configuration using Card Services.
+          Card Services will select one IRQ of the list that it thinks 
+          is available for use. It will reserve the IRQ in exclusive mode.
+
+          
+       <Ti1225_Burst> Optional hardware depended Option for
+       Texas Instruments 1225 and compatible chips (values 0/1).
+       For value 1, the "Memory read burst enable upstream" bit
+       is set. Measured Realtek 8139 NETIO throughput goes
+       from 3,2 MB/s to 11 MB/s on the development system.
+
+
+       <Ti1225_IRQMode> Optional hardware dependend Option for
+       Texas Instruments 1225 and compatible chips (values 0/1/2/3).
+       Modifies Interrupt mode:
+
+         0 = Parallel PCI interrupts only
+         1 = Parallel IRQ and parallel PCI interrupts
+         2 = IRQ serialized interrupts and parallel PCI interrupt
+         3 = IRQ and PCI serialized interrupts (default)
+
+
+       <Function_code> Optional parameter to restrict card types
+       that are processed. Possible values are:
+
+         0 = Multi-Function
+         1 = Memory
+         2 = Serial Port
+         3 = Parallel Port
+         4 = Fixed Disk
+         5 = Video Adapter
+         6 = Network Adapter
+         7 = Auto Incrementing Mass Storage
+         8 = SCSI
+         9 = Security
+         10..253 = Reserved
+         254 = Vendor-Specific
+         * = ignore value (default)
+
+
+
+     Examples:
+
+       BaseDev=CBENABLE.SYS * * 0 0 10,11,12
+       BaseDev=CBENABLE.SYS * * 0 0    NOIRQ
+       BaseDev=CBENABLE.SYS * * 0 0   PCIIRQ       
+                            ^^^^^ ^      ^^^
+                           Bridge Socket IRQ
+
+
+
+
+Resource Manager
+================
+
+  You will find CBENABLE.SYS and OEMHLP.SYS using "RMVIEW /D",
+  Resources allocated by CBENABLE will appear allocated by
+  "Socket_0", "Socket_1" in ExCA mode.
+
+
+Power on+off, Hotinsert
+=======================
+
+  Power on/off and remove/reinsert is only possible if
+  the adapter device driver supports the notification hook
+  in CBENABLE.SYS. The "Realtek 8139 OS/2 NDIS" driver is
+  updated to include support for this. If you remove a card
+  or remove the power from it (Card Director) without
+  coordination with the driver, you most likely get a system
+  halt. Another way to power off a card is to execute the
+  included cbe_msg.exe program. Its parameters are socket
+  number (0..7) and 0/1 for off/on. Example for removing
+  power for first socket: "cbe_msg 0 0".
+
+
+APM Suspend/Resume
+==================
+
+  The "DEVICE=E:\OS2\boot\$ICPMOS2.SYS" driver in config.sys
+  prevents APM Suspend if CBENABLE.SYS has enabled a card.
+  You perhaps want to comment it off by inserting "REM "
+  in front of that line.
+
+
+Enabler Conflicts
+=================
+
+  CBENABLE would most likely conflict with similar enabler
+  clients, use for example "/FunctionID:6" to restrict CBENABLE
+  to only try Network cards.
+
+  Remember to hide any socket from Card Services, where
+  "point enabler" software (build-in card services) is used.
+  Example: cbendis/ibmcndis.os2 (Xircom/IBM EtherJet 10/100)
+
+
+Beep codes
+==========
+
+  beep
+    error
+      recommendation
+
+  short very high beep (8000 Hz)
+    card enabled successful.
+
+  medium/high/medium beep (2000/3000/2000)
+    card configuration failed
+      adjust IRQ or use Base IO address 0.
+
+  long low/middle beep (1000/2000/1000/2000 Hz)
+    can not get card configuration, bad pcmcia.sys detected
+      run ppcmcia.exe and reboot.
+
+
+Problems/Questions & Solutions/Answers
+======================================
+
+P: Error message 'Attach to PCMCIA$ failed. Install Card Services.'
+S: PCMCIA.SYS was not installed. Please install IBM Card Director
+   and the Socket drivers matching your hardware.
+
+P: Error message 'Card Services version 5.00 (PCMCIA.SYS /R:500) required.'
+S: Card Services level 2.0 do not support CardBus Cards. Please change the
+   the config.sys line. (perhaps not needed for CS 8.00??)
+
+P: Error message 'No PCI to CardBus bridge found.'
+S: Maybe you only have PCCard (ISA) socket hardware. Ask the author.
+
+P: Error message 'Specified device is not a CardBus bridge.'
+S: let CBENABLE.SYS detect the values; ask the author.
+
+P: Error message 'CardBus bridge has invalid CardBus number set.'
+S: Your BIOS does not to assign PCI bus numbers to the CardBus behind
+   the CardBus bridge (socket chip). Bus numbers have to setup unique
+   to work! You can 
+    a) try to look into the machine setup
+    b) use another socket driver; for my machine (TI1225) i need the
+       driver from the dell package (+patch)
+    c) alter the PCI bus number using wPciCfg.sys like
+       REM TI1225: CardBus=Bus#2
+       BaseDev=wpcicfg.sys 0 10 0 $10 4 $000d0000
+       BaseDev=wpcicfg.sys 0 10 0 $19 1 $02
+       BaseDev=wpcicfg.sys 0 10 0 $1A 1 $02
+       REM TI1225: CardBus=Bus#3
+       BaseDev=wpcicfg.sys 0 10 1 $10 4 $000d1000
+       BaseDev=wpcicfg.sys 0 10 1 $19 1 $03
+       BaseDev=wpcicfg.sys 0 10 1 $1A 1 $03
+       
+P: Error message 'IRQ in CardBus bridge is not valid, use BIOS setup or SPCIIRQ.'
+S: Use the spciirq package to set IRQ that is used by the CardBus chip
+   function/functions.
+
+Q: Which socket driver should i use
+A: There exist small differences between implementations, so
+   you have to try out all matching drivers. Use pci0*vk to
+   get the chip type, then search for drivers, or ask me.
+
+Q: Card services do not load after booting Windows
+A: The socket chip is in power down mode and your BIOS seems not to do
+   its work. 
+   a) Switch off the machine, wait 10 seconds and power on again.
+   b) use the wakup driver package
+   
+P: all seem ok, but PMIrq IRQ counter does not increase
+S: try PCI IRQ routing instead of ExCA routing, verify with show_lnk
+   that the IRQ is in level mode.
+
+
+
+Known Problems
+==============
+
+  * Removing powered on Cards causes Resource Manager IO reservations
+    leaks. This does not seem to happen if CBE_MSG is used.
+    Possible fix:
+    - search PCMCIA.SYS problem
+    - free RM resources in CBENABLE.SYS
+    
+  * IBM Card Director displays wrong data in resource usage notebook
+    for the enabled card. ezplay.dll assumes that no I/O range is larger
+    or equal than 256 bytes.
+
+Changes
+=======
+
+ 2003.01.07
+ þ corrected errors in ppcmcia.cmd
+ þ added TI 1225 interrupt and burst mode options
+ þ Search IOBase if it does not work, or 0 is specified
+ þ Uses OEMHLP$/OEMHLP2.SYS for PCI access
+
+ 2003.01.27
+ þ cscinfo shows manufacturer from GetCardServicesInfo buffer
+ þ removed ppcmcia.cmd and enhanced ppcmcia.exe
+ þ /FunctionID filter added
+ þ cbenable.sys: copy excpected PCI address of inserted card
+   to IOCTL data buffer
+
+ 2003.02.02 --
+ þ cscinfo reports CS level and vendor string, corrected socket numbering
+   for CS level 2.00 (1-based)
+ þ cosmetic change in device driver header (source code only)
+ þ use manufacturer id table from 2003.04.03
+
+ 2003.08.01
+ þ tried to make it work with IBM PC Card Director/CardBus/8.00;
+   does not work for me (TI1225), use previous version..
+   try driver CARDBUS$ before $PCMCIA (level 8.00 instead of 2.00)
+   catch garbage that prevously was copyright and version string
+ þ added problem solutions to this documentation
+ þ use manufacturer id table from 2003.05.20
+
+ 2003.08.22
+ þ display copyright string for CS 5.00 (Length $7F/$81)
+
+ 2003.09.25..11.10
+ þ added 'NOIRQ' mode support
+   Note: this will help with drivers that can fall back to an
+   non-IRQ controlled access to the device.
+ þ pass socket number to clients (in ax)
+ þ supress error beep when software calles enable function for empty sockets
+ 
+ 2003.11.14..2004.07.28
+ þ fixed several problems in oemhlp2
+ þ usb 2.0 cardbus card support (nec 2xOHCI+1xEHCI)
+   see usb_cb.txt
+ þ return error codes to cbe_msg, decode error codes in cbe_msg
+ þ more aggressivly set IRQ mode and BURST parameter
+   it seems that the socket driver does not know that the setting
+   is shared for both slots, disabling a card in second socket
+   *should not* disable working for the first..
+ þ PCIIRQ mode added; now default for DDP; ExCA IRQ is not shareable..
+   even setting IRQs with SPCIIRQ makes them unavailable for ExCA!
+ þ added beep code sample (rexx)
+ þ obsoleted IOBase and Size parameter. CBENABLE now tries
+   to find I/O and Memory resource requirements automaticly.
+   
+ 2004.08.14
+ þ use manufacturer id table from 2004.08.13
+
+Todo
+====
+ þ needs some idea for automatic use of OEMHLP2 in USB drivers
+ þ ezplay patch program?
+ þ simple install program?
+ 

@@ -1,0 +1,39 @@
+Name     DOS OS/2 Source    Description
+
+AC       +   -    +         add small prefix-programs to EXE/COM/BIN
+APM_UHR  +   *    +         clock-correction for powermanagment
+AUTODET  +   -    +         detect witch program will be launched in OS/2 DOS-session
+BILDSCHI *   -    +         bootsector with register dump and memory viewer
+BLINKX   +   -    +         blink->bright backgroundcolors
+D1D2CRK  +   +    +         create .CRK and .PAT -files
+DAT_LOG  +   -    +         file acces monitor
+DENYNONE +   -    +         multiple acces to the same file (NC)
+DOG212A  +   *    +         DOG 2.12 modified and unpacker
+E0X      +   *    -         floppy emulator
+ENTPACK  +   -    -         EXE/COM unpacker
+F4_35_CA +   *    +         release CPU-time under OS/2
+FONT20   ?   ?    ?         font 16->20 points in textmode
+HOLEN    +   -    +         create copy of system-BIOS
+IHPFSIOM +   -    +         access to HPFS IOMEGA-ZIP-100 with IHPFS
+IMG      +   +    +         copies image files <-> drives
+INT6     +   -    +         abort program on invalid opcode
+NORM_FAT +   -    +         correction of FAT-directory-entrys
+PATCHVPT +   *    +         increase video refresh rate
+PROTMENU -   +    +         menuprogram for CMD/PMShell/PMShell with WPS
+R200FIX  +   -    +         Turbo/Borland Pascal Runtime error 200 [CRT]
+REB_MENU +   -    +         prevents reboot if overwritten bios or other processes running
+SAUBER   +   -    +         clean free memory
+SCHNITT  +   +    +         copy parts of files
+STIX     +   +    +         InstallShield extractor
+STOP_LH  +   -    +         prevents highload of programparts
+TEXTREIN +   +    +         remove control characters,convert tabs/linebreaks
+TYP      +   +    -         file recognition/archive lister/compiler detection
+UNXLINK  +   +    +         XLINK 2.02 extractor
+URAM     +   -    +         Shadow-RAM-memory util
+VESAMAX  +   -    +         limits maximum available screen resolution
+VPART    +   -    -         bootmanager
+ZUFPASS  +   +    +         password generator
+
+to force all programs to display english messages put
+SET COUNTRY=001  
+in your autoexec.bat (001 can replaced by other numbers).

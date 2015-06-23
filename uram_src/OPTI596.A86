@@ -1,0 +1,84 @@
+Title   Opti 596/546/82
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_op596                     macro
+                                  mov di,#1 ; Segment
+                                  ;mov cl,#2 ; Index alt
+                                  ;mov ch,#3 ; Bit-Verschiebung alt
+                                  mov cx,#2+#3*0100
+                                  mov bx,#4 ; Index neu
+                                  ;mov dh,#5 ; Schreiben neu
+                                  ;mov dl,#6 ; Lesen neu
+                                  mov dx,#6+#5*0100
+                                  call setze_op596_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_op596_prozedur:
+
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_op596_prozedur_fertig
+
+                                call ausschrift_segment
+
+                                ; alt ?  (Port 22/24)
+                                push ax,bx
+                                  and ah,3
+                                  mov al,0ff-3
+
+                                  xchg ch,cl
+                                  rol ah,cl
+                                  rol al,cl
+                                  xchg ch,cl
+
+                                  mov bx,ax
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop bx,ax
+
+                                ; neu ? (Port CF8)
+                                mov cx,bx
+                                mov bx,000ff
+                                sub bl,dh
+                                sub bl,dl
+
+                                and ax,00201
+
+                                cmp ah,2 ; Schreiben
+                                if z add bl,dh
+
+                                cmp al,1 ; Lesen
+                                if z add bl,dl
+
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_op596_prozedur_fertig:    ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_opti596:               ausschrift_xxxx_aehnliches_bios text_variante_opti_82596
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+5+1]
+                                add ax,di
+                                add ax,5+3
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                setze_op596 'C0',004,0,08047,Bit3,Bit7
+                                setze_op596 'C4',004,2,08047,Bit2,Bit6
+                                setze_op596 'C8',004,4,08047,Bit1,Bit5
+                                setze_op596 'CC',004,6,08047,Bit0,Bit4
+
+                                setze_op596 'D0',005,0,08046,Bit3,Bit7
+                                setze_op596 'D4',005,2,08046,Bit2,Bit6
+                                setze_op596 'D8',005,4,08046,Bit1,Bit5
+                                setze_op596 'DC',005,6,08046,Bit0,Bit4
+
+                                setze_op596 'E0',006,0,08045,Bit3,Bit7
+                                setze_op596 'E4',006,0,08045,Bit2,Bit6
+                                setze_op596 'E8',006,0,08045,Bit1,Bit5
+                                setze_op596 'EC',006,0,08045,Bit0,Bit4
+
+                                setze_op596 'F0',006,2,08044,Bit0,Bit1
+
+                                jmp initialisieren
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

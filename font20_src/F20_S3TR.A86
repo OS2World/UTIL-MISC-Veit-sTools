@@ -1,0 +1,5 @@
+s3_trio                         equ 1
+blinkx                          equ 1
+immer_rate_setzen               equ 0
+
+include font20.a86

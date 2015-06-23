@@ -1,0 +1,62 @@
+; S3 Trio Sonderfunktionen
+; 1999.08.04 Veit Kannegieser
+
+; cx=zu programmierender Wert
+
+s3_trio_clock:
+                        cmp cx,0ffff
+                        jz ret
+
+                        pusha
+                          ; unlock S3
+                          mov dx,CRTC
+                          mov ax,04838
+                          out dx,ax
+                          mov ax,0a539
+                          out dx,ax
+
+                          mov dx,Sequencer
+                          mov ax,00608
+                          out dx,ax
+
+                          ; verstellbaren Frequenzgenerator w„hlen
+                          mov dx,Miscellaneous_Output_Register_R
+                          in_al_dx
+		          or al,bit2+bit3
+		          mov dx,Miscellaneous_Output_Register_W
+                          out_dx_al
+
+                          ; schreibe Wert
+                          mov dx,Sequencer
+                          mov al,012
+                          mov ah,cl
+                          out_dx_ax
+                          inc al
+                          mov ah,ch
+                          out_dx_ax
+
+                          ; Žnderung verwirklichen
+                          ;mov dx,Sequencer
+                          mov al,015
+                          call hole_port
+		          and ah,0ff-bit5
+		          out_dx_ax
+		          or ah,bit5
+                          out_dx_ax
+                          and ah,0ff-bit5
+                          out_dx_ax
+
+                          ; lock S3
+                          mov dx,CRTC
+                          mov ax,00038
+                          out dx,ax
+                          mov ax,05a39
+                          out dx,ax
+
+                          mov dx,Sequencer
+                          mov ax,00008
+                          out dx,ax
+
+                        popa
+                        ret
+

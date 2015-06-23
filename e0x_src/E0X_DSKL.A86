@@ -1,0 +1,146 @@
+disklone_plus_tabelle_start:
+
+			;  160 .. 0
+                        dw 8*1*40
+                        db 8,1,40
+                        ;  180 .. 1
+                        dw 9*1*40
+                        db 9,1,40
+                        ;  320 .. 2
+                        dw 8*2*40
+                        db 8,2,40
+                        ;  360 .. 3
+                        dw 9*2*40
+                        db 9,2,40
+                        ;  720 .. 4
+                        dw 9*2*80
+                        db 9,2,80
+                        ; 1200 .. 5
+                        dw 15*2*80
+                        db 15,2,80
+                        ; 1440 .. 6
+                        dw 18*2*80
+                        db 18,2,80
+
+
+;***************************************************************************
+
+importiere_disklone:
+                        call kopiere_ins_xms_zaehler_nullen
+                        call sauberen_kopf_einrichten
+
+                        mov ax,cs:[si]
+                        mov w [sektoren],ax
+                        mov al,cs:[si+2]
+                        mov b [sekt_spur],al
+                        mov al,cs:[si+3]
+                        mov b [koepfe],al
+                        mov al,cs:[si+4]
+                        mov b [spuren],al
+
+                        mov dx,[datei_start_l]
+                        mov cx,[datei_start_h]
+                        add dx,00080
+                        adc cx,0
+                        call seek
+
+                        ; Kopierer ...
+                        mov w [quell_h],0
+                        mov w [quell_o],hd_copy_entschluesselt
+                        mov w [quell_s],cs
+                        mov w [ziel_h],[xms_handhabe]
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+
+                        call datei_einlesen_512
+                        mov si,0
+                        mov di,hd_copy_entschluesselt
+
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+;***************************************************************************
+disklone_spur_schleife:
+
+                        mov dl,b [sekt_spur]
+                        null dh
+                        shl dx,9 ; *512
+
+                        call lies_hd_copy_zeichen
+                        cmp ah,1
+                        jz disklone_fertig
+                        push ax
+                          call lies_hd_copy_zeichen
+                          call lies_hd_copy_zeichen
+                          call lies_hd_copy_zeichen
+                          call lies_hd_copy_zeichen
+                        pop ax
+
+                        cmp al,0
+                        jz disklone_ungepackt
+;***************************************************************************
+disklone_spur_bruchstueck_schleife:
+                        call lies_hd_copy_zeichen
+                        test al,080
+                        jz disklone_kopiere_bloeckchen
+
+;***************************************************************************
+                        and al,07f
+                        null ah
+                        sub dx,ax
+
+                        mov cx,ax
+                        call lies_hd_copy_zeichen ; welches Zeichen
+disklone_vielfach:
+                        call schreibe_hd_copy_zeichen
+                        loop disklone_vielfach
+                        jmp short disklone_spur_bruchstueck_fertig
+;***************************************************************************
+disklone_kopiere_bloeckchen:
+                        null ah
+                        sub dx,ax
+
+                        mov cx,ax
+disklone_kopiere_bloeckchen_schleife:
+                        call lies_hd_copy_zeichen
+                        call schreibe_hd_copy_zeichen
+                        loop disklone_kopiere_bloeckchen_schleife
+;***************************************************************************
+disklone_spur_bruchstueck_fertig:
+                        cmp dx,0
+                        jnz disklone_spur_bruchstueck_schleife
+                        jmp disklone_spur_schleife
+;***************************************************************************
+disklone_ungepackt:
+                        mov  cx,dx
+disklone_ungepackt_schleife:
+                        call lies_hd_copy_zeichen
+                        call schreibe_hd_copy_zeichen
+                        loop disklone_ungepackt_schleife
+                        jmp disklone_spur_schleife
+;***************************************************************************
+disklone_fertig:
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+                        mov ax,'öö'
+                        call fuelle_lese_puffer
+
+                        mov w [quell_h],0
+                        mov w [quell_o],0
+                        mov w [quell_s],[lese_puffer_seg]
+
+ 			mov cx,[sektoren]
+                        mov dx,w [kopi_ins_xms_512_zaehler]
+                        cmp dx,cx
+                        jae importiere_disklone_fertig_fertig
+
+                        sub cx,dx
+importiere_disklone_fertig_fuellschleife:
+                        call kopiere_ins_xms_512
+                        loop importiere_disklone_fertig_fuellschleife
+
+importiere_disklone_fertig_fertig:
+                        ret

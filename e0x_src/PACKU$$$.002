@@ -1,0 +1,15 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_fuer  :^string;
+  textz_Zieldatei  :^string;
+  textz_Haupt_Quelldatei  :^string;
+  textz_Spuren  :^string;
+  textz_Sektoren_je_Spur  :^string;
+  textz_Seiten  :^string;
+  textz_Kopieren  :^string;
+  textz_Anzahl_zusaetzlicher_Sektoren  :^string;
+  textz_Quelldatei  :^string;
+  textz_Spur_1_CH  :^string;
+  textz_Seite_1_DH  :^string;
+  textz_Sektor_CL  :^string;

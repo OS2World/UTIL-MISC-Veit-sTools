@@ -1,0 +1,4 @@
+Title   produce os2csm.e or os2csm.e_m -- english
+
+language_en=1
+include lader.inc

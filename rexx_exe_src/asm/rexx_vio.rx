@@ -1,0 +1,4 @@
+Say 'Hello!'
+Say 'I am a small rexx program wrapped to REXX_VIO.EXE.'
+Say 'Use REXX2VIO to replace me..'
+Return 0

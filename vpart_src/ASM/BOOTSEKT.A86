@@ -1,0 +1,290 @@
+boosektor_austausch_tablelle:
+;      0 unver„ndert
+dw bootsektor_unveraendert
+;      1 OS2BOOT                        OS/2 (FAT)
+dw bootsektor_os2_fat
+;      2 IBMBIO.COM                     NWDOS 7/DRDOS
+dw bootsektor_nwdos
+;      3 IO.SYS + MSDOS.SYS             MSDOS
+dw bootsektor_msdos
+;      4 PTSLDR.SYS                     PTSDOS 7
+dw bootsektor_ptsdos7
+;      5 IBMBIO.COM + IBMDOS.COM        PCDOS
+dw bootsektor_pcdos
+;      6 PTSDOS.SYS                     PTSDOS 6
+dw bootsektor_ptsdos6
+;      7 IO.DOS + MSDOS.DOS             MSDOS
+dw bootsektor_msdos_dos
+;      8 IO.SYS + MSDOS.SYS             MSDOS 7
+dw bootsektor_msdos_7
+;      9 IBMBIO.600                     DRDOS 6
+dw bootsektor_drdos_600
+;     10 IBMBIO.700                     NWDOS 7
+dw bootsektor_drdos_700
+;     11 IBMBIO.701                     DRDOS 7.01
+dw bootsektor_drdos_701
+;     12 IBMBIO.702                     DRDOS 7.02
+dw bootsektor_drdos_702
+;     13 IBMBIO.703                     DRDOS 7.03
+dw bootsektor_drdos_703
+;     14 NTLDR                          Fenster 2000
+dw bootsektor_ntldr
+;     15 RIPL                           Boot-ROM-Emulation
+dw bootsektor_ripl
+
+;****************************************************************************
+bootsektor_unveraendert:        dw 0
+
+;****************************************************************************
+
+bootsektor_os2_fat:             dw 07c00,sprung_eb44
+                                dw 07c3e,os_2_code_start
+                                dw 0
+
+;****************************************************************************
+
+bootsektor_nwdos:               dw 07c00,sprung_eb56
+                                dw 07c3e,novell7_code_start
+                                dw 0
+
+bootsektor_drdos_600:           dw 07c00,sprung_eb56
+                                dw 07c3e,novell7_code_start
+                                dw 07c4e,datei_erweiterung_600
+                                dw 0
+
+bootsektor_drdos_700:           dw 07c00,sprung_eb56
+                                dw 07c3e,novell7_code_start
+                                dw 07c4e,datei_erweiterung_700
+                                dw 0
+
+bootsektor_drdos_701:           dw 07c00,sprung_eb56
+                                dw 07c3e,novell7_code_start
+                                dw 07c4e,datei_erweiterung_701
+                                dw 0
+
+bootsektor_drdos_702:           dw 07c00,sprung_eb56
+                                dw 07c3e,novell7_code_start
+                                dw 07c4e,datei_erweiterung_702
+                                dw 0
+
+bootsektor_drdos_703:           dw 07c00,sprung_eb56
+                                dw 07c3e,novell7_code_start
+                                dw 07c4e,datei_erweiterung_703
+                                dw 0
+
+;****************************************************************************
+
+bootsektor_pcdos:               dw 07c00,sprung_eb3c
+                                dw 07c3e,ibm_ms_code_start
+                                dw 07d9b,sprung_eb63
+                                dw 07e00,suche_dos_start
+                                dw 0
+
+bootsektor_msdos:               dw 07c00,sprung_eb3c
+                                dw 07c3e,ibm_ms_code_start
+                                dw 07de6,dateiname_iosys_msdos_sys
+                                dw 07d9b,sprung_eb63
+                                dw 07e00,suche_dos_start
+                                dw 0
+
+bootsektor_msdos_dos            dw 07c00,sprung_eb3c
+                                dw 07c3e,ibm_ms_code_start
+                                dw 07de6,dateiname_iosys_msdos_dos
+                                dw 07d9b,sprung_eb63
+                                dw 07e00,suche_dos_start
+                                dw 0
+
+;****************************************************************************
+
+bootsektor_msdos_7:             dw 07c00,sprung_eb3c
+                                dw 07c3e,msw41_code_start
+                                dw 0
+
+;****************************************************************************
+
+bootsektor_ptsdos6:             dw 07c00,sprung_eb3d
+                                dw 07c3e,ptsdos6_code_start
+                                dw 0
+
+bootsektor_ptsdos7:             dw 07c00,sprung_eb71
+                                dw 07c3e,ptsdos7_code_start
+                                dw 0
+
+;****************************************************************************
+
+bootsektor_ntldr:               dw 07c00,sprung_eb3c
+                                dw 07c3e,ntldr_code_start
+                                dw 0
+
+;****************************************************************************
+
+bootsektor_ripl:                dw 07c00,sprung_eb56
+                                dw 07c3e,novell7_code_start
+                                dw 07c46,ripl_dateiname
+                                dw 07dd5,ripl_fehlermeldung
+                                dw 07c40,ripl_zieladresse
+                                dw 0
+
+;****************************************************************************
+
+sprung_eb3c:                    dw 2
+                                db 0eb,03c
+
+sprung_eb3d:                    dw 2
+                                db 0eb,03d
+
+sprung_eb44:                    dw 2
+                                db 0eb,044
+
+sprung_eb56:                    dw 2
+                                db 0eb,056
+
+sprung_eb63:                    dw 2
+                                db 0eb,063
+
+sprung_eb71:                    dw 2
+                                db 0eb,071
+
+dateiname_iosys_msdos_sys:      dw 2*(8+3)
+                                db 'IO      SYS'
+                                db 'MSDOS   SYS'
+
+dateiname_iosys_msdos_dos:      dw 2*(8+3)
+                                db 'IO      DOS'
+                                db 'MSDOS   DOS'
+
+datei_erweiterung_600:          dw 3
+                                db '600'
+
+datei_erweiterung_700:          dw 3
+                                db '700'
+
+datei_erweiterung_701:          dw 3
+                                db '701'
+
+datei_erweiterung_702:          dw 3
+                                db '702'
+
+datei_erweiterung_703:          dw 3
+                                db '703'
+
+ripl_dateiname:                 dw 8+3
+                                db 'BOOT_ROMEMU' ; 'C:\BOOT_ROM.EMU'
+
+ripl_fehlermeldung:             dw 3
+                                db 'ROM'         ; ROM-Ladefehler
+
+ripl_zieladresse:               dw 4
+                                dw 0,03000       ; 3000:0000
+                                ; weil 70:0+64K >0:7c00
+
+;****************************************************************************
+
+boosektorcode_austauschen:
+                                cld
+                                pusha
+                                  shl ax,1      ; *2
+                                  mov si,ax
+                                  mov si,boosektor_austausch_tablelle[si]
+
+boosektorcode_austauschen_schleife:
+                                  lodsw
+                                  or ax,ax
+                                  jz boosektorcode_austauschen_ende
+
+                                  mov di,ax     ; Ziel
+                                  lodsw         ; Quelle
+                                  push si
+                                    mov si,ax
+                                    lodsw
+                                    mov cx,ax   ; L„nge
+                                    call kopi_prozedur
+                                  pop si
+                                  jmp boosektorcode_austauschen_schleife
+
+boosektorcode_austauschen_ende:
+                                popa
+                                ret
+
+;****************************************************************************
+
+os_2_code_start:
+                                dw os_2_code_ende-os_2_code_start-2
+                                #if deutsch
+                                include ..\sys3\os2_450d.a86
+                                #endif
+                                #if englisch
+                                include ..\sys3\os2_450e.a86
+                                #endif
+os_2_code_ende:
+
+;****************************************************************************
+
+novell7_code_start:
+                                dw novell7_code_ende-novell7_code_start-2
+                                #if deutsch
+                                include ..\sys3\drdos73d.a86
+                                #endif
+                                #if englisch
+                                include ..\sys3\drdos73e.a86
+                                #endif
+novell7_code_ende:
+
+;****************************************************************************
+
+ibm_ms_code_start:
+                                dw ibm_ms_code_ende-ibm_ms_code_start-2
+                                #if deutsch
+                                include ..\sys3\vk_ibm_d.a86
+                                #endif
+                                #if englisch
+                                include ..\sys3\vk_ibm_e.a86
+                                #endif
+ibm_ms_code_ende:
+
+;****************************************************************************
+
+suche_dos_start:
+                                dw suche_dos_ende-suche_dos_start-2
+                                #if deutsch
+                                include ..\sys3\suchdosd.a86
+                                #endif
+                                #if englisch
+                                include ..\sys3\suchdose.a86
+                                #endif
+suche_dos_ende:
+
+;****************************************************************************
+
+msw41_code_start:
+                                dw msw41_code_ende-msw41_code_start-2
+                                #if deutsch
+                                include ..\sys3\msw498_d.a86
+                                #endif
+                                #if englisch
+                                include ..\sys3\msw498_e.a86
+                                #endif
+msw41_code_ende:
+
+;****************************************************************************
+
+ptsdos6_code_start:
+                                dw ptsdos6_code_ende-ptsdos6_code_start-2
+                                include ..\sys3\ptsdos6.a86
+ptsdos6_code_ende:
+
+;****************************************************************************
+
+ptsdos7_code_start:
+                                dw ptsdos7_code_ende-ptsdos7_code_start-2
+                                include ..\sys3\ptsdos7.a86
+ptsdos7_code_ende:
+
+;****************************************************************************
+
+ntldr_code_start:
+                                dw ntldr_code_ende-ntldr_code_start-2
+                                include ..\sys3\ntldr.a86
+ntldr_code_ende:
+
+;****************************************************************************

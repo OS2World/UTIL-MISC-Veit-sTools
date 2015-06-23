@@ -1,0 +1,27 @@
+(* nicht editieren! *)
+var
+  sprach_start:longint;
+  textz_quellformat_svista_gepackt  :^string;
+  textz_quellformat_vpc_aber_nicht_raw2  :^string;
+  textz_Dateilaenge_ist_nicht_Vielfaches_von_512  :^string;
+  textz_Die_Partitionstabelle_ist_ungueltig_55_AA_fehlt  :^string;
+  textz_Entnehme_Groessenangaben_aus_dem_VPC_Block  :^string;
+  textz_Suche_Groessenangaben_aus_svs  :^string;
+  textz_fehlgeschlagen  :^string;
+  textz_erfolgreich  :^string;
+  textz_Zylinder  :^string;
+  textz_Koepfe  :^string;
+  textz_Sektoren_je_Spur  :^string;
+  textz_Geometrie_stimmt_nicht  :^string;
+  textz___Dateilaenge__  :^string;
+  textz___Geometrie____  :^string;
+  textz__Sektoren  :^string;
+  textz_dateigroesse_und_umbennen  :^string;
+  textz_Fehler_beim_Umbenennen  :^string;
+  textz_Fehler_beim_Oeffnen  :^string;
+  textz_erzeuge_txt_svista  :^string;
+  textz_usage1  :^string;
+  textz_usage2  :^string;
+  textz_usage3  :^string;
+  textz_usage4  :^string;
+  textz_VPC_alignment_geometry_mismatch  :^string;

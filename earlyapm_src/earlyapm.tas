@@ -1,0 +1,413 @@
+Title   initialize(connect) or disable APM before OS2KRNL uses >16M memory
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+; Veit Kannegieser 2004.07.20 (previously called apmaa64.sys)
+
+.386p
+
+                        include def.inc
+
+data                    Segment 'data' use16 public
+data                    EndS
+code                    Segment 'code' use16 public
+code                    EndS
+
+dgroup                  Group data
+cgroup                  Group code
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+data                    Segment
+                        dd -1
+                        dw 08180h               ; 8000-15 char dev
+                                                ; 0800-11 need open/close command
+                                                ; 0180-8/7 capabilities bit strip
+                        dw Offset strategy
+                        dw 0
+                        db 'EAR$$APM'
+                        dw 4 dup (0)
+                        dd 0+2                  ; 4 Initialization Complete Command
+                                                ; 1 >16MB address ok
+
+Device_Help             PTR1616 <0,0>
+                        Public  Device_Help
+
+Message_table           dw 1178 ; "%1"  ; message number
+                        dw 1            ; one paramter
+fillin_string_ofs       dw ?            ; first fill in item
+                        dw data
+                        Public Message_table, fillin_string_ofs
+
+messagestring           Macro ID,ZK
+                        &ID db &ZK,0
+                        Public ID
+                        EndM
+
+messagestring           Message_cmderror        , 'EARLYAPM: Unknown parameter'
+messagestring           Message_apm_codeseg     , '????=APM_CodeSeg'
+messagestring           Message_apm_offset      , '????=APM_Offset'
+messagestring           Message_apm_level       , '????=APM_Level'
+messagestring           Message_invalid_APM     , <'Warning: APM not available!',7>
+messagestring           Message_Patch_h_syiAPM  , <'Warning: could not find h_syiAPM for patch!',7>
+messagestring           Message_pause           , 'SYS    : end of EARLYAPM'
+
+quiet                   db false
+verbose                 db false
+wait                    db false
+force_no_apm            db false
+patch_success           db false
+                        Public quiet, verbose, wait, force_no_apm, patch_success
+
+data                    EndS
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+code                    Segment
+                        assume cs:code
+                        assume ds:data
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  strategy
+                        mov al,es:RequestBlock[bx].Command_Code
+
+                        ;--------------------------------------------
+                        cmp al,000h             ; init?
+                        je do_basedevinit
+                        cmp al,01bh             ; basedev init?
+                        jne not_basedevinit
+
+
+
+do_basedevinit:
+                        push bx
+                        push es
+
+                        mov eax,es:RequestBlock[bx].Pointer_1
+                        mov Device_Help,eax
+
+                        ; parse parameters
+
+                        lfs si,es:RequestBlock[bx].Pointer_2
+
+                        call find_skip_blank
+
+  skip_param:
+                        mov al,fs:[si]
+                        inc si
+
+                        cmp al,9
+                        je skip_param
+
+                        cmp al,' '
+                        je skip_param
+                        jb done_param
+
+                        cmp al,'-'
+                        je skip_param
+                        cmp al,'/'
+                        je skip_param
+
+                        and al,(not 020h)       ; upcase
+
+                        cmp al,'Q'
+                        jne not_param_q
+
+                        mov quiet,true
+                        jmp skip_param
+  not_param_q:
+                        cmp al,'V'
+                        jne not_param_v
+
+                        mov verbose,true
+                        jmp skip_param
+  not_param_v:
+                        cmp al,'W'
+                        jne not_param_w
+
+                        mov verbose,true
+                        mov wait,true
+                        jmp skip_param
+  not_param_w:
+                        cmp al,'N'
+                        jne not_param_n
+
+                        mov force_no_apm,true
+                        jmp skip_param
+  not_param_n:
+                        mov si,Offset Message_cmderror
+                        call outputmessage
+                        jmp uninstall_no_message
+
+  done_param:
+                        cmp force_no_apm,true
+                        je patch_os2krnl
+
+                        mov al,16       ; APM_record
+                        mov cx,1        ; also connect
+                        mov dl,024h     ; DevHlp_GetDOSVar
+                        call [Device_Help]
+
+                        jc invalid_apm
+
+                        mov es,ax
+
+                        cmp verbose,true
+                        jne no_verbose_info
+
+                        mov si,Offset Message_apm_codeseg
+                        mov ax,es:[bx]
+                        call outputmessage_ax
+
+                        mov si,Offset Message_apm_offset
+                        mov ax,es:[bx+4]
+                        call outputmessage_ax
+
+                        mov si,Offset Message_apm_level
+                        mov ax,es:[bx+8]
+                        call outputmessage_ax
+
+  no_verbose_info:
+
+                        cmp Word Ptr es:[bx],0  ; APM BIOS?
+                        je invalid_apm
+
+                        mov ax,es:[bx+8]        ; version >=1.00
+                        cmp ax,00100h
+                        jb invalid_apm
+                        cmp ax,00102h           ; version <=1.02
+                        jbe patch_os2krnl
+  invalid_apm:
+                        mov si,Offset Message_invalid_APM
+                        call outputmessage
+
+  patch_os2krnl:
+                        call patch_os2krnl_apm_connect
+
+  uninstall_no_message:
+
+                        cmp wait,true
+                        jne uninstall_no_wait
+
+                        mov si,Offset Message_pause
+                        call outputmessage
+  uninstall_no_wait:
+
+                        pop es
+                        pop bx
+
+                        ; not installed, no message+done
+                        mov ax,08115h
+                        jmp exit_strat
+
+  not_basedevinit:
+                        mov ax,08103h ; error+done+unknown command
+  exit_strat:
+                        mov es:RequestBlock[bx].Request_Packet_Status,ax
+                        mov es:[bx+RequestBlock].Pointer_1,0
+                        retf
+
+a_endp                  strategy
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;
+; OS2KRNL Object 2 (CODE16):
+;  h_syiDMQS:
+;     ...
+;     leave                     c9
+;     retf                      cb
+;  h_syiAPM
+;     push xxxx                 66 60
+;     ...
+;     cmp APM_CodeSeg,0
+;     jnz xxx
+;     ...
+;     call RealModeIC
+;     ...
+;     mov ax,05300h             b8 00 53
+;     xor bx,bx                 33 db
+;     int 015h                  cd 15
+;     jb xxx
+;     cmp bx,'PM'
+;     ....
+;
+a_proc                  patch_os2krnl_apm_connect
+                        push ds
+                        push es
+                        pushad
+
+                          mov ax,ds
+                          mov es,ax
+
+                          ; System Anchor Segment
+                          mov ax,070h
+                          mov ds,ax
+
+                          ; vm_area
+                          mov si,Word Ptr ds:[000ch] ; (2c)
+
+                          ; Kernel MTE records
+                          mov esi,DWord Ptr ds:[si+0ch] ; (ffecf178)
+
+                          ; FLAT DS
+                          mov ds,Word Ptr ds:[0006h] ; 160(retail)/170(debug)
+
+                          ; Object Table Entry Count
+                          mov ecx,DWord Ptr ds:[esi+048h]
+                          ; Object Table Offset
+                          mov esi,DWord Ptr ds:[esi+044h]
+
+          patch_os2krnl_apm_connect_all_objects_loop:
+                          push ecx
+                          push esi
+
+                            ; check for  readable executable shared preload 16-bit conforming
+                            cmp Word Ptr ds:[esi+8],05065h
+                            jne ignore_object
+                            ; object size
+                            mov ecx,DWord Ptr ds:[esi+0]
+                            ; object base addr
+                            mov esi,DWord Ptr ds:[esi+4]
+                            call patch_os2krnl_apm_connect_object
+          ignore_object:
+                          pop esi
+                          pop ecx
+
+                          ; try next object table entry
+                          add esi,018h
+                          loop patch_os2krnl_apm_connect_all_objects_loop
+
+                          mov ax,es
+                          mov ds,ax
+
+                          cmp [patch_success],true
+                          je patch_os2krnl_apm_connect_complete_success
+
+                          mov si,Offset Message_Patch_h_syiAPM
+                          call outputmessage
+
+          patch_os2krnl_apm_connect_complete_success:
+
+                        popad
+                        pop es
+                        pop ds
+                        ret
+a_endp                  patch_os2krnl_apm_connect
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+; patch code in one object
+; esi=addr
+; ecx=size
+
+
+a_proc                  patch_os2krnl_apm_connect_object
+                        pushad
+
+                          sub edi,edi   ; last leave/retf/pushad
+
+                          sub ecx,10
+                          jc  patch_os2krnl_apm_connect_object_exit
+
+  patch_os2krnl_apm_connect_object_loop:
+                          ; find h_syiAPM begin
+                          cmp DWord Ptr [esi],06660cbc9h
+                          jne not_procedure_end_begin
+                          lea edi,[esi+2]
+  not_procedure_end_begin:
+                          ; uniquely identify h_syiAPM
+                          cmp DWord Ptr [esi  ],0335300b8h
+                          jne not_idenified_h_syiAPM
+                          cmp DWord Ptr [esi+3],015cddb33h
+                          jne not_idenified_h_syiAPM
+                          test edi,edi
+                          jz  not_idenified_h_syiAPM
+
+                          mov Byte Ptr [edi],0cbh ; retf
+                          mov es:[patch_success],true
+                          jmp patch_os2krnl_apm_connect_object_exit
+
+  not_idenified_h_syiAPM:
+                          inc esi
+                          dec ecx
+                          jnz patch_os2krnl_apm_connect_object_loop
+
+
+  patch_os2krnl_apm_connect_object_exit:
+
+                        popad
+                        ret
+a_endp                  patch_os2krnl_apm_connect_object
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; ds:si
+a_proc                  outputmessage
+                        cmp quiet,true
+                        je exit_outputmessage
+                        pusha
+                          mov fillin_string_ofs,si
+                          mov si,Offset Message_table
+                          sub bx,bx
+                          mov dl,03dh           ; Save_Message
+                          call [Device_Help]
+                        popa
+  exit_outputmessage:
+                        ret
+a_endp                  outputmessage
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  outputmessage_ax
+                        pusha
+                          mov dx,ax
+                          mov cx,4
+  loop_outputmessage_ax:
+                          rol dx,4
+                          mov al,dl
+                          and al,00fh
+                          cmp al,10
+                          sbb al,069h
+                          das
+                          mov ds:[si],al
+                          inc si
+                          loop loop_outputmessage_ax
+                        popa
+                        jmp outputmessage
+a_endp                  outputmessage_ax
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  find_skip_blank
+                        push ax
+  find_skip_blank_loop:
+                          mov al,fs:[si]
+                          cmp al,9
+                          je skip_blank
+                          cmp al,' '
+                          je skip_blank
+                          jb find_skip_blank_exit
+                          inc si
+                          jmp find_skip_blank_loop
+  skip_blank:
+                          mov al,fs:[si]
+                          inc si
+                          cmp al,9
+                          je skip_blank
+                          cmp al,' '
+                          je skip_blank
+
+                          dec si
+  find_skip_blank_exit:
+                        pop ax
+                        ret
+a_endp                  find_skip_blank
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+code                    EndS
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+                        End
+

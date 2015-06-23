@@ -1,0 +1,91 @@
+Title   Zeichenkettensuche und -vergleich
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+suche:
+                                push ax,bx,cx,di,es
+                                  lodsw
+                                  mov bx,ax
+                                  dec bx      ; bx=L꼗ge-1
+                                  lodsb       ; al=1. Zeichen
+                                  mov cx,0fff0
+                                  mov di,0fff0
+                                  sub di,bx
+
+suche_schleife:
+                                  std
+                                  jcxz suche_rueckkehr_nicht_gefunden
+                                  repne scasb
+                                  jcxz suche_rueckkehr_nicht_gefunden
+
+                                  push ax,bx,cx,di,si
+                                    cld
+                                    inc di,2 ; std
+
+such_schleife_innen:
+                                    cmp bx,0
+                                    jz suche_gleich
+
+                                    dec bx      ; 1 Zeichen weiter
+                                    lodsb
+
+                                    scasb
+                                    jz such_schleife_innen
+
+                                    cmp al,'?'
+                                    jz such_schleife_innen
+
+                                  pop si,di,cx,bx,ax ; ungleich -> weiter probieren
+                                  jmp suche_schleife
+
+suche_gleich:
+                                  pop si,di,cx,bx,ax
+
+                                  ; Erfolg
+                                  inc di
+                                  clc
+                                pop es,ax,cx,bx,ax ; 2*ax weil di erhalten bleibt
+                                cld
+                                ret
+
+suche_rueckkehr_nicht_gefunden:
+                                  stc
+                                pop es,di,cx,bx,ax
+                                cld
+                                ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; Eingabe es:di zu 갶erpr갽en
+;         ds:si Suchzeichenkette
+; Ausgabe
+;         cf=0 쉇ereinstimmung
+;         cf=1
+vergleich:
+                                push ax,cx,si,di
+                                  cld
+
+                                  lodsw
+                                  mov cx,ax
+
+vergleich_schleife:
+                                  jcxz vergleich_gleich
+                                  dec cx
+                                  mov al,[si]
+                                  inc si
+                                  mov ah,es:[di]
+                                  inc di
+                                  cmp ah,al
+                                  jz vergleich_schleife
+                                  cmp al,'?'
+                                  jz vergleich_schleife
+
+vergleich_ungleich:
+                                  stc
+                                pop di,si,cx,ax
+                                ret
+
+vergleich_gleich:
+                                  clc
+                                pop di,si,cx,ax
+                                ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

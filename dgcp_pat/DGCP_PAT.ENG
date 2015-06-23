@@ -1,0 +1,9 @@
+user documentation            DGCP_PAT                    Veit Kannegieser
+ננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננ
+
+
+this program corrects an bug in programs compiled with watcom
+library clib3r.lib that causes the program to crash under plain
+dos using not DOS/4G extenders.
+
+before modification you must unpack (pmwunlite/upd -d/..) the file

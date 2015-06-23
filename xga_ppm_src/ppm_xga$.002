@@ -1,0 +1,16 @@
+(* nicht editieren! *)
+var
+  sprach_start:longint;
+  textz_unerwartetes_Dateiende  :^string;
+  textz_Keine_gueltige_Zahl  :^string;
+  textz_benutzung1  :^string;
+  textz_benutzung2  :^string;
+  textz_Kein_PPM_P3  :^string;
+  textz_Warning__recommended_sizes_are_800_600__maybe_640_480_and_1024_768__  :^string;
+  textz_BAR_position_X  :^string;
+  textz_BAR_position_Y  :^string;
+  textz_BAR_size_X  :^string;
+  textz_BAR_size_Y  :^string;
+  textz_BAR_progress_color_RED__  :^string;
+  textz_BAR_progress_color_GREEN  :^string;
+  textz_BAR_progress_color_BLUE_  :^string;

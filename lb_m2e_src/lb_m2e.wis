@@ -1,0 +1,32 @@
+<warpin>
+
+  <head>
+    <pck index=1
+         packageid="Veit Kannegieser\M2E\M2E\2004\08\05"
+         requires="Lesha Bogdanow\PipeMix\Base\0\07"
+         target="$(Lesha Bogdanow\PipeMix\Base\0\07)"
+         title="ESS Maestro 2E/AC 97"
+         killprocess="M2E.EXE"
+         createobject="WPProgram|ESS Maestro 2E Manual|<PIPEMIX_FOLDER>|OBJECTID=<PIPE_M2E_MANUAL>;EXENAME=VIEW.EXE;STARTUPDIR=$(1);ICONFILE=$(1)\PMixInf.ico;PARAMETERS=$(1)\M2E.inf"
+         select>
+    pipe mixer driver for ESS Maestro 2E
+    and similar AC 97 cards
+    </pck>
+  </head>
+
+  <body>
+
+    <page index=1 type=container>
+      <text>
+            After installing the module you have to run
+            PMixCfg.cmd to configure the driver.</text>
+    </page>
+
+    <page index=2 type=configure>
+      <text></text>
+      <nextbutton target=0>I~nstall</nextbutton>
+    </page>
+
+  </body>
+
+</warpin>

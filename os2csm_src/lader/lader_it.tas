@@ -1,0 +1,4 @@
+Title   produce os2csm.i or os2csm.i_m -- italy
+
+language_it=1
+include lader.inc

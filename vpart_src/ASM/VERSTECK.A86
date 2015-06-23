@@ -1,0 +1,382 @@
+;********************************************************************
+lvm_beschreibungstabelle_sig:   db 002,'RMBPMFD'
+lvm_beschreibungstabelle_laenge equ $-lvm_beschreibungstabelle_sig
+
+lvm_partitionsbeschreibung_typ struc
+  Volume_Serial_Number          dd ?
+  Partition_Serial_Number       dd ?
+  Partition_Size                dd ?
+  Partition_Start               dd ?
+  On_Boot_Manager_Menu          db ?
+  Installable                   db ?
+  Drive_Letter                  db ?
+  Reserved_part                 db ?
+  Volume_Name                   db 20 dup ?
+  Partition_Name                db 20 dup ?
+ends
+
+lvm_beschreibungstabelle_typ struc
+  DLA_Signature                 db 8 dup ?
+  DLA_CRC                       dd ?
+  Disk_Serial_Number            dd ?
+  Boot_Disk_Serial_Number       dd ?
+  Install_Flags                 dd ?
+  Cylinders                     dd ?
+  Heads_Per_Cylinder            dd ?
+  Sectors_Per_Track             dd ?
+  Disk_Name                     db 20 dup ?
+  Reboot                        db ?
+  Reserved_DLA                  db 3 dup ?
+  tabelle                       db 4*type lvm_partitionsbeschreibung_typ dup ?
+  rest512                       db 512-DLA_Signature-$ dup ?
+ends
+;********************************************************************
+versteckte_partitionen:
+                        teste_dos_aktiv
+                        je ret
+
+                        push es
+                        pusha
+                          mov es,cs
+                          mov cx,standard_lw
+                          call berechne_datenanfang
+                          add si,off_laufwerke_verstecken
+
+                          mov di,zu_versteckende_partitionen
+
+                          ; 1 Runde: Partitionstypen
+
+                          mov b [pt_sektor_zustand],0
+
+                          mov cx,8
+                          null bp ; kein LVM-Sektor
+  partitionstyp_schleife:
+                          mov al,[si]
+                          shr al,6
+                          cmp al,0
+                          je partitionstyp_keine_aenderung
+
+                          ; [DI]
+                          call lade_partittionssektor
+                          jnc partitionssektor_geladen
+
+                          ; nicht ladbar-> LVM sinnlos
+  partitionssektor_falsch:
+                          mov b [si],0
+                          jmp short partitionstyp_keine_aenderung
+
+  partitionssektor_geladen:
+                          mov dx,w [di+partition_sichtbar]
+                          ; dl=partition_sichtbar
+                          ; dh=partitionstyp_unsichtbar
+
+                          cmp al,1 ; verstecken ?
+                          if ne xchg dl,dh
+
+                          null bx
+                          mov bl,[di+eintrag]
+                          dec bx
+                          shl bx,4 ; *16
+                          add bx,pt_sektor+512-2-4*16
+
+                          ; PrÅfung ob wirklich die richtige
+                          ; Partition gefunden wurde:
+                          mov ax,w [di+pt_anfang_cx]
+                          cmp ax,w [bx+part_e_anfang_cx]
+                          jne partitionssektor_falsch
+
+                          ; noch nicht versteckt ?
+                          cmp b [bx+part_e_system_indicator],dl
+                          je partitionstyp_aenderung
+
+                          ; schon versteckt oder Fehler ?
+                          cmp b [bx+part_e_system_indicator],dh
+                          ; Fehler->LVM sinnlos
+                          if ne mov b [si],0
+                          jmp short partitionstyp_keine_aenderung
+
+  partitionstyp_aenderung:
+                          ; Typ Ñndern
+                          mov b [bx+part_e_system_indicator],dh
+                          mov b [pt_sektor_zustand],2
+
+  partitionstyp_keine_aenderung:
+                          inc si
+                          add di,type zu_versteckende_partition
+                          loop partitionstyp_schleife
+
+                          call leere_partitionssektor
+
+
+                          ;------------------------------------------
+
+                          ; 2. Runde: LVM-Informattionssektoren
+                          sub si,8
+                          sub di,8*type zu_versteckende_partition
+
+                          mov cx,8
+                          mov bp,-1 ; LVM-Sektor
+  lvm_schleife:
+                          ; LVM nicht gewÅnscht ?
+                          test b [si],bit5
+                          jz lvm_keine_aenderung
+
+                          ; LVM nicht vorhanden ?
+                          cmp b [di+lvm_informationssektor],0
+                          je lvm_keine_aenderung
+
+                          ; [DI]
+                          call lade_partittionssektor
+                          jc lvm_keine_aenderung
+
+                          mov al,[di+eintrag]
+                          dec al
+                          mov ah,type lvm_partitionsbeschreibung_typ
+                          mul ah
+                          mov bx,(offset pt_sektor)+(offset tabelle)
+                          add bx,ax
+
+                          ; Nullen oder ein Eintrag ?
+                          sub ax,ax
+                          cmp w [bx+Partition_Size+0],ax
+                          jne lvm_partitionsgroesse_sinnvoll
+                          cmp w [bx+Partition_Size+2],ax
+                          je lvm_keine_aenderung
+
+  lvm_partitionsgroesse_sinnvoll:
+
+                          ; neuer Buchstabe
+                          mov al,b [si]
+                          and al,(0ff-bit7-bit6-bit5)
+                          or al,'@' ; 0->'@' 1->'A' 3->'C' ...
+                          cmp al,'@'
+                          if e mov al,0
+
+                          ; bleibt gleich ?
+                          cmp b [bx+Drive_Letter],al
+                          je lvm_keine_aenderung
+
+                          mov b [bx+Drive_Letter],al
+                          mov b [pt_sektor_zustand],2
+  lvm_keine_aenderung:
+                          inc si
+                          add di,type zu_versteckende_partition
+                          loop lvm_schleife
+
+                          call leere_partitionssektor
+
+                        popa
+                        pop es
+                        ret
+
+;********************************************************************
+
+leere_partitionssektor:
+                        cmp b [pt_sektor_zustand],2
+                        jne ret
+
+                        ; Schreiben notwendig
+
+                        cmp b [pt_sektor_ist_lvmsektor],0
+                        if ne call berechne_lvmsektor_pruefsumme
+
+                        mov ah,003; Funktion 003/043
+                        call int13aufruf
+                        ; keine FehlerprÅfung
+
+                        ; Status auf "Geladen" zurÅcksetzen
+                        mov b [pt_sektor_zustand],1
+                        ret
+
+;********************************************************************
+; BP=0000 normaler Sektor
+; BP=ffff LVM-Sektor
+lade_partittionssektor:
+                        pusha
+                          mov cx,w [di+cx_reg]
+                          mov dx,w [di+dx_reg]
+                          mov ax,w [di+lba+0]
+                          mov bx,w [di+lba+2]
+                          or bp,bp
+                          je nicht_zum_lvm_sektor
+
+                          ; Sektor 1 ->  Sektor 63
+                          cmp cx,-1
+                          jne plus_lvm_sektor_chs
+
+                          add al,b [di+lvm_informationssektor]
+                          adc ah,0
+                          adc bx,0
+                          jmp short plus_lvm_sektor_weiter
+  plus_lvm_sektor_chs:
+                          add cl,b [di+lvm_informationssektor]
+  plus_lvm_sektor_weiter:
+
+  nicht_zum_lvm_sektor:
+                          ; Puffer leer ?
+                          cmp b [pt_sektor_zustand],0
+                          je lade_partittionssektor_laden
+
+                          ; nutzbar wenn Quelle gleich ist
+                          cmp cx,w [pt_sektor_daten_cx]
+                          jne lade_partittionssektor_puffer_ungleich
+                          cmp dx,w [pt_sektor_daten_dx]
+                          jne lade_partittionssektor_puffer_ungleich
+                          cmp ax,w [pt_sektor_daten_lba+0]
+                          jne lade_partittionssektor_puffer_ungleich
+                          cmp bx,w [pt_sektor_daten_lba+2]
+                          jne lade_partittionssektor_puffer_ungleich
+
+                          ; bleibt so, Status prÅfen
+                          jmp short lade_partittionssektor_geladen_erfolgreich
+
+  lade_partittionssektor_puffer_ungleich:
+                          call leere_partitionssektor
+
+  lade_partittionssektor_laden:
+                          ; Merken der Pufferquelle
+                          mov b [pt_sektor_zustand],0
+
+                          mov w [pt_sektor_daten_cx],cx
+                          mov w [pt_sektor_daten_dx],dx
+                          mov w [pt_sektor_daten_lba+0],ax
+                          mov w [pt_sektor_daten_lba+2],bx
+                          xchg ax,bp
+                          mov w [pt_sektor_ist_lvmsektor],al
+                          xchg ax,bp
+
+                          ; Versuche den Sektor zu laden
+                          mov ah,002; Funktion 002/042
+                          call int13aufruf
+                          jnc lade_partittionssektor_geladen
+
+  lade_partittionssektor_fehler:
+                          stc
+                          jmp short lade_partittionssektor_ende
+
+  lade_partittionssektor_geladen:
+                          mov b [pt_sektor_zustand],1
+
+                          ; beim ersten Mal mu· die LVM-Kennung
+                          ; und die PrÅfsumme verglichen werden
+                          call pruefe_lvm_informationssektor_oder_55aa
+
+  lade_partittionssektor_geladen_erfolgreich:
+                          ; erfolgreich geladen,
+                          ; aber schon als fehlerhaft markiert ?
+                          cmp b [pt_sektor_zustand],3
+                          je lade_partittionssektor_fehler
+
+                          clc
+
+  lade_partittionssektor_ende:
+
+                        popa
+                        ret
+;********************************************************************
+; ah=02 oder 03 fÅr Lesen oder Schreiben
+int13aufruf:
+                        push cx
+                          ; 3 Versuche
+                          mov cx,3
+  int13aufruf_schleife:
+                          pusha
+                            mov bx,pt_sektor
+                            mov cx,w [pt_sektor_daten_cx]
+                            mov dx,w [pt_sektor_daten_dx]
+                            ; mov es,es
+
+                            cmp cx,0ffff
+                            je int13aufruf_neu
+
+                            ; 1 Sektor
+                            mov al,1
+                            stc
+                            int 013
+                            jmp short int13aufruf_weiter
+  int13aufruf_neu:
+                            mov si,disk_address_packet_pt
+                            mov w [si-disk_address_packet_pt+disk_address_packet_anzahl],1
+
+                            mov w [si-disk_address_packet_pt+disk_address_packet_ziel+0],bx
+                            mov w [si-disk_address_packet_pt+disk_address_packet_ziel+2],es
+
+                            mov cx,w [pt_sektor_daten_lba+0]
+                            mov w [si-disk_address_packet_pt+disk_address_packet_blocknummer+0],cx
+                            mov cx,w [pt_sektor_daten_lba+2]
+                            mov w [si-disk_address_packet_pt+disk_address_packet_blocknummer+2],cx
+
+
+                            ; mov dl,dl
+                            mov al,0 ; fÅr Schreiben: kein Vergleich
+                            stc
+                            int 013
+
+  int13aufruf_weiter:
+                          popa
+                          jnc int13aufruf_erfolgreich
+                          loop int13aufruf_schleife
+
+  int13aufruf_erfolgreich:
+                        pop cx
+                        ret
+
+;********************************************************************
+pruefe_lvm_informationssektor_oder_55aa:
+                        or bp,bp
+                        jnz pruefe_lvm_informationssektor
+
+                        cmp w [pt_sektor+512-2],0aa55
+                        if ne mov b [pt_sektor_zustand],3
+                        ret
+;********************************************************************
+
+
+pruefe_lvm_informationssektor:
+                        pusha
+                          ; erstmal "falsch"
+                          mov b [pt_sektor_zustand],3
+                          cld
+                          mov si,pt_sektor
+                          push si,di
+                            mov di,lvm_beschreibungstabelle_sig
+                            mov cx,lvm_beschreibungstabelle_laenge
+                            rep cmpsb
+                          pop di,si
+                          jne pruefe_lvm_informationssektor_ende
+
+                          ; CRC ohne CRC berechnen
+                          null ax
+                          null dx
+                          xchg ax,w [si+DLA_CRC+0]
+                          xchg dx,w [si+DLA_CRC+2]
+                          mov cx,512
+                          call berechne_crc32
+
+                          cmp w [ergebnis_crc32+0],ax
+                          jne pruefe_lvm_informationssektor_ende
+                          cmp w [ergebnis_crc32+2],dx
+                          jne pruefe_lvm_informationssektor_ende
+
+                          ; war doch in Ordnung
+                          mov b [pt_sektor_zustand],1
+
+  pruefe_lvm_informationssektor_ende:
+                        popa
+                        ret
+;********************************************************************
+berechne_lvmsektor_pruefsumme:
+                        pusha
+                        
+                          mov si,pt_sektor
+                          mov cx,512
+                          call berechne_crc32
+
+                          mov ax,w [ergebnis_crc32+0]
+                          mov dx,w [ergebnis_crc32+2]
+                          mov w [si+DLA_CRC+0],ax
+                          mov w [si+DLA_CRC+2],dx
+
+                        popa
+                        ret
+;********************************************************************

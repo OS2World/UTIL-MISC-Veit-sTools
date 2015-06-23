@@ -1,0 +1,6 @@
+int_28_handler:
+                pushf
+                  mov b cs:[indos_max],1
+                  call suche_arbeit
+                popf
+                jmp d cs:[orgint28]

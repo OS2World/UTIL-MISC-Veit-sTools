@@ -1,0 +1,450 @@
+; 3cc !!!
+; 3c8/3c9 bit $3f
+; 3c0 0..3f
+
+; ET4000 spezifische Funktionen fr FONT20
+; Veit Kannegieser 1999.05.20
+
+;******************************************************************************
+
+unlock_et4000           macro
+;!!!!!! push 3bf,3d8
+                          mov dx,003bf
+                          mov al,003
+                          out dx,al
+                          mov dx,003d8
+                          mov al,0a0
+                          out dx,al
+                        #em
+
+lock_et4000             macro
+                          mov dx,003d8
+                          mov al,029
+                          out dx,al
+                          mov dx,003bf
+                          mov al,1
+                          out dx,al
+;!!!pop !!
+                        #em
+
+;******************************************************************************
+; al=03/83
+et4000_setzte_modus_3:
+                        ; Quelle: SVGADATA.PMI,VGADOC,BIOS,..
+                        pusha
+                          push ds,es
+
+                            push cs
+                            pop ds
+
+                            push 00040
+                            pop es
+
+                            ; Modus eintragen
+                            mov b es:[00049],003
+                            and al,bit7
+                            and b es:[00087],(0ff-bit7)
+                            or  b es:[00087],al
+
+
+                            ; Miscellaneous Output Register (3c2)
+                            mov dx,Miscellaneous_Output_Register_W
+                            ; 0   VGA
+                            ; 1   Speicherzugriff
+                            ; 2/3 Bildwiederholrate
+                            ; 4   ?
+                            ; 5   ?
+                            ; 6/7 3=~480 Zeilen
+                            mov al,bit0+bit1+bit3+bit5+bit6+bit7
+                            out_dx_al
+
+                            ; Unlock ET4000 CRTC >$18 and also Sequencer !!
+                            unlock_et4000
+
+                            ;------------------------------
+                            ; Sequencer 0..4
+                            mov dx,003c4
+                            mov ax,00000
+                            out_dx_ax
+                            mov ax,00001
+                            out_dx_ax
+                            mov ax,00302
+                            out_dx_ax
+                            mov ax,00003
+                            out_dx_ax
+                            mov ax,00204
+                            out_dx_ax
+
+                            ; Sequenzer 6..7
+                            mov ax,00006
+                            out_dx_ax
+                            mov ax,0bc07 ; ??? warum ??
+                            out_dx_ax
+                            ;------------------------------
+
+
+                            ; CRT Registers
+                            ; Schreibschutz entfernen (Index $11, Bit7) fr 0..7
+                            mov b [crtc_tabelle+011],00e
+
+                            
+
+                            and b [crtc_tabelle+034],0ff-bit1
+                            ; Wiederholrate 4..7
+                            or  b [crtc_tabelle+034],bit1
+
+                            mov w [crtc_tabelle+00e],0 ; Cursorposition setzen
+
+                            mov bx,25
+                            mov cx,20
+                            call berechne_crtc_block
+                            call schreibe_crtc_block
+
+
+                            ;------------------------------
+                            ; Attribute Registers (03c0)
+                            call reset_lesen_03da
+                            mov dx,003c0
+                            mov al,017
+                            out_dx_al
+                            mov al,000 ; Bit7: Schreibschutz fr 00..16
+                            out_dx_al
+                            ;------------------------------
+
+                            ;------------------------------
+                            mov si,et4000_modus_3_attribute_controller_tabelle
+                            mov cx,020
+                            mov al,0
+                            cld
+  attr_schleife:
+                            call reset_lesen_03da
+
+                            mov dx,003c0
+                            out_dx_al
+                            xchg al,ah
+                            lodsb
+                            out_dx_al
+                            xchg al,ah
+                            inc al
+                            loop attr_schleife
+                            ;------------------------------
+
+                            ;------------------------------
+                            ; GDC Registers
+                            mov dx,003ce
+                            mov si,et4000_modus_3_graphics_controller_tabelle
+                            mov cx,9 ; 0..8
+                            mov al,0
+                            call port_ausgabe_schleife
+                            ;------------------------------
+
+                            ;------------------------------
+                            ; "DAC"
+                            mov dx,003c6 ; Pel Mask
+                            mov al,0ff
+                            out_dx_al
+                            ;------------------------------
+
+                            ;------------------------------
+                            call reset_lesen_03da
+
+                            mov dx,003c0 ; Attribute Controller
+                            mov al,bit5
+                            out_dx_al
+
+
+                            ; Palette zurechtmogeln
+                            mov cx,0
+                            ; nur fr die Indexwerte der Farbpalette
+                            mov si,et4000_modus_3_attribute_controller_tabelle
+                            cld
+                            mov dx,03c8
+
+   palette_schleife:
+                            lodsb
+                            out_dx_al
+                            inc dx
+
+                            mov ah,palette_0
+                            mov bl,palette_0
+                            mov bh,palette_0
+
+                            test cl,1           ; Blau
+                            if nz mov ah,palette_2
+                            test cl,2           ; Grn
+                            if nz mov bl,palette_2
+                            test cl,4           ; Rot
+                            if nz mov bh,palette_2
+                            test cl,8           ; Helligkeit
+                            jz nicht_hell
+
+                            add ah,palette_1
+                            add bx,palette_1*00101
+   nicht_hell:
+                            cmp cl,6
+                            if e mov bl,palette_1 ; Braun statt dunkelgelb
+
+                            mov al,bh           ; Rot
+                            out_dx_al
+
+                            mov al,bl           ; Grn
+                            out_dx_al
+
+                            mov al,ah           ; Blau
+                            out_dx_al
+
+                            dec dx
+                            inc cx
+                            cmp cx,16
+                            jne palette_schleife
+                            ;------------------------------
+
+                            ; Lock ET4000
+                            lock_et4000
+
+
+                            ; Bank 0
+                            mov dx,003cd
+                            mov al,bit6
+                            out_dx_al
+
+                            ; VGA -> Bit5/4=00
+                            and b es:[00010],(0ff-bit5-bit4)
+
+                            ; 80 Spalten
+                            mov w es:[0004a],80
+                            ; Bildschirmscpeichergr”áe
+                            mov w es:[0004c],4096
+                            ; Cursor auf Seiten 1-8
+                            mov di,00050
+                            sub ax,ax
+                            cld
+                            stosw
+                            stosw
+                            stosw
+                            stosw
+                            stosw
+                            stosw
+                            stosw
+                            stosw
+
+                            ; aktive Seite 0
+                            mov b es:[00062],0
+
+                            ; im EGA/VGA Modus
+                            mov w es:[00063],03d4
+
+                            ; Bit 0=Cursoremulation aus -> abschalten
+                            ; Bit 3=EGA/VGA aus         -> abschalten
+                            and b es:[00087],(0ff-bit3-bit0)
+
+                            ; mov b es:[00089], ????
+
+                            mov cx,cursor_h20
+                            call setze_cursorgroesse
+
+                            mov dx,003d8
+                            ; Bit 0 80 Spalten statt 40
+                            ;     1 Grafikmodus
+                            ;     2 Schwarz/Weiá
+                            ;     3 Videosignal ein
+                            ;     4 640*200 statt 320*200
+                            ;     5 blinken statt hell
+                            #if blinkx
+                              mov al,bit0+bit3
+                            #else
+                              mov al,bit0+bit3+bit5
+                            #endif
+                            out_dx_al
+
+                            mov b es:[00065],al
+
+                            mov dx,03d9
+                            mov al,030
+                            out_dx_al
+
+                            mov b es:[00066],al
+
+                            mov cl,b cs:[clock_80_25]
+                            call setze_et4000_clock
+
+                          pop es,ds
+                        popa
+
+                        cmp al,083
+                        je ret
+
+                        ; Bildschirm l”schen
+                        pusha
+                          push es
+                            push 0b800
+                            pop es
+                            sub di,di
+                            mov cx,4096/2
+                            mov ax,00720
+                            cld
+                            rep stosw
+                          pop es
+                        popa
+
+                        ret
+
+et4000_modus_3_attribute_controller_tabelle:
+                        db   0 ;  0                             ; $00
+                        db   1 ;  1                             ; $01
+                        db   2 ;  2                             ; $02
+                        db   3 ;  3                             ; $03
+                        db   4 ;  4                             ; $04
+                        db   5 ;  5                             ; $05
+                        db  20 ;  6                             ; $06
+                        db   7 ;  7                             ; $07
+                        db  56 ;  8                             ; $08
+                        db  57 ;  9                             ; $09
+                        db  58 ; 10                             ; $0a
+                        db  59 ; 11                             ; $0b
+                        db  60 ; 12                             ; $0c
+                        db  61 ; 13                             ; $0d
+                        db  62 ; 14                             ; $0e
+                        db  63 ; 15                             ; $0f
+
+                        db 004 ; Bit2=Breite 9 fr Pseudografik ; $10
+                        db   0 ; Randfarbe                      ; $11
+                        db 00f ; Color Plane Enable Register    : $12
+                        db 008 ; Horizontal PEL Panning Register; $13
+                        db 000 ; Color Select Register          ; $14
+                        db   0 ; ?                              ; $16
+                        db   0 ; !!!                            ; $17
+                        db   0 ; ?                              ; $18
+                        db   0 ; ?                              ; $19
+                        db   0 ; ?                              ; $1a
+                        db   0 ; ?                              ; $1b
+                        db   0 ; ?                              ; $1c
+                        db   0 ; ?                              ; $1d
+                        db   0 ; ?                              ; $1e
+                        db   0 ; ?                              ; $1f
+
+et4000_modus_3_graphics_controller_tabelle:
+                        db 000 ; 00
+                        db 000 ; 01
+                        db 000 ; 02
+                        db 000 ; 03
+                        db 000 ; 04
+                        db 010 ; 05
+                        db 00e ; 06
+                        db 000 ; 07
+                        db 0ff ; 08
+
+;******************************************************************************
+;                     Text
+;                      80* 25
+;                     720*400
+
+; cl ... 0=> 25 MHz    62 Hz
+;        1=> 28 MHz    70 Hz
+;        2=> 36 MHz    89 Hz
+;        3=> 40 MHz    99 Hz
+;        4=> -- MHz   (62)
+;        5=> -- MHz   (70)
+;        6=> 62 MHz   111 Hz
+;        7=> 44 MHz   161 Hz
+;
+setze_et4000_clock:
+                                cmp cl,0ff
+                                jz ret
+
+                                pusha
+                                  ; keine Probleme mit 0..3
+                                  cmp cl,3
+                                  jbe kein_double_scan
+
+                                  ;------------------------
+                                  ; vertical display end
+                                  mov al,025
+                                  call lies_crtc
+                                  and ah,bit2   ; Vertical Display End bit 10
+                                  mov bh,ah
+                                  mov al,007
+                                  call lies_crtc
+                                  mov al,ah
+                                  and ah,bit6   ; Bit 9
+                                  shr ah,5
+                                  or bh,ah
+                                  and al,bit1   ; Bit 8
+                                  shr al,1
+                                  or bh,al
+                                  mov al,012
+                                  call lies_crtc
+                                  mov al,ah
+                                  mov ah,bh     ; Bit 109876543210
+                                  inc ax
+                                  ;------------------------
+
+                                  cmp ax,480    ; 200,350,400 ...
+;!!!!!!!!!!!!!!!!!!!!11111                                  
+;jb svga_1024
+;jmp svga_1024
+                                  jb double_scan
+
+                                  cmp ax,768    ; 1024*768 wird sonst dunkel
+                                  jae svga_1024
+                                  jmp kein_double_scan
+  double_scan:
+                                  ; 3=bester Wert
+                                  mov cl,3
+
+  kein_double_scan:
+
+                                  ;------------------------
+                                  ; VGA
+                                  mov dx,Miscellaneous_Output_Register_R
+                                  in_al_dx
+                                  and al,0ff-bit3-bit2
+                                  mov ah,cl
+                                  and ah,bit0+bit1
+                                  shl ah,2 ; -> Bit2/3
+                                  or al,ah
+                                  mov dx,Miscellaneous_Output_Register_W
+                                  out_dx_al
+                                  ;------------------------
+
+                                  ;------------------------
+                                  ; ET4000
+
+;# 3d4h index 34h (R/W): 6845 Compatibility Control Register
+;#        1  Clock Select bit 2.  Bits 0-1 in 3C2h bits 2-3, bits 3-4 are in 3d4h
+;#           index 31h bits 6-7
+
+;# 3d4h index 31h (R/W):  General Purpose
+;#      6-7  Clock Select bits 3-4. Bits 0-1 are in 3C2h/3CCh bits 2-3.
+
+
+                                  unlock_et4000
+
+                                  mov al,034
+                                  call lies_crtc
+
+                                  and ah,0ff-bit1
+
+                                  mov bl,cl
+                                  shr bl,1 ; Bit2 -> ah Bit 1
+                                  and bl,bit1
+
+                                  or ah,bl
+                                  call schreibe_crtc
+
+                                  ; Interlace aus
+                                  mov al,035
+                                  call lies_crtc
+                                  and ah,0ff-bit7
+                                  call schreibe_crtc
+
+                                  ; 3d4h/31h ???
+
+                                  lock_et4000
+                                  ;------------------------
+
+  svga_1024:
+                                popa
+                                ret
+
+;****************************************************************************

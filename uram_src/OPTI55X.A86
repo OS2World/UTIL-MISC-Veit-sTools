@@ -1,0 +1,167 @@
+Title   Opti 82c556/82C557/82C558
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; "Viper"
+; aus db023_10.pdf
+;
+;      Lesen  Schreiben Cache
+; C000 4[0]=1 4[1]=1    6[5]=1
+; C800 4[4]=1 4[5]=1
+; CC00 4[6]=1 4[7]=1
+; D000 5[0]=1 5[1]=1
+; D400 5[2]=1 5[3]=1
+; D800 5[4]=1 5[5]=1
+; DC00 5[6]=1 5[7]=1
+; E000 6[0]=1 6[1]=1    4[2]=1 wenn 6[4]=1
+; F000 6[2]=1 6[3]=1    6[4]=1
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_op55x                     macro
+                                  mov di,#1
+                                  mov dl,#2
+                                  mov cl,#3
+                                  call setze_op55x_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_op55x_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_op55x_prozedur_fertig
+
+                                call ausschrift_segment
+
+                                mov bl,ah
+                                and bl,Bit0+Bit1
+                                mov bh,0ff-(Bit0+Bit1)
+                                rol bh,cl
+                                rol bl,cl
+
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_op55x_prozedur_fertig:
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_opti_55x:
+                                ausschrift_xxxx_aehnliches_bios text_variante_opti_55x
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,w es:[di-4]
+                                add ax,di
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,w es:[di-2]
+                                add ax,di
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_opti_55x_ersatz
+
+variante_opti_55x_gemeinsam:
+
+                                setze_op55x 'C0',004,0
+                                ; C000-C7FF !
+                                setze_op55x 'C8',004,4
+                                setze_op55x 'CC',004,6
+
+                                setze_op55x 'D0',005,0
+                                setze_op55x 'D4',005,2
+                                setze_op55x 'D8',005,4
+                                setze_op55x 'DC',005,6
+
+                                setze_op55x 'E0',006,0
+                                ; E000-EFFF !
+                                setze_op55x 'F0',006,2
+                                ; F000-FFFF !
+
+                                jmp initialisieren
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_icl_opti55yy:
+                                ausschrift_xxxx_aehnliches_bios text_variante_icl_opti55yy
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,w es:[di+26+1]
+                                add ax,di
+                                add ax,26+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,w es:[di+49+1]
+                                add ax,di
+                                add ax,49+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_opti_55x_icl
+
+                                jmp variante_opti_55x_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_opti_55x_award:
+                                ausschrift_xxxx_aehnliches_bios text_variante_opti_55x_award
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,w es:[di+5+1]
+                                add ax,di
+                                add ax,5+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,w es:[di+10+1]
+                                add ax,di
+                                add ax,10+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_opti_55x_award
+
+                                jmp variante_opti_55x_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_opti_55x_award_2:
+                                ausschrift_xxxx_aehnliches_bios text_variante_opti_55x_award_2
+
+                                mov w [registeraenderung_emulation],aenderung_chip_opti55x
+
+                                jmp variante_opti_55x_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_opti55x:
+                                mov w [registeraenderung_emulation],aenderung_chip_opti55x
+                                jmp variante_opti_55x_gemeinsam
+;頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰
+aenderung_chip_opti55x:
+                                installiere_tracer
+
+                                ; Lesen ...
+                                mov al,dl
+                                out 022,al
+                                                        jcxz_nop
+                                in al,024
+                                                        jcxz_nop
+                                                        out 0eb,al
+
+                                ; 럑dern ...
+                                and al,bh
+                                or al,bl
+
+                                ; Schreiben ...
+                                mov ah,al
+                                mov al,dl
+                                out 022,al
+                                                        jcxz_nop
+                                                        out 0eb,al
+                                mov al,ah
+                                in al,024
+                                                        jcxz_nop
+                                                        out 0eb,al
+
+                                entferne_tracer
+
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

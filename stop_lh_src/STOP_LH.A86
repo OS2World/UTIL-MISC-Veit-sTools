@@ -1,0 +1,77 @@
+; 30.11.1997
+; 31.12.1997 Deutsch/Englisch
+; 11.03.1998 deencom neu
+
+                                mov ah,009
+                                mov dx,titel
+                                int 021
+
+                                mov ah,052
+                                int 021
+
+                                mov ax,es:[bx-2]
+
+schleife:
+                                mov es,ax
+                                add ax,es:[1+2]
+                                inc ax
+
+                                cmp ax,0a000
+                                jae erreicht
+
+                                cmp b es:[0],'M'
+                                jz schleife
+
+erreicht:
+                                cmp b es:[0],'Z'
+                                jz zusammenkleben
+
+                                cmp b es:[0],'M'
+                                jz abschneiden
+
+                                mov dx,text_speicherkette_kaputt
+                                jmp ausschrift_ende
+
+zusammenkleben:
+                                mov b es:[0],'M'
+                                mov dx,text_zusammenkleben
+                                jmp ausschrift_ende
+
+abschneiden:
+                                mov b es:[0],'Z'
+                                mov dx,text_abschneiden
+                                jmp ausschrift_ende
+
+ausschrift_ende:
+                                mov ah,009
+                                int 021
+
+                                mov ax,04c00
+                                int 021
+
+#if englisch
+
+
+
+text_zusammenkleben:            db 'upper memory unhided',00d,00a,'$'
+
+text_abschneiden:               db 'upper memory hided',00d,00a,'$'
+
+text_speicherkette_kaputt:      db 'memory chain corrupt.',00d,00a,'$'
+
+titel:                          db 'STOP_LH * hide/unhide upper memory'
+
+#else
+
+text_zusammenkleben:            db 'oberer Speicher angefÅgt',00d,00a,'$'
+
+text_abschneiden:               db 'oberer Speicher abgetrennt',00d,00a,'$'
+
+text_speicherkette_kaputt:      db 'Speicherkette kaputt.',00d,00a,'$'
+
+titel:                          db 'STOP_LH * Verstecken von oberem Speicher'
+
+#endif
+                                db ' * V.K. 30.11.1997˙˙11.03.1998',00d,00a,'$'
+                                
+                              

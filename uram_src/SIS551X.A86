@@ -1,0 +1,96 @@
+Title   SiS 5511/5513
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; 551XDS12.DOC
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_sis551x                   macro
+                                  mov di,#1 ; Segment
+                                  mov cx,#2 ; Index
+                                  mov dl,#3 ; Maske
+                                  call call_bios_sis551x
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+call_bios_sis551x:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz call_bios_sis551x_weiter
+
+                                call ausschrift_segment
+
+                                add cx,w [index_basis]
+
+                                mov bl,0ff-Bit0-Bit1-Bit2
+                                mov bh,ah
+
+                                ; Rotieren
+                                call rol_bl_bh__dl
+                                call bios_aufruf__prozedur_registeraenderung
+
+call_bios_sis551x_weiter:
+                                ret
+
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_sys551x_awdflash:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis551x
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+008+1]
+                                add ax,di
+                                add ax,008+3
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_register_index
+                                mov ax,es:[di+2+1]
+                                sub ax,0086 ; 86 f걊 F000
+                                mov w [index_basis],ax
+                                add ax,00080
+                                call ausschrift_word
+                                ausschrift text_bis
+                                mov ax,w [index_basis]
+                                add ax,00086
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+
+sis551x_einsprung_von_82430tx:
+
+                                ; A000 - ignorieren
+                                ; A400 - ignorieren
+                                ; A800 - ignorieren
+                                ; AC00 - ignorieren
+
+                                ; B000 - ignorieren
+                                ; B400 - ignorieren
+                                ; B800 - ignorieren
+                                ; BC00 - ignorieren
+
+                                setze_sis551x 'C0',00080,4
+                                setze_sis551x 'C4',00080,0
+                                setze_sis551x 'C8',00081,4
+                                setze_sis551x 'CC',00081,0
+
+                                setze_sis551x 'D0',00082,4
+                                setze_sis551x 'D4',00082,0
+                                setze_sis551x 'D8',00083,4
+                                setze_sis551x 'DC',00083,0
+
+                                setze_sis551x 'E0',00084,4
+                                setze_sis551x 'E4',00084,0
+                                setze_sis551x 'E8',00085,4
+                                setze_sis551x 'EC',00085,0
+
+                                setze_sis551x 'F0',00086,4
+                                ; F400 - ignorieren
+                                ; F800 - ignorieren
+                                ; FC00 - ignorieren
+
+                                jmp initialisieren
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_sis551x:
+                                mov w [registeraenderung_emulation],aenderung_standard_pci
+                                mov w [index_basis],0
+                                jmp initialisieren
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

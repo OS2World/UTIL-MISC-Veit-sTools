@@ -1,0 +1,63 @@
+;*****************************************************************************
+; Bestimmung des vorhandenen System-BIOS
+;*****************************************************************************
+
+biostyp_unbekannt       equ 0
+biostyp_Award           equ 1
+biostyp_AMI_Hi_Flex     equ 2
+biostyp_AMI_WinBIOS     equ 3
+biostyp_SystemSoft      equ 4
+
+biostyp_Sektor          equ 0fe ; wird intern benutzt wenn biostyp_FAT_cfg erfolgreich berechnet wurde
+biostyp_FAT_cfg         equ 0ff ; fat_cfg.a86
+
+bios_tabelle:
+                        db biostyp_Award
+                        dw 0e000
+                        pstr 'Award '
+
+                        db biostyp_AMI_Hi_Flex
+                        dw 00000
+                        pstr '0123AAAAM'
+
+                        db biostyp_SystemSoft
+                        dw 0e010
+                        pstr 'SystemSoft'
+
+                        db biostyp_unbekannt
+
+;*****************************************************************************
+
+bestimme_vorhandenes_bios:
+                        push es
+                          push si,di,cx
+
+                            push 0f000
+                            pop es
+
+                            mov si,bios_tabelle
+                            cld
+bestimme_vorhandenes_bios_schleife:
+                            lodsb
+                            cmp al,biostyp_unbekannt
+                            je bestimme_vorhandenes_bios_ende
+
+                            push ax
+                              lodsw
+                              mov di,ax
+                              sub ax,ax
+                              lodsb
+                              mov cx,ax
+                              add ax,si
+                              push ax
+                                rep cmpsb
+                              pop si
+                            pop ax
+                            jnz bestimme_vorhandenes_bios_schleife
+
+bestimme_vorhandenes_bios_ende:
+                          pop cx,di,si
+                        pop es
+                        ret        
+
+;*****************************************************************************

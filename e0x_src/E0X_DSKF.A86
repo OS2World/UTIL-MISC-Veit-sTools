@@ -1,0 +1,94 @@
+dskf_tabellenstart_l:           dw ?
+dskf_tabellenstart_h:           dw ?
+
+importiere_disk_factory:
+                                call kopiere_ins_xms_zaehler_nullen
+                                call sauberen_kopf_einrichten
+
+                                mov al,b es:[00028] ; Spuren
+                                shl al,1            ; * 2 Seiten
+                                mul b es:[00029] ; Sekt/Spur
+                                mov w [sektoren],ax
+
+                                mov al,b es:[00029]
+                                mov b [sekt_spur],al
+                                mov b [koepfe],2
+                                mov al,b es:[00028]
+                                mov b [spuren],al
+
+                                ; Kopierer ...
+                                mov w [quell_h],0
+                                mov w [quell_o],0
+                                mov w [quell_s],[lese_puffer_seg]
+                                mov w [ziel_h],[xms_handhabe]
+                                mov w [ziel_o],0
+                                mov w [ziel_s],0
+
+
+                                mov cx,0
+                                mov ax,w [datei_start_l]
+                                mov dx,w [datei_start_h]
+                                add ax,00036
+                                adc dx,0
+                                mov w [dskf_tabellenstart_l],ax
+                                mov w [dskf_tabellenstart_h],dx
+
+importiere_disk_factory_spur_schleife:
+
+                                cmp cx,w [sektoren]
+                                jz importiere_disk_factory_fertig
+
+                                push cx
+                                  mov dx,w [dskf_tabellenstart_l]
+                                  mov cx,w [dskf_tabellenstart_h]
+      		                  call seek
+
+                                  mov cx,7
+                                  call datei_einlesen_cx
+
+
+                                  cmp w es:[4],0
+                                  jz importiere_disk_factory_fuellen
+                                  ; Positionsberechnung
+                                  mov dx,w es:[0]
+                                  mov cx,w es:[2]
+
+                                  add dx,w [datei_start_l]
+                                  adc cx,w [datei_start_h]
+                                  call seek
+
+                                  mov cl,b [sekt_spur]
+                                  null ch
+                                  push cx
+
+importiere_disk_factory_sekt_schleife:
+                                    call datei_einlesen_512
+                                    call kopiere_ins_xms_512
+                                    loop importiere_disk_factory_sekt_schleife
+
+                                  pop dx
+                                  jmp short importiere_disk_factory_nicht_fuellen
+
+importiere_disk_factory_fuellen:
+                                  mov ax,0f6f6
+                                  call fuelle_lese_puffer
+                                  mov cl,b [sekt_spur]
+                                  null ch
+                                  push cx
+
+importiere_disk_factory_sekt_schleife_fuellen:
+                                    call kopiere_ins_xms_512
+                                    loop importiere_disk_factory_sekt_schleife_fuellen
+
+                                  pop dx
+
+importiere_disk_factory_nicht_fuellen:
+                                pop cx
+                                add cx,dx
+
+                                add w [dskf_tabellenstart_l],7
+                                adc w [dskf_tabellenstart_h],0
+                                jmp importiere_disk_factory_spur_schleife
+
+importiere_disk_factory_fertig:
+                                ret

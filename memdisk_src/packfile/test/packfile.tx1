@@ -1,0 +1,8 @@
+create archive kernel.pf
+  output unpacking kernel files
+  add file E:\os2ldr.*
+  add file .\os2krnl.
+  add file E:\os2krnl.sym
+  add file E:\os2logo
+  next pointer basedev.pf
+close archive

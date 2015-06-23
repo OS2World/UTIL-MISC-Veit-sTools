@@ -1,0 +1,376 @@
+Title   Auswerten von Parametern (COM und SYS)
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+parameter_auswerten:
+
+                                call teste_ob_uram_sys
+                                je speicherbelegung_reduzieren__fertig
+
+                                ; COM
+                                ; Speicher freigeben
+                                mov ah,04a
+                                mov bx,sp
+                                shr bx,4 ; /16
+                                inc bx
+                                ;mov es,cs
+                                int 021
+
+speicherbelegung_reduzieren__fertig:
+
+                                mov si,00081
+                                cld
+parameter_schleife:
+                                lodsb
+
+                                cmp al,' '
+                                je parameter_schleife
+                                cmp al,009
+                                je parameter_schleife
+                                cmp al,'/'
+                                je parameter_schleife
+                                cmp al,'-'
+                                je parameter_schleife
+                                cmp al,' '
+                                if b jmp parameter_auswerten_fertig
+
+
+                                or al,020 ; klein
+
+                                ; /I ********************************
+                                cmp al,'i'
+                                jne nicht_para_i
+
+                                mov b [speicher_soll_initalisiert_werden],'1'
+                                jmp parameter_schleife
+
+  nicht_para_i:
+                                ; /W ********************************
+                                cmp al,'w'
+                                jne nicht_para_w
+
+                                mov b [globaler_schreibschutz],'1'
+                                jmp parameter_schleife
+
+  nicht_para_w:
+                                ; /Q ********************************
+                                cmp al,'q'
+                                jne nicht_para_q
+
+                                mov b [stumm],'1'
+                                jmp parameter_schleife
+
+  nicht_para_q:
+                                ; /C=SIS471 *************************
+                                cmp al,'c'
+                                jne nicht_para_c
+
+                                lodsb
+                                cmp al,'='
+                                je gleich_oder_doppelpunkt_c
+                                cmp al,':'
+                                jne hilfe_anzeigen_sprung_c
+
+  gleich_oder_doppelpunkt_c:
+                                mov di,chipsatzname_gefordert
+                                sub cx,cx
+  gleich_oder_doppelpunkt_c_schleife:
+                                lodsb
+                                cmp al,' '
+                                jle gleich_oder_doppelpunkt_c_schleife_ende
+
+                                cmp al,'a'
+                                if ae and al,0df       ; groá
+                                mov [di],al
+                                inc cx
+                                inc di
+                                jmp gleich_oder_doppelpunkt_c_schleife
+
+  gleich_oder_doppelpunkt_c_schleife_ende:
+                                dec si ; Trennzeichen zwischen Parametern
+                                mov b [di],'$'
+                                inc cx
+                                mov b cs:[laenge_chipsatzname_gefordert],cl
+                                jmp parameter_schleife
+
+  nicht_para_c:
+                                ; /G=M ******************************
+                                cmp al,'g'
+                                jne nicht_para_g
+
+                                lodsb
+                                cmp al,'='
+                                je gleich_oder_doppelpunkt_g
+                                cmp al,':'
+                                jne hilfe_anzeigen_sprung_g
+
+  gleich_oder_doppelpunkt_g:
+
+                                lodsb           ; '0' / '1' / '2'
+                                or al,020       ; klein
+
+                                cmp al,'m'      ; 'M'->'1'
+                                if e mov al,'1'
+                                cmp al,'r'      ; 'R'->'2'
+                                if e mov al,'2'
+
+                                cmp al,'0'
+                                jb hilfe_anzeigen_sprung_g
+                                cmp al,'2'
+                                ja hilfe_anzeigen_sprung_g
+
+                                mov b [generiere_uram_min],al
+                                jmp parameter_schleife
+
+                                ;************************************
+
+  hilfe_anzeigen_sprung_c:
+  hilfe_anzeigen_sprung_g:
+                                jmp hilfe_anzeigen
+
+  nicht_para_g:
+
+                                ; /D ********************************
+                                cmp al,'d'
+                                jnz nicht_para_d
+
+                                mov b [debug_modus],'1'
+                                jmp parameter_schleife
+
+  nicht_para_d:
+                                ; /T ********************************
+                                cmp al,'t'
+                                jnz nicht_para_t
+
+                                mov b [einzelschrittmodus],'1'
+                                jmp parameter_schleife
+
+  nicht_para_t:
+                                ; /R=???????????????????????? *******
+                                cmp al,'r'
+                                if z jmp erwarte_gleich_oder_doppelpunkt_r
+
+                                ; /B=DATEINAME **********************
+
+                                cmp al,'b'
+                                if nz jmp hilfe_anzeigen_sprung
+
+
+                                lodsb
+                                cmp al,'='
+                                jz gleich_oder_doppelpunkt_b
+                                cmp al,':'
+                                if nz jmp hilfe_anzeigen_sprung
+
+  gleich_oder_doppelpunkt_b:
+
+                                call teste_ob_uram_sys
+                                jne speicheranforderung__com
+
+                                ; SYS
+                                mov ax,cs
+                                mov bx,programm_ende
+                                add bx,15
+                                shr bx,4
+                                add ax,bx
+                                jmp short speicheranforderung__weiter
+  speicheranforderung__com:
+                                ; COM
+                                mov ah,048
+                                mov bx,64*1024/16 ; 1*64K bitte ...
+                                int 021
+                                jnc speicheranforderung_erfolgreich
+
+
+                                ausschrift text_fehler_bei_speicheranforderung
+                                halt 1
+
+  speicheranforderung_erfolgreich:
+
+speicheranforderung__weiter:
+                                mov w [rom_segment],ax
+                                ; Speicher fllen
+                                push es
+                                  mov es,ax
+                                  mov cx,08000
+                                  mov ax,0ffff
+                                  null di
+                                  rep stosw
+                                pop es
+
+                                ; Dateiname ...
+                                mov di,rom_dateiname
+kopiere_rom_dateiname:
+                                lodsb
+                                cmp al,' '
+                                jbe dateiname_ende
+                                stosb
+                                jmp kopiere_rom_dateiname
+
+
+rom_datei_fehlermeldung:
+                                ausschrift text_rom_datei_fehlt
+                                halt 1
+dateiname_ende:
+                                dec si ; Trennzeichen zwischen Parametern
+                                ; ™ffen
+                                mov ax,03d00
+                                mov dx,rom_dateiname
+                                int 021
+
+                                jc rom_datei_fehlermeldung
+
+                                mov bx,ax ; Handhabe
+                                ; seek(eof)
+                                mov ax,04202 ; 2=vom Ende
+                                null cx
+                                null dx
+                                int 021
+
+                                ;->DX:AX
+                                cmp dx,1
+                                jae datei_groesse_gleich_64K
+
+                                push ax
+                                  ; Seek(0)
+                                  mov ax,04200 ; 0=vom Anfang
+                                  ; mov bx,bx
+                                  null cx; cx:dx
+                                  null dx
+                                  int 021
+                                pop ax
+
+                                ; ganze Datei auf einmal
+                                null dx
+                                sub dx,ax ; :dx
+                                mov cx,ax ; L„nge
+                                mov ds,w [rom_segment]
+                                mov ah,03f
+                                ; mov bx,bx
+                                int 021
+                                jc lesefehler
+
+                                jmp short datei_lesen_erfolgreich
+
+datei_groesse_gleich_64K:
+                                ; BIOSCMOS.DAT (HOLEN.COM)
+                                ; = 080+2*64*1024+080
+                                ; = 00020100
+                                cmp dx,00002
+                                jne nicht_bios_cmos_dat
+                                cmp ax,00100
+                                jne nicht_bios_cmos_dat
+
+                                sub ax,080
+
+  nicht_bios_cmos_dat:
+
+                                ; Seek(eof-64K)
+                                mov cx,dx ; cx:dx
+                                mov dx,ax
+                                dec cx    ; -64K
+                                mov ax,04200 ; 0=vom Anfang
+                                ; mov bx,bx
+                                int 021
+
+
+                                ; 1. Block
+                                mov ds,w [rom_segment]
+                                mov ah,03f
+                                mov dx,0
+                                mov cx,K32
+                                int 021
+                                jc lesefehler
+
+                                ; 2.Block
+                                mov ah,03f
+                                mov dx,K32
+                                mov cx,K32
+                                int 021
+                                jc lesefehler
+
+datei_lesen_erfolgreich:
+                                mov ax,cs
+                                mov ds,ax
+
+                                ; Datei schlieáen
+                                mov ah,03e
+                                ; mov bx,bx
+                                int 021
+
+                                jmp parameter_schleife
+
+lesefehler:
+                                ausschrift text_lesefehler
+                                halt 1
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+erwarte_gleich_oder_doppelpunkt_r:
+                                mov b [tabelle_initialisiert],1
+
+                                lodsb
+                                cmp al,'='
+                                jz gleich_oder_doppelpunkt_r
+                                cmp al,':'
+                                jz gleich_oder_doppelpunkt_r
+
+                                ;jmp hilfe_anzeigen_sprung
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+hilfe_anzeigen_sprung:          jmp hilfe_anzeigen
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+gleich_oder_doppelpunkt_r:
+
+                                ; Tabelle laden
+                                mov di,umb_tabelle
+                                mov cx,0A000-K16/16
+
+tabelle_laden_schleife:
+                                add cx,K16/16
+                                cmp cx,0
+                                if z jmp parameter_schleife
+
+                                lodsb
+                                cmp al,'?'
+                                jz tabelle_keine_aenderung
+
+                                cmp al,'.'
+                                jz tabelle_keine_aenderung
+
+                                or al,020 ; klein
+                                cmp al,'a'
+                                jz untersuche_ob_vorhanden
+
+                                cmp al,'0'
+                                jb hilfe_anzeigen_sprung
+                                cmp al,'7'
+                                ja hilfe_anzeigen_sprung
+
+                                sub al,'0'
+                                mov ah,al
+                                mov al,veraendert
+                                stosw
+                                jmp tabelle_laden_schleife
+
+untersuche_ob_vorhanden:
+                                push cx
+                                  mov ax,cx
+                                  mov cx,K16
+                                  call rom_test
+                                pop cx
+                                stosw
+                                jmp tabelle_laden_schleife
+
+tabelle_keine_aenderung:
+                                mov ax,unveraendert
+                                stosw
+                                jmp tabelle_laden_schleife
+
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+
+parameter_auswerten_fertig:
+                                cmp b [tabelle_initialisiert],1
+                                jnz hilfe_anzeigen_sprung
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

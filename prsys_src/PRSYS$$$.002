@@ -1,0 +1,10 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_hilfe  :^string;
+  textz_fehler_keine_exe  :^string;
+  textz_fehler_zu_gross  :^string;
+  textz_fehler_exe2bin  :^string;
+  textz_fehler_zu_viele_relo  :^string;
+  textz_fehler_ergebnis_zu_gross  :^string;
+  textz_fehler_relo_ausserhalb_programmbereich  :^string;

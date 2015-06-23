@@ -1,0 +1,152 @@
+Title   SiS 496
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; 4967DS30
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; [28]44.7 F800 Lesen
+;       .6 F000 Lesen
+;       .5 E800 Lesen
+;       .4 E000 Lesen
+;       .3 D800 Lesen
+;       .2 D000 Lesen
+;       .1 C800 Lesen
+;       .0 C000 Lesen
+;
+; [28]45.0 Schreibschutz (global)
+;
+; [28]46.7 F800 Cache
+;       .6 F000 Cache
+;       .5 E800 Cache
+;       .4 E000 Cache
+;       .3 D800 Cache
+;       .2 D000 Cache
+;       .1 C800 Cache
+;       .0 C000 Cache
+;
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_sis496                    macro
+                                  mov di,#1
+                                  mov bh,#2
+                                  call wertaenderung_sis496
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+wertaenderung_sis496:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz wertaenderung_sis496_fertig
+
+                                call ausschrift_segment
+
+
+                                mov bl,0ff
+                                sub bl,bh
+
+                                ; Lesen ...
+                                push ax,bx
+                                  test ah,001
+                                  if z mov bh,0 ; Lese-Bit l봲chen
+
+                                  mov cx,02844
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop bx,ax
+
+                                ; Cache
+                                push ax,bx
+                                  test ah,004
+                                  if z mov bh,0 ; Cache-Bit l봲chen
+
+                                  mov cx,02846
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop bx,ax
+
+
+                                ; Schreiben ...
+                                test ah,002
+                                jz wertaenderung_sis496_fertig
+
+                                mov cx,02845
+                                mov bx,000ff-Bit0
+                                call bios_aufruf__prozedur_registeraenderung
+
+wertaenderung_sis496_fertig:
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+
+variante_SIS496:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis496
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+01a+1]
+                                add ax,di
+                                add ax,01a+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+01f+1]
+                                add ax,di
+                                add ax,01f+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_sis496_award
+
+sis496_gemeinsam:
+
+                                setze_sis496 'C0',Bit0
+                                setze_sis496 'C8',Bit1
+                                setze_sis496 'D0',Bit2
+                                setze_sis496 'D8',Bit3
+                                setze_sis496 'E0',Bit4
+                                setze_sis496 'E8',Bit5
+                                setze_sis496 'F0',Bit6
+                                setze_sis496 'F8',Bit7
+
+                                ; Globales Schreibschutzbit setzen ?
+                                mov cx,02845
+                                mov bh,Bit0
+                                mov bl,000ff-Bit0
+                                cmp b [globaler_schreibschutz],'1'
+                                if e call bios_aufruf__prozedur_registeraenderung
+
+                                jmp initialisieren
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_sis496_ami:
+                                mov ax,es:[di+1+1]
+                                add ax,1+3
+                                add di,ax
+                                mov si,suchfolge2_sis496_ami
+                                call vergleich
+                                if c jmp doch_nicht_richtig
+
+
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis496_ami
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+2+1]
+                                add ax,di
+                                add ax,2+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+11+1]
+                                add ax,di
+                                add ax,11+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_sis496_ami
+
+                                jmp sis496_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_sis496:
+                                mov w [registeraenderung_emulation],aenderung_standard_pci
+                                jmp sis496_gemeinsam
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

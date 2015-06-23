@@ -1,0 +1,37 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_fehler_dos_003  :^string;
+  textz_fehler_dos_005  :^string;
+  textz_fehler_dos_015  :^string;
+  textz_fehler_dos_101  :^string;
+  textz_fehler_dos_150  :^string;
+  textz_fehler_dos_152  :^string;
+  textz_fehler_dos_158  :^string;
+  textz_fehler_dos_162  :^string;
+  textz_unbekannter_Fehler  :^string;
+  textz_Dieses_Programm_erzeugt_Hilfsdateien1  :^string;
+  textz_Dieses_Programm_erzeugt_Hilfsdateien2  :^string;
+  textz_Suche_von  :^string;
+  textz_nicht_gefunden  :^string;
+  textz_gefunden_als  :^string;
+  textz_waehle_deshalb_COMSPEC  :^string;
+  textz_Zielfadauswahl_fuer_die_BAT_Dateien  :^string;
+  textz_Ihre_Entscheidung  :^string;
+  textz_Schreiben_der_Hilfsdateien  :^string;
+  textz_fehler  :^string;
+  textz_e0a_hilfe1  :^string;
+  textz_e0a_hilfe2  :^string;
+  textz_e0a_hilfe3  :^string;
+  textz_e0a_hilfe4  :^string;
+  textz_e0a_hilfe5  :^string;
+  textz_Bitte_benutzen_sie_E0A_oder_E0B  :^string;
+  textz_Bitte_benutzen_sie_OPT  :^string;
+  textz_Fehler_aufgetreten_Abbruch  :^string;
+  textz_avp_deutsch_parameter  :^string;
+  textz_opt_hilfe1  :^string;
+  textz_opt_hilfe2  :^string;
+  textz_REM_Bei_Bedarf_selbst_anpassen  :^string;
+  textz_opt_hilfe3  :^string;
+  textz_opt_hilfe4  :^string;
+  textz_opt_hilfe5  :^string;

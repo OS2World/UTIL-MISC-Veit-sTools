@@ -1,0 +1,42 @@
+                        jmp einrichten
+			
+nicht_umb		equ 1 		; vor include !!!
+
+include lo_i.a86
+include ..\lhtsr\lh.a86
+include ..\lhtsr\prg.a86
+
+programm_name:		db 'LO 640  '
+programm_resident_ende: dw tsr_ende
+
+programm_int            equ 040
+programm_int_neu        equ int_40_neu
+programm_int_org        equ int_40_org
+
+
+
+installation_text:	db 'lade TSR Demo-640',00d,00a
+			db '$'
+deinstallation_text:	db 'entferne Demo-640',00d,00a
+			db '$'
+doppelt_text:		db 'mehrfache Installation von Demo-640 !',00d,00a
+			db '$'
+nichtaktiv_text:	db 'Demo-640 nicht aktiv im Speicher gefunden !',00d,00a
+			db '$'
+
+
+einrichten:
+                        einfaches_tsr
+
+			mov ax,04c00
+			int 021
+		
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+installations_prozedur:
+			ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+deinstallations_prozedur:
+			ret

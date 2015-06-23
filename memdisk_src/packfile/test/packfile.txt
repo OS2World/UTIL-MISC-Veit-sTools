@@ -1,0 +1,12 @@
+create archive kernel.pf
+  output unpacking kernel files
+  add file %OS2BOOT%:\os2ldr.*
+  add file %OS2BOOT%:\os2krnl.*
+  add file %OS2BOOT%:\os2logo
+  next pointer basedev.pf
+close archive
+
+create archive basedev.pf
+  add file %OS2BOOT%:\memdisk.*
+  output unpacking base device drivers
+close archive

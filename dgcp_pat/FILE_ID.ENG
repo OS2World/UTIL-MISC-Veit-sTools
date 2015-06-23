@@ -1,0 +1,4 @@
+DGCP_PAT 16. 1.1999
+
+fixes an bug in Watcom compiled executables 
+that use dos_get_code_page_ function

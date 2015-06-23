@@ -1,0 +1,17 @@
+@ECHO OFF
+
+CD PCX
+CALL _.BAT
+CD ..
+
+CD 512
+CALL _.BAT
+CD ..
+
+CD ASM
+CALL _.BAT
+CD ..
+
+CD ICON_GAL
+CALL ICON_GAL
+CD ..

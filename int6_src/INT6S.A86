@@ -1,0 +1,2 @@
+systemsoft equ 1
+include int6.a86

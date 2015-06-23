@@ -1,0 +1,5 @@
+% GENVK
+F20_ET40.COM    *       *       0011 ; TSR + DEENCOM
+F20_S3TR.COM    *       *       0011 ; TSR + DEENCOM
+F20_SVGA.COM    *       *       0011 ; TSR + DEENCOM
+I_216602.COM    *       *       0011 ; TSR + DEENCOM

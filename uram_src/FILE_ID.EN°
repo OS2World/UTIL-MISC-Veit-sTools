@@ -1,0 +1,11 @@
+
+Memory managment util/driver to
+use shadow-ram for upper memory
+without EMM386.
+
+Supports chipsets from Intel,
+VIA/AMD, Chips&Technologies,
+SiS, UMC, Opti, Acer, Unichip.
+
+Does shadow RAM also for AMD K7
+and Intel Pentium Pro processors.

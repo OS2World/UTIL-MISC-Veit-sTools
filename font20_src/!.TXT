@@ -1,0 +1,5 @@
+Schutz vor doppelter Installation ?
+CHCP oder Schnittstelle zum Schriftwechsel ?
+e0a mit gelbem Bildschirmrand zeigt gelbe schrÑge Streifen
+afd.exe cursoremulation haut nicht hin (VGA-Werte)
+svgadata.add auch fÅr 80*60 (60*8=480 erzeugen)

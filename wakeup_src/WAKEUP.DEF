@@ -1,0 +1,4 @@
+Library wakeup.snp
+Protmode
+Stub None
+Description '@#Veit Kannegieser:2003.11.18#@wake up PCI devices snooper'

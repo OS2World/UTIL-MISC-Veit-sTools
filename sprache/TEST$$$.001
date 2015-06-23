@@ -1,0 +1,19 @@
+(* nicht editieren ! *)
+procedure sprach_modul;assembler;(*&FRAME-*) (*&USES NONE*) (*$S-*)
+  asm
+    db 6,'<SPRA>'
+    db 1,1,1,0,0
+    db 3,0
+    db 7,'p','r','o','g','r','a','m'
+    db 8,'P','r','o','g','r','a','m','m'
+    db 0
+    db 0
+    db 4,'b','o','o','k'
+    db 4,'B','u','c','h'
+    db 0
+    db 0
+    db 10,'c','a','l','c','u','l','a','t','o','r'
+    db 7,'R','e','c','h','n','e','r'
+    db 0
+    db 0
+  end;

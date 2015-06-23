@@ -1,0 +1,50 @@
+user documentation            DXL_DECO                    Veit Kannegieser
+ננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננ
+
+Synopsis
+--------
+
+DXL_DECO decodes encrypted include DXL (Doors eXtension Language?) files,
+for example the one supplied with Telelogic Doors versions.inc, clonemod.inc
+
+There is also an tool smartCrypt.exe done by Tony Goodman to encrypt files,
+and Telelogic also now offers a enryption tool.
+
+
+Description of the encryption (DOORS 8.x)
+-----------------------------------------
+
+Actually, it is a sort of run length encoding, and then each block of 8 bytes
+is processed in 16 loops of bit rotating and permutation.
+
+The permuation tables in Doors are calculated from 16 byte keys, in the
+decoder i have skipped that, and just placed the five tables.
+
+DXL_Deco tries all tables, until it finds the string '//<' at the start
+of the file.
+
+DOORS 9.2 uses blowfish using the same old keys..
+
+
+Usage
+-----
+
+dxl_deco <input file> [ <output file> ]
+
+if you do not specify <output file>, the <input file> will be overwritten.
+
+
+Links
+-----
+http://www.telelogic.com
+http://smartdxl.com/tools.html
+http://www.dreckstool.de
+http://www-947.ibm.com/support/entry/portal/Overview/Software/Rational/Rational_DOORS
+
+Changes
+-------
+
+2010-05-12
+* Support for DOORS 9.2 blowfish encryption added
+
+ננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננ

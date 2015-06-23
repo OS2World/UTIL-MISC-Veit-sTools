@@ -1,0 +1,142 @@
+; BIOS und CMOS sichern
+; V.K. 01.02.1996
+; Kopf hinzugefÅgt 24.10.1996
+
+		; Titel
+		mov ah,009
+		mov dx,titel
+		int 021
+
+		; Parameteranfang suchen
+		mov si,081
+		cld
+		lodsb
+		cmp al,' '
+		if z lodsb
+		mov dx,si
+		dec dx
+		
+suche_parameter_ende_schleife:
+		cmp al,00d
+		jz ende_gefunden
+		lodsb
+		jmp short suche_parameter_ende_schleife
+		
+ende_gefunden:
+		dec si
+		mov di,si
+		mov si,dateiname
+		mov cx,dateiname_ende-dateiname
+		rep movsb
+
+		; Datei îffnen
+                mov ah,03c
+                mov cx,0
+                ;mov dx,dx
+                int 021
+                mov bx,ax ; DateischlÅssel
+
+		; Kopf schreiben
+		mov dx,kopf
+                mov cx,080 ; feste KopflÑnge
+		call schreibe_in_datei
+
+		; E000-E7FF
+                mov ax,0e000
+                call kopiere_bios
+
+		; E800-EFFF
+                mov ax,0e800
+                call kopiere_bios
+                
+		; F000-F7FF
+                mov ax,0f000
+                call kopiere_bios
+
+		; F800-FFFF
+                mov ax,0f800
+                call kopiere_bios
+
+		; CMOS lesen
+                mov di,puffer
+                mov cl,0
+
+cmos_lesen:
+
+                mov al,cl
+                out 070,al
+                db 0eb,00
+                in al,071
+                stosb
+
+                inc cl
+                cmp cl,080
+                jnz cmos_lesen
+
+		; CMOS schreiben
+                mov cx,080
+                mov dx,puffer
+		call schreibe_in_datei
+
+		; Datei schliessen
+                mov ah,03e
+                int 021
+
+		; Programm beenden
+                mov ax,04c00
+                int 021
+
+;************************************************************************
+
+kopiere_bios:
+
+		; in Puffer kopieren
+                push ds
+                mov ds,ax
+                push cx
+                cld
+                mov si,0
+                mov di,puffer
+                mov cx,08000
+                rep movsb
+                pop cx
+                pop ds
+		
+		; Puffer schreiben
+		mov dx,puffer
+                mov cx,08000 ; 32k
+		call schreibe_in_datei
+                ret
+
+;************************************************************************
+		
+schreibe_in_datei:
+		mov ah,0040
+		int 021
+                mov ah,009
+		mov dx,punkt
+		int 021
+		ret
+		
+;************************************************************************
+
+kopf:	        db 'BIOSABZUG+CMOS * Holen * Veit Kannegieser',00d,00a
+		db 01a
+
+titel:		db 'HOLEN * V.K. * 01.02.1996 .. 24.10.1996',00d,00a
+		db 'Sicherung des BIOS-Code von E000 bis FFFF',00d,00a
+		db 'und CMOS-Inhalt in eine Datei',00d,00a
+		db '$'
+
+punkt:		db '..$'
+
+cmos:		db ' - CMOS $'
+
+dateiname:      db 'BIOSCMOS.DAT',0
+dateiname_ende:
+
+kopf_ende:
+
+
+puffer:         ; nicht im programmcode db 08000 dup (?)
+

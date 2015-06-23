@@ -1,0 +1,307 @@
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; EXE-Sticker * Veit Kannegieser * 
+; 23.04.1998
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;debug                  equ 1
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        jmp short nach_titel
+           
+                        db 'ES * V.K. * 23ú24.04.1998',00d,00a,26
+
+nach_titel:
+
+#if debug
+                        int 3
+
+                        mov ah,009
+                        mov dx,debug_text
+                        int 021
+#endif
+
+
+                        cli
+                        mov ax,cs
+                        mov ss,ax
+                        mov sp,stack_ende
+                        sti
+
+                        mov dx,cs               ; SEG
+                        mov si,exe_kopf         ; OFS
+
+                        push ds
+                          sub ax,ax
+                          mov ds,ax
+                          mov al,b [04f0] ; Intra APP Communications Area
+                        pop ds
+
+                        cmp al,'1'              ; ->EXE 1 ?
+                        jb hauptprogramm
+
+                        cmp al,'9'              ; ->EXE 1 ?
+                        jna exec_teilprogramm
+
+hauptprogramm:
+
+                        ; weniger Speicher
+                        mov ah,04a
+                        mov bx,(stack_ende+15)/16
+                        int 021
+
+                        ; Exec vorbereiten
+                        mov w [para_cs],cs
+
+
+                        ; Suche EXE-Name
+                        mov es,w [0002c]
+                        sub di,di
+                        cld
+                        mov cx,-1
+                        mov al,0
+suche_exe_schleife:
+                        repnz scasb
+                        scasb
+                        jne suche_exe_schleife
+
+                        mov dx,di
+                        inc dx,2
+
+                        push es
+                          push ds
+                          pop es
+                        pop ds
+
+
+                        mov cl,'0'
+
+exec_schleife:
+#if debug
+                        int 3
+#endif
+                        inc cl
+                        cmp cl,'9'
+                        ja stop
+
+                        call exec_zaehler_setzen
+                        mov ax,04b00
+                        mov bx,parameter_block
+                        int 021
+                        jc stop
+
+                        push ds
+                          push 0
+                          pop ds
+                          cmp b [004f0],'-'
+                        pop ds
+                        jne exec_schleife
+
+stop:
+                        mov cl,'-'
+                        call exec_zaehler_setzen
+
+                        mov ax,04c00
+                        int 021
+
+exec_zaehler_setzen:
+                        push ds
+                          push 0
+                          pop ds
+                          mov b[004f0],cl
+                        pop ds
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; DX:SI
+test_exekopf:
+                        mov ds,dx
+                        cmp [si],'MZ'
+                        je ret
+                        cmp [si],'ZM'
+                        je ret
+                        jmp stop
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+exec_teilprogramm:
+                        mov cl,al
+                        mov ch,0
+                        sub cx,'0'+1
+
+absuchen_exe_koepfe:
+                        jcxz exe_kopf_gefunden
+
+                        mov ax,si
+                        shr ax,4
+                        and si,0000f
+                        add dx,ax
+
+                        call test_exekopf
+                        push cx
+                          mov cx,w [si+2] ; "mod 512"
+                          mov bx,w [si+4] ; "512*"
+                          cmp cx,0
+                          if ne dec bx
+                          add si,cx
+                          shl bx,5        ; 512/16=32=2^5
+                          add dx,bx       ; DX:SI
+                        pop cx
+                        loop absuchen_exe_koepfe
+
+exe_kopf_gefunden:
+                        call test_exekopf
+
+exe_kopf_gut:
+                        ; Kopiercode modifizieren
+                        mov ax,cs
+                        add ax,w [si+00016] ; EXE.CS
+                        add ax,0100/16
+                        mov w cs:[_cs],ax
+                        mov ax,w [si+00014] ; EXE.IP
+                        mov w cs:[_ip],ax
+
+                        mov ax,cs
+                        add ax,w [si+0000e] ; EXE.SS
+                        add ax,0100/16
+                        mov w cs:[_ss],ax
+                        mov ax,w [si+00010] ; EXE.SP
+                        mov w cs:[_sp],ax
+
+                        mov w cs:[_ds_es],cs
+
+
+                        ; Relokationen
+                        push si,ds
+
+                          ; zu addierender Wert
+                          mov dx,cs
+                          add dx,00010
+
+                          ; Relokation bei BX+____:BP+____
+                          mov bx,ds
+                          add bx,w [si+00008] ; Start Code (*16)
+                          mov bp,si
+
+                          ; Anzahl Relo
+                          mov cx,w [si+00006]
+                          jcxz relo_fertig
+
+                          ; Start Relo
+                          add si,w [si+00018]
+
+relo_schleife:
+                          ; Anpassen
+                          add [si],bp           ; OFS
+                          if c add [si+2],64*1024/16
+                          add [si+2],bx         ; SEG
+
+                          ; Laden
+                          les di,[si]
+
+                          ; Addieren
+                          add w es:[di],dx
+
+                          ; Weiterzaehlen
+                          add si,4
+                          loop relo_schleife
+
+relo_fertig:
+                        pop ds,si
+
+
+
+                        ; Position des Kopiercode berechnen
+                        mov ax,cs
+                        dec ax
+                        mov es,ax
+                        mov ax,w es:[00003] ; Gr”áe Speicherbereich (*16)
+                        sub ax,0200/16
+                        ; neuer Stack nicht im berschriebenen Bereich
+                        cli
+                        mov ss,ax
+                        mov sp,0200
+                        sti
+                        mov es,ax
+
+                        ; Kopiercode kopieren ..
+                        push si
+                          mov si,kopieren_und_aufueren_start
+                          mov di,0
+                          mov cx,kopieren_und_aufueren_ende-kopieren_und_aufueren_start
+                          cld
+                          cs:rep movsb
+                        pop si
+
+                        ; wieviel eigentlich ?
+                        push es
+                          push 0
+
+                            mov cx,w [si+00004] ; Anzahl Seiten (*512)
+                            mov ax,cs
+                            add ax,00100/16 ; zu PSP:100
+                            mov es,ax
+                            mov ax,ds
+                            add ax,w [si+00008] ; Kopfgr”áe (*16)
+                            mov ds,ax
+
+                        retf
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+kopieren_und_aufueren_start:
+
+  kopiere_exe_schleife:
+                        push cx,si
+                          ; 512 Byte kopieren
+                          mov cx,512/2
+                          sub di,di
+                          rep movsw
+
+                          ; inc(ds,512/16)
+                          mov ax,ds
+                          add ax,512/16
+                          mov ds,ax
+
+                          ; inc(es,512/16)
+                          mov ax,es
+                          add ax,512/16
+                          mov es,ax
+                        pop si,cx
+                        loop kopiere_exe_schleife
+
+                        ; SS:SP
+                        cli
+                        mov ax,'..'
+_ss                     equ $-2
+                        mov ss,ax
+                        mov sp,'..'
+_sp                     equ $-2
+                        sti
+
+                        ; DS/ES
+                        mov ax,'..'
+_ds_es                  equ $-2
+                        mov ds,ax
+                        mov es,ax
+
+                        ; CS:IP
+                        db 0ea
+_ip:                    dw ?
+_cs:                    dw ?
+
+kopieren_und_aufueren_ende:
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+parameter_block:
+                        dw 0 ; Umgebung
+                        dw 080 ; Parameter
+  para_cs:              dw '..'
+                        dd 0 ; FCB1
+                        dd 0 ; FCB2
+                        dd 0 ; ? SS:SP
+                        dd 0 ; ? CS:IP
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+#if debug
+debug_text:             db '[ES.....]',00d,00a,'$'
+#endif
+
+                        db 0400-$ dup '°' ; ÷ 200 Byte Stack
+stack_ende:
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+exe_kopf:

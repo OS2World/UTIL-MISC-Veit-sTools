@@ -1,0 +1,3 @@
+@ECHO OFF
+IF     EXIST TBSETUP.VK C:\AV\TB\TBSETUP /mono /datfile=.\TBSETUP.VK %1 %2 %3 %4 %5 %6 %7 %8 %9
+IF NOT EXIST TBSETUP.VK C:\AV\TB\TBSETUP /mono /datfile=C:\AV\TB\TBSETUP.EXT %1 %2 %3 %4 %5 %6 %7 %8 %9

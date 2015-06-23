@@ -1,0 +1,38 @@
+                        jmp einrichten
+
+include 2164_i.a86
+include lh.a86
+include prg.a86
+
+programm_name:		db '2164636c'
+programm_resident_ende: dw tsr_ende
+
+programm_int            equ 021
+programm_int_neu        equ int_21_neu
+programm_int_org        equ int_21_org
+
+installation_text:	db 'lade "cl"-Monitor ',00d,00a
+			db '$'
+deinstallation_text:	db 'entferne "cl"-Monitor ',00d,00a
+			db '$'
+doppelt_text:		db 'mehrfache Installation des "cl"-Monitor !',00d,00a
+			db '$'
+nichtaktiv_text:	db '"cl"-Monitor nicht aktiv im Speicher gefunden !',00d,00a
+			db '$'
+
+
+einrichten:
+                        einfaches_tsr
+
+			mov ax,04c00
+			int 021
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+installations_prozedur:
+			ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+deinstallations_prozedur:
+			ret

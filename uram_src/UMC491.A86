@@ -1,0 +1,163 @@
+Title   UMC 491
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_umc_491                   macro
+                                  mov di,#1 ; Zuweisung
+                                  mov dl,#2 ; Index
+                                  mov cl,#3 ; Bit-Verschiebung
+                                  call setze_umc_491_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_umc_491_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_umc_491_prozedur_fertig
+
+                                call ausschrift_segment
+
+
+                                ; Maske
+                                and ah,Bit1+Bit0 ; Schreiben/Lesen
+                                rol ah,cl
+                                mov al,0ff
+                                sub al,ah
+                                mov bx,ax
+
+                                ; Index
+                                mov al,dl
+
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_umc_491_prozedur_fertig:
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_umc_491:
+                                ausschrift_xxxx_aehnliches_bios text_variante_umc491
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,w es:[di+020+1]
+                                add ax,di
+                                add ax,020+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,w es:[di+027+1]
+                                add ax,di
+                                add ax,027+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_umc491_ami
+
+einsprung_variante_umc_491_award:
+
+                                setze_umc_491 'C0',0cd,6
+                                setze_umc_491 'C4',0cd,4
+                                setze_umc_491 'C8',0cd,2
+                                setze_umc_491 'CC',0cd,0
+
+                                setze_umc_491 'D0',0ce,6
+                                setze_umc_491 'D4',0ce,4
+                                setze_umc_491 'D8',0ce,2
+                                setze_umc_491 'DC',0ce,0
+
+                                setze_umc_491 'E0',0cc,6
+
+                                jmp initialisieren
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_umc_491_award:
+                                ausschrift_xxxx_aehnliches_bios text_variante_umc491
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,w es:[di+2+1]
+                                add ax,di
+                                add ax,2+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,w es:[di+7+1]
+                                add ax,di
+                                add ax,7+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_umc491_award
+
+                                jmp einsprung_variante_umc_491_award
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+aenderung_umc491_ami:
+
+                                pusha
+                                  mov ah,al
+                                  call bios_aufruf__prozedur_registerlesen
+                                  and al,bl
+                                  or  al,bh
+                                  xchg al,ah
+                                  call bios_aufruf__prozedur_registerschreiben
+                                popa
+
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+aenderung_umc491_award:
+                                pusha
+                                  mov cl,al
+                                  call bios_aufruf__prozedur_registerlesen
+                                  and al,bl
+                                  or  al,bh
+                                  ; mov cl,cl
+                                  call bios_aufruf__prozedur_registerschreiben
+                                popa
+
+                                ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_umc491:
+                                mov w [registeraenderung_emulation],aenderung_chip_umc491
+                                jmp einsprung_variante_umc_491_award
+;頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰
+; AL=Index
+; BX=Maske
+; DX ge꼗dert
+aenderung_chip_umc491:
+                                installiere_tracer
+
+                                ; Lesen ...
+                                mov dx,08022
+                                out dx,al
+                                                        jcxz_nop
+                                                        jcxz_nop
+                                xchg al,ah
+                                inc dx,2
+                                in al,dx
+                                                        jcxz_nop
+                                                        jcxz_nop
+
+                                ; 럑dern ...
+                                and al,bl
+                                or al,bh
+                                xchg al,ah
+
+                                ; Schreiben ...
+                                dec dx,2
+                                out dx,al
+                                                        jcxz_nop
+                                                        jcxz_nop
+
+                                xchg al,ah
+                                inc dx,2
+                                out dx,al
+                                                        jcxz_nop
+                                                        jcxz_nop
+
+                                entferne_tracer
+
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

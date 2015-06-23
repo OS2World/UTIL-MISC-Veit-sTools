@@ -1,0 +1,226 @@
+;*****************************************************************************
+; Lesen/Speichern einer Konfigurationsdatei 1..512 Byte auf einem FAT-Laufwerk
+; 2001.01.30 - Annika 15
+;*****************************************************************************
+dateiname_fat_cfg:              db 'VPART   ','CFG'
+
+berechne_konfigurationssektor:
+                                ; Annahme: Fehler
+                                mov bios_typ,biostyp_unbekannt
+
+                                ; Startsektor lesen
+                                null ax
+                                null dx
+                                call fat_cfg_lies
+                                jc ret
+
+                                mov si,konfigurationssektor
+
+                                ; einfache Prfung auf Startsektor
+                                ; Kennung
+                                cmp w [si+001fe],0aa55
+                                jne ret
+
+                                ; 512 Byte/Sektor
+                                cmp w [si+0000b],512
+                                jne ret
+
+                                mov al,[si+00d]
+                                null ah
+                                mov w [sektoren_je_block],ax
+
+                                mov ax,w [si+018]
+                                mov w [fat_konfiguration_sektoren_je_spur],ax
+                                mov ax,w [si+01a]
+                                mov w [fat_konfiguration_anzahl_koepfe],ax
+
+
+                                ; Anzahl FAT
+                                mov ah,0
+                                mov al,b [si+010]
+                                ; * Sektoren je FAT
+                                mul w [si+016]
+                                ; + reservierte Sektoren
+                                add ax,w [si+00e]
+                                adc dx,0
+
+                                ; Anzahl Hauptverzeichniseintr„ge
+                                mov cx,[si+011]
+                                ; in Sektoren: /512*32=/16
+                                shr cx,4
+
+                                ; Hauptverzeichnisanfang merken
+                                push ax,dx
+                                  ; Datenbereich merken
+                                  add ax,cx
+                                  adc dx,0
+                                  mov w [fat_cfg_sektor+0],ax
+                                  mov w [fat_cfg_sektor+2],dx
+                                pop dx,ax
+
+
+fat_cfg_hauptverzeichnis_schleife:
+                                call fat_cfg_lies
+                                jc ret
+
+                                mov si,konfigurationssektor
+cfg_vergleiche_verzeichnissektor:
+                                ; Verzeichnisende: ungenutzten Eintrag gefunden
+                                cmp b [si],0
+                                je ret
+
+                                ; kein Verzeichnis/Datentr„gername .. ?
+                                test b [si+00b],0c0+010+008
+                                jnz versuche_naechste_datei
+
+                                pusha
+                                  mov di,dateiname_fat_cfg
+                                  mov cx,8+3
+                                  cld
+                                  rep cmpsb
+                                popa
+                                jz fat_cfg_gefunden
+versuche_naechste_datei:
+
+                                add si,32
+                                cmp si,konfigurationssektor+512
+                                jne cfg_vergleiche_verzeichnissektor
+
+                                add ax,1
+                                adc dx,0
+                                loop fat_cfg_hauptverzeichnis_schleife
+
+                                ; alle Verzeichnissektoren probiert
+                                ; nicht gefunden -> Abbruch
+                                ret
+
+                                ;************************************
+fat_cfg_gefunden:
+                                ; L„nge > 0 prfen ( Datei ist keliner als 64 KB )
+                                mov ax,w [si+01c+0]
+                                or ax,ax
+                                jz ret
+
+                                ; Startblock holen
+                                mov ax,w [si+01a+0]
+                                ; -2
+                                sub ax,2
+
+                                ; in Sektoren umrechnen
+                                null dx
+                                mul w [sektoren_je_block]
+                                add w [fat_cfg_sektor+0],ax
+                                adc w [fat_cfg_sektor+2],dx
+
+                                ; erfolgreich beendet
+                                mov bios_typ,biostyp_sektor
+                                ret
+;*****************************************************************************
+lies_konfigurationssektor:
+                                mov ax,w [fat_cfg_sektor+0]
+                                mov dx,w [fat_cfg_sektor+2]
+                                call fat_cfg_lies
+                                jc ret
+
+                                mov si,konfigurationssektor
+                                cld
+                                null bx
+
+  fat_cfg_wert_einlesen_schleife:
+                                lodsb
+
+                                ; Zul„ssig sind '0'..'9'
+                                sub al,'0'
+                                jb fat_cfg_wert_einlesen_ende
+                                cmp al,9
+                                ja fat_cfg_wert_einlesen_ende
+
+                                xchg ax,bx
+                                mov ah,10
+                                mul ah
+                                add bl,al
+                                jmp fat_cfg_wert_einlesen_schleife
+
+  fat_cfg_wert_einlesen_ende:
+                                xchg ax,bx
+                                null ah
+
+                                cmp ax,w [anzahl_lw]
+                                jnbe fat_cfg_wert_unzulaessig
+
+                                mov w [standard_lw],ax
+                                mov b [fat_cfg_speicherwert_org],al
+fat_cfg_wert_unzulaessig:
+                                ret
+;*****************************************************************************
+schreibe_konfigurationssektor:
+
+                                mov ax,[standard_lw]
+                                cmp ax,[anzahl_lw]
+                                ja ret
+
+                                ; keine Žnderung ?
+                                cmp al,b [fat_cfg_speicherwert_org]
+                                je ret
+
+                                mov cl,10
+                                div cl      ; 10: AH=0 AL=1
+                                add ax,'00' ; '01'
+
+                                mov di,konfigurationssektor
+                                cld
+                                stosw       ; '1' '0'
+                                mov cx,512-2
+                                mov al,01a
+                                rep stosb
+
+                                mov ax,w [fat_cfg_sektor+0]
+                                mov dx,w [fat_cfg_sektor+2]
+
+                                ; 1 Sektor schreiben
+                                call umrechnung_logischer_sektor_zks
+
+                                mov ax,00301
+                                int 013
+
+                                ret
+;*****************************************************************************
+; dx:ax=Sektornummer
+fat_cfg_lies:
+                                pusha
+                                  call umrechnung_logischer_sektor_zks
+                                  mov ax,00201
+                                  int 013
+                                popa
+                                ret
+;*****************************************************************************
+umrechnung_logischer_sektor_zks:
+                                ; logisch->absolut
+                                add ax,w [fat_konfiguration_position_log+0]
+                                adc dx,w [fat_konfiguration_position_log+2]
+
+                                ; Sektor(1..63)=(dx:ax)/(sektoren_je_spur)
+                                div w [fat_konfiguration_sektoren_je_spur]
+                                ; Rest: Sektor (0..62)
+                                inc dx
+                                mov cx,dx
+                                ; ax: Zylinder*Koepfe+Kopf (0..1023*15+15)
+                                null dx
+                                div w [fat_konfiguration_anzahl_koepfe]
+                                ; ax= Zylinder ......aa bbbbbbbb
+                                shl ah,6
+                                ;              aa...... bbbbbbbb
+                                or cl,ah
+                                mov ch,al    ; bbbbbbbb aazzzzzz
+
+                                ; dx: Kopf
+                                mov dh,dl
+
+                                ; Laufwerk ist vorgegeben
+                                mov dl,[fat_konfiguration_position_dl]
+
+                                ; Quelle/Ziel
+                                mov bx,konfigurationssektor
+
+                                ret
+;*****************************************************************************

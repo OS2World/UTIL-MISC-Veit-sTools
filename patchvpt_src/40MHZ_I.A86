@@ -1,0 +1,50 @@
+even 010
+;******************************************************************************
+
+bit0                            equ   1
+bit1                            equ   2
+bit2                            equ   4
+bit3                            equ   8
+bit4                            equ  16
+bit5                            equ  32
+bit6                            equ  64
+bit7                            equ 128
+
+;***************************************************************************
+
+int_10_org:
+int_10_org_o		dw ?
+int_10_org_s		dw ?
+
+int_10_neu:
+                        pushf
+                          cmp ah,000
+                          jz modus_setzten
+                          cmp ah,011
+                          jz modus_setzten
+
+                        popf
+                        jmp d cs:[int_10_org]
+modus_setzten:
+                        popf
+                        pushf
+                        call d cs:[int_10_org]
+
+                        push ax,dx
+
+                          ; holen
+                          mov dx,003cc
+                          in al,dx
+
+                          ; bit ****32** -> 25,28,?,? MHZ
+                          and al,0ff-bit3-bit2
+                          or al,(bit3+bit2)
+
+                          mov dx,003c2
+                          out dx,al
+                        pop dx,ax
+                        iret
+
+tsr_ende:
+
+;***************************************************************************

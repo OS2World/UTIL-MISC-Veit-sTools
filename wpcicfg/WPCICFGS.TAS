@@ -1,0 +1,2 @@
+SNOOPER_INTERNAL_COMMANDLINE equ 1
+include wpcicfg.tas

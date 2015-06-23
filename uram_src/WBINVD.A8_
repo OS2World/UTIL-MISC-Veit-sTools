@@ -1,0 +1,138 @@
+; WBINVD * Veit Kannegieser * 15.07.1998
+;
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+wbinvd_fehlgeschlagen:          db '0'
+;
+
+alt__cache_leeren: ;!!!!!!!!!! l봲chen
+                                cli
+
+                                pusha
+                                  push ds
+
+                                    cmp b cs:[wbinvd_fehlgeschlagen],'1'
+                                    je wbinvd_ende
+
+                                    ;**************************
+wbinvd_min_anfang:
+                                    jmp short wbinvd_min_anfang_2
+
+int6:                           ;----------------------------------------
+                                pop ax          ; ":IP"
+                                add ax,3        ; L꼗ge von XADD AX,AX
+                                push ax
+                                mov ax,1
+                                iret
+                                ;----------------------------------------
+
+  wbinvd_min_anfang_2:
+                                    push ds
+
+                                      push 0
+                                      pop ds
+
+                                      push w [6*4+0]
+                                        push w [6*4+2]
+
+                                          call pop_dx
+  pop_dx:                                 pop dx
+                                          add dx,int6-pop_dx
+
+                                          mov w [6*4+0],dx
+                                          mov w [6*4+2],cs
+
+                                          mov ax,0
+
+                                          ; "XADD AX,AX" (486+)
+                                          db 00f,0c1,0c0
+
+                                        pop w [6*4+2]
+                                      pop w [6*4+0]
+
+                                    pop ds
+
+                                    mov dl,1 ; "nicht unterst걎zt"
+
+                                    cmp ax,0
+                                    jne wbinvd_nicht_unterstuetzt
+
+                                    ; Schon V86 ?
+                                    smsw ax
+                                    test ax,00001
+                                    jnz wbinvd_nicht_unterstuetzt
+
+                                    ; "MOV EAX,CR0"
+                                    ; "OR AL,001"
+                                    ; "MOV CR0,EAX"
+                                    db 00f,020,0c0
+                                    or al,001
+                                    db 00f,022,0c0
+
+                                    jmp $+2
+
+                                    ; "WBINVD"
+                                    db 00f,009
+
+                                    ; "MOV EAX,CR0"
+                                    ; "AND AL,0FF-001"
+                                    ; "MOV CR0,EAX"
+                                    db 00f,020,0c0
+                                    and al,0ff-001
+                                    db 00f,022,0c0
+
+                                    jmp $+2
+
+                                    mov dl,0  ; unterst걎zt
+
+  wbinvd_nicht_unterstuetzt:
+
+wbinvd_min_laenge                   equ $-wbinvd_min_anfang
+                                    ;**************************
+
+                                    mov ds,cs
+
+                                    cmp dl,0
+                                    je wbinvd_ende
+
+                                    ausschrift text_wbinvd_nicht_unterstuetzt
+                                    mov b cs:[wbinvd_fehlgeschlagen],'1'
+
+  wbinvd_ende:
+
+                                  pop ds
+                                popa
+                                sti
+                                ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+schreibe_cache_leeren_kode:
+                                ; CALL wbinvd_min
+                                mov al,0e8
+                                call erzeuge_code_byte
+                                mov ax,00002
+                                call erzeuge_code_word
+
+                                ; Sprung 갶er wbinvd_min
+                                mov al,0eb
+                                call erzeuge_code_byte
+                                mov al,wbinvd_min_laenge+1
+                                call erzeuge_code_byte
+
+                                mov ax,w [uram_min_puffer_gefuellt]
+                                mov w [uram_min_wbinvd_min_start],ax
+
+                                mov si,wbinvd_min_anfang
+                                mov cx,wbinvd_min_laenge
+                                cld
+schreibe_cache_leeren_kode_schleife:
+                                lodsb
+                                call erzeuge_code_byte
+                                loop schreibe_cache_leeren_kode_schleife
+
+                                ; ret f걊 wbinvd_min
+                                mov al,0c3
+                                call erzeuge_code_byte
+
+                                mov w [uram_min_wbinvd_min_ende],[uram_min_puffer_gefuellt]
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

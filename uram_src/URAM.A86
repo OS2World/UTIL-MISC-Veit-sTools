@@ -1,0 +1,1335 @@
+Title   URAM-Hauptmodul, A86 (286)
+
+; UMB-RAM
+; Veit Kannegieser 21.08.1997..03.09.1997....
+
+Code                            Segment Para Public 'CODE'
+
+; ende.a86
+Extrn  programm_ende            :Word
+
+; cpu.inc
+Extrn  bestimme_cpu_typ         :Near
+Extrn  cache_leeren             :Near
+Extrn  cpu_typ                  :Byte
+Extrn  cpu_amd                  :Byte
+Extrn  cpu_intel                :Byte
+Extrn  mtrr_supported           :Byte
+
+; amdk7.inc
+Extrn  chip_amdk7               :Near
+Extrn  variante_amdk7           :Near
+Extrn  programmiere_amd_k7      :Near
+
+; via580.inc
+Extrn  chips_via5x0             :Near
+Extrn  variante_via580_awdflash :Near
+
+; 82430tx.inc
+Extrn  intel_824x0_gemeinsam    :Near
+
+; intel810.inc
+Extrn  chip_intel810            :Near
+
+; intel845.inc
+Extrn  chip_intel845            :Near
+Extrn  variante_intel845_awardflash :Near
+
+; sis645.inc
+Extrn  chip_sis_645             :Near
+Extrn  variante_sis650_awardflash :Near
+
+; ali_aldv.inc
+Extrn  chip_ali_aladdin_v       :Near
+Extrn  chip_amd_k7__ALiMAGiK_1  :Near
+
+
+; xms.inc
+Extrn  detect_xms               :Near
+
+; pci.inc
+Extrn  pci_present              :Byte
+Extrn  detect_pci               :Near
+Extrn  pci_read_dword           :Near
+Extrn  pci_write_dword          :Near
+
+
+
+                                org 0100h
+include mac.a86
+sys_anfang:
+include sys_kopf.a86
+com_anfang:
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                                ; zum Anfang der Zeile, wenn nicht in Spalte 1
+                                mov ah,3
+                                mov bh,0
+                                int 010h
+                                mov dl,0
+                                mov ah,2
+                                int 010h
+
+                                mov ah,009
+                                mov dx,titel
+                                int 021
+
+                                call spracheinstellung
+
+                                call installiere_int06
+
+include para.a86
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                                mov ax,w [rom_segment]
+                                mov es,ax
+
+                                mov si,suchfolge_retf
+                                call suche
+                                if c jmp fehler_kann_retf_nicht_finden
+                                mov w [retf_stelle],di
+
+                                call detect_xms
+
+                                ausschrift text_cpu_typ
+                                call bestimme_cpu_typ
+
+                                cmp [cpu_typ],3
+                                jb ohne_pci_suche
+                                call detect_pci
+  ohne_pci_suche:
+
+                                call bestimme_bios_hersteller
+
+                                ausschrift   text_bios_hersteller
+                                ausschrift_a biosherstellername
+                                ausschrift_a text_anf_zeilenumbruch
+
+                                ausschrift   text_chipsatz
+                                ausschrift_a chipsatzname
+                                ausschrift_a text_anf_zeilenumbruch
+
+
+                                cmp b es:[0fff7],'/'
+                                jz anzeige_bios_datum
+                                cmp b es:[0fff7],'-'
+                                jz anzeige_bios_datum
+                                cmp b es:[0fff7],'.'
+                                jnz nicht_anzeige_bios_datum
+
+  anzeige_bios_datum:
+                                xchg_ds_es
+
+                                mov si,0fff5
+                                mov di,biosdatum
+                                movsw
+                                movsw
+                                movsw
+                                movsw
+
+                                xchg_ds_es
+
+                                ausschrift   text_biosdatum
+                                ausschrift_a biosdatum
+
+  nicht_anzeige_bios_datum:
+                                cmp w [bios_kommentar+0],'$$'
+                                je nicht_anzeige_bios_kommentar
+
+                                ausschrift   text_bios_kommentar
+                                ausschrift_a bios_kommentar
+                                ausschrift_a text_anf_zeilenumbruch
+
+  nicht_anzeige_bios_kommentar:
+                                call cache_leeren
+
+                                call schreibe_cache_leeren_kode
+
+                                ; hat Benutzer ausdrcklich einen Chip angegeben ?
+                                cmp b [laenge_chipsatzname_gefordert],0
+                                if ne jmp bearbeite_geforderten_chip
+
+                                cmp w [rom_segment],0f000h
+                                jne cpu_typ_ignorieren
+
+
+                                cmp [cpu_amd],1
+                                jne nicht_amd_k7
+                                cmp [cpu_typ],6
+                                jb nicht_amd_k7
+
+                                jmp chip_amdk7
+  nicht_amd_k7:
+
+
+  cpu_typ_ignorieren:
+
+;ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+;VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+
+                                mov bx,Offset such_tabelle_anfang
+  tabelle_probier_schleife:
+                                mov si,[bx]
+                                call suche
+                                jc bios_umbcode_nicht_richtig
+
+                                mov w [bx_sicherung],bx
+                                jmp w [bx+2]
+  doch_nicht_richtig:
+                                mov bx,w [bx_sicherung]
+  bios_umbcode_nicht_richtig:
+                                add bx,2+2
+                                ; ganze Tabelle probiert ?
+                                cmp bx,Offset such_tabelle_ende
+                                jne tabelle_probier_schleife
+
+                                jmp nichts_gefunden
+
+
+
+bx_sicherung:                   dw ?
+
+such_tabelle_anfang:
+                                dw suchfolge_asus_82430TX_d800
+                                dw variante_82430TX
+
+                                dw suchfolge_SIS496
+                                dw variante_SIS496
+
+                                dw suchfolge_SIS471_d800
+                                dw variante_SIS471
+
+                                dw suchfolge_SIS471_1995
+                                dw variante_SIS471_1995
+
+                                dw suchfolge_umc498
+                                dw variante_umc498
+
+                                dw suchfolge_opti_82495
+                                dw variante_opti_82495
+
+                                dw suchfolge_sis461
+                                dw variante_sis461
+
+                                dw suchfolge_umc_491
+                                dw variante_umc_491
+
+                                dw suchfolge_umc_491_award
+                                dw variante_umc_491_award
+
+                                dw suchfolge_ali_14xx
+                                dw variante_ali_14xx
+
+                                dw suchfolge_ali_1487_89
+                                dw variante_ali_1487_89
+
+                                dw suchfolge_opti596
+                                dw variante_opti596
+
+                                dw suchfolge_opti802
+                                dw variante_opti802
+
+                                dw suchfolge_unichip
+                                dw variante_unichip
+
+                                dw suchfolge_opti_55x
+                                dw variante_opti_55x
+
+                                dw suchfolge_opti_82c283
+                                dw variante_opti_82c283
+
+                                dw suchfolge_asi_ami
+                                dw variante_asi_ami
+
+                                dw suchfolge_gw2000
+                                dw variante_gw2000
+
+                                dw suchfolge_umc_480
+                                dw variante_umc_480
+
+                                dw suchfolge_mirko_ami_i430VX
+                                dw variante_mirko_ami_i430VX
+
+                                dw suchfolge_pci82430_batio
+                                dw variante_pci82430_batio
+
+                                dw suchfolge_pci82430_alfredo
+                                dw variante_pci82430_alfredo
+
+                                dw suchfolge_icl_opti55yy
+                                dw variante_icl_opti55yy
+
+                                dw suchfolge_umc_891_892_886
+                                dw variante_umc_891_892_886
+
+                                dw suchfolge_chips_technologies_peacock
+                                dw variante_chips_technologies_peacock
+
+                                dw suchfolge_chips_technologies_siemens
+                                dw variante_chips_technologies_siemens
+
+                                dw suchfolge_ali_154x
+                                dw variante_ali_154x
+
+                                dw suchfolge_sis_501_503_asus
+                                dw variante_sis_501_503_asus
+
+                                dw suchfolge_epson_actionnote650
+                                dw variante_epson_actionnote650
+
+                                dw suchfolge_sis471_ami
+                                dw variante_sis471_ami
+
+                                dw suchfolge1_sis496_ami
+                                dw variante_sis496_ami
+
+                                dw suchfolge_sis5571_ami
+                                dw variante_sis5571_ami
+
+                                dw suchfolge_mx83c30x
+                                dw variante_mx83c30x
+
+                                dw suchfolge_i82440fx_ami
+                                dw variante_i82440fx_ami
+
+                                dw suchfolge_mx83c30x_ami
+                                dw variante_mx83c30x_ami
+
+                                dw suchfolge_opti_55x_award
+                                dw variante_opti_55x_award
+
+                                dw suchfolge_umc_881_886_award
+                                dw variante_umc_881_886_award
+
+                                dw suchfolge_opti_55x_award_2
+                                dw variante_opti_55x_award_2
+
+                                dw suchfolge_amdk7
+                                dw variante_amdk7
+
+                                dw suchfolge_amdk7_via_amibios
+                                dw variante_amdk7
+
+                                dw suchfolge_text_430TX
+                                dw chip_i824x0
+
+;------------->>>>>>>>>>
+                                dw suchfolge_asusflash
+                                dw variante_asusflash
+
+                                dw suchfolge_awardflash
+                                dw variante_awardflash
+such_tabelle_ende:
+
+
+
+pci_kennungen_tabelle_anfang:
+
+                                ;--[ Intel ]-------------------------
+                                ;
+                                ; "82424TX/ZX (Saturn) Cache/DRAM Controller"
+                                dw 08086h,00483h,Offset chip_i824x0
+                                ;
+                                ; "82420EX/ZX 486 PCIset System, ISA Bridge & EIDE Controller"
+                                dw 08086h,00486h,Offset chip_i824x0
+                                ;
+                                ; "82434LX/NX (Mercury/Neptune) Cache/DRAM Controller"
+                                dw 08086h,004a3h,Offset chip_i824x0
+                                ;
+                                ; "82815 815/E (Solano) Host to I/O Hub Bridge with 100MHz DRAM Controller"
+                                dw 08086h,01100h,Offset chip_i824x0
+                                ;
+                                ; "82815 815/E (Solano) Host to I/O Hub Bridge, AGP Not Implemented"
+                                dw 08086h,01110h,Offset chip_i824x0
+                                ;
+                                ; "82815 815/E (Solano) Host to I/O Hub Bridge, AGP Implemented"
+                                dw 08086h,01120h,Offset chip_i824x0
+                                ;
+                                ; "82815/EM/EP/P 815/EM/EP/P (Solano) Host to I/O Hub Bridge"
+                                dw 08086h,01130h,Offset chip_i824x0
+                                ;
+                                ; Veit: Virtual PC 4.32 "82437FX 430FX (Triton) Cache/DRAM Controller"
+                                dw 08086h,0122dh,Offset chip_i824x0
+                                ;                                ;
+                                ; "82437MX 430MX Mobile Chipset System Controller"
+                                dw 08086h,01235h,Offset chip_i824x0
+                                ;
+                                ; "82440/1FX 440FX (Natoma) System Controller"
+                                dw 08086h,01237h,Offset chip_i824x0
+                                ;
+                                ; "82439HX 430HX System Controller"
+                                dw 08086h,01250h,Offset chip_i824x0
+                                ;
+                                ; "82840 840 (Carmel) Chipset Host to I/O Hub Bridge (Dual CPU)"
+                                dw 08086h,01a21h,Offset chip_i824x0
+                                ;
+                                ; "82840 840 (Carmel) Chipset Host to I/O Hub Bridge (Quad CPU)"
+                                dw 08086h,01a22h,Offset chip_i824x0
+                                ;
+                                ; "82820 820 (Camino) Chipset Host Bridge (MCH)"
+                                dw 08086h,02500h,Offset chip_i824x0
+                                ;
+                                ; "82820 820 (Camino) Chipset Host Bridge (MCH)"
+                                dw 08086h,02501h,Offset chip_i824x0
+                                ;
+                                ; "82850/E Host-Hub Interface Bridge Device"
+                                dw 08086h,02530h,Offset chip_i824x0
+                                ;
+                                ; "E7501 Host Controller"
+                                dw 08086h,0254ch,Offset chip_i824x0
+                                ;
+                                ; "E7505 Host Controller"
+                                dw 08086h,02550h,Offset chip_i824x0
+                                ;
+                                ; "E7205 Host Controller"
+                                dw 08086h,0255dh,Offset chip_i824x0
+                                ;
+                                ; "82830M/MG/MP CPU to I/O Bridge"
+                                dw 08086h,03575h,Offset chip_i824x0
+                                ;
+                                ; "8285xGM/GME, 82852PM Montara Host-Hub Interface Bridge"
+                                dw 08086h,03580h,Offset chip_i824x0
+                                ;
+                                ; "82437VX 430VX System Controller"
+                                dw 08086h,07030h,Offset chip_i824x0
+                                ;
+                                ; Veit: Zucker Asus TX-97 (kaputt) "82439TX 430TX System Controller"
+                                dw 08086h,07100h,Offset chip_i824x0
+                                ;
+                                ; "82443LX/EX 440LX/EX CPU to PCI Bridge"
+                                dw 08086h,07180h,Offset chip_i824x0
+                                ;
+                                ; Veit: Quarz Notebook "82443BX/ZX 440BX/ZX CPU to PCI Bridge (AGP Implemented)"
+                                dw 08086h,07190h,Offset chip_i824x0
+                                ;
+                                ; Veit: Virtual PC 5.0 "82443BX/ZX 440BX/ZX CPU to PCI Bridge (AGP Not Implemented)"
+                                dw 08086h,07192h,Offset chip_i824x0
+                                ;
+                                ; "82440MX CPU to I/O Controller" ??
+                                dw 08086h,07194h,Offset chip_i824x0
+                                ;
+                                ; "82443GX 440GX CPU to PCI Bridge (AGP Implemented)"
+                                dw 08086h,071a0h,Offset chip_i824x0
+                                ;
+                                ; "82443GX 440GX CPU to PCI Bridge (AGP Not Implemented)"
+                                dw 08086h,071a2h,Offset chip_i824x0
+                                ;
+                                ; "82453KX/GX 450KX/GX Orion Data Controller"
+                                dw 08086h,084c5h,Offset chip_i824x0
+                                ;
+                                ; "82451NX 450NX Memory and I/O Controller"
+                                dw 08086h,084cah,Offset chip_i824x0
+                                ;
+                                ;------------------------------------
+
+                                ;--[Intel810]------------------------
+                                ;
+                                ; "82810 810 Chipset Memory Controller Hub"
+                                dw 08086h,07120h,Offset chip_intel810
+                                ;
+                                ; "82810-DC100 810 Chipset Memory Controller Hub"
+                                dw 08086h,07122h,Offset chip_intel810
+                                ; "82810e 810e Chipset Host Bridge and Memory Controller Hub"
+                                dw 08086h,07124h,Offset chip_intel810
+                                ;
+                                ; "82810-M DC-100 810 Chipset Host Bridge and Graphics Controller"
+                                dw 08086h,07128h,Offset chip_intel810
+                                ;
+                                ; "82810-M DC-133 810 Chipset Host Bridge and Graphics Controller"
+                                dw 08086h,0712ah,Offset chip_intel810
+                                ;
+                                ;------------------------------------
+
+                                ;--[Intel845]------------------------
+                                ;
+                                ; "82845/E/MP/MZ Brookdale CPU to I/O Bridge"
+                                dw 08086h,01a30h,Offset chip_intel845
+                                ;
+                                ; "82860 (860) CPU to I/O Hub Bridge (Interface A)"
+                                dw 08086h,02531h,Offset chip_intel845
+                                ;
+                                ; "82845G/GL/GV/GE/PE Brookdale Host-Hub Interface Bridge"
+                                dw 08086h,02560h,Offset chip_intel845
+                                ;
+                                ; "82865G\PE\P Processor to I/O Controller"
+                                ; <Springdale>
+                                dw 08086h,02570h,Offset chip_intel845
+                                ;
+                                ; "82875P Memory Controller Hub"
+                                ; <Canterwood>
+                                dw 08086h,02578h,Offset chip_intel845
+                                ;
+                                ; "82855PM Odem Host-Hub Interface Bridge"
+                                dw 08086h,03340h,Offset chip_intel845
+                                ;
+                                ;------------------------------------
+
+
+                                ;--[VIA/AMD]-------------------------
+                                ;
+                                ; UMBPCI: VIA Appollo MVP4
+                                dw 01106h,00501h,Offset chips_via5x0
+                                ;
+                                ; UMBPCI: VIA Appollo VP/VPX
+                                dw 01106h,00585h,Offset chips_via5x0
+                                ;
+                                ; 21090c.pdf (Seite 94)
+                                ; UMBPCI: VIA Appollo VP2
+                                dw 01106h,00595h,Offset chips_via5x0
+                                ;
+                                ; 21090c.pdf (Seite 102)
+                                ; UMBPCI: VIA Appollo VP2/97
+                                dw 01106h,01595h,Offset chips_via5x0
+                                ;
+                                ; Veit: Zucker mit Reichelt Ersatzplatine
+                                ; UMBPCI: VIA Appollo VP3 oder VP3+ oder VP3++
+                                dw 01106h,00597h,Offset chips_via5x0
+                                ;
+                                ; UMBPCI: VIA Appollo MVP3(0586) oder MVP3+(596) oder MVP3++(0686)
+                                dw 01106h,00598h,Offset chips_via5x0
+                                ;
+                                ; Alfredo F. D.
+                                ; UMBPCI: VIA Appollo PM133
+                                dw 01106h,00605h,Offset chips_via5x0
+                                ;
+                                ; UMBPCI: VIA Appollo PM601
+                                dw 01106h,00610h,Offset chips_via5x0
+                                ;
+                                ; UMBPCI: VIA Appollo Pro
+                                dw 01106h,00691h,Offset chips_via5x0
+                                ;
+                                ; UMBPCI: VIA Appollo Pro Plus
+                                dw 01106h,00693h,Offset chips_via5x0
+                                ;
+                                ;
+                                ; UMBPCI hat dann noch eine 'einfachere' Tabelle (Ohne PCI-Funktion 1?:DMA) mit Typ 15
+                                ; UMBPCI: VIA P4X266
+                                dw 01106h,03128h,Offset chips_via5x0
+                                ;
+                                ; UMBPCI: VIA VT3133
+                                dw 01106h,03133h,Offset chips_via5x0
+                                ;
+                                ; UMBPCI: VIA P4M266
+                                dw 01106h,03148h,Offset chips_via5x0
+                                ;
+                                ; UMBPCI: VIA P/KN266
+                                dw 01106h,03156h,Offset chips_via5x0
+                                ;
+                                ; UMBPCI: VIA ?
+                                dw 01106h,03158h,Offset chips_via5x0
+                                ;
+                                ;------------------------------------
+
+                                ;--[SiS645]--------------------------
+                                ;
+                                ; "SiS620 CPU to PCI Bridge"
+                                dw 01039h,00620h,Offset chip_sis_645
+                                ; "SiS630 CPU to PCI Bridge"
+                                dw 01039h,00630h,Offset chip_sis_645
+                                ; "SiS635 CPU to PCI Bridge"
+                                dw 01039h,00635h,Offset chip_sis_645
+                                ; "SiS640 CPU to PCI Bridge"
+                                dw 01039h,00640h,Offset chip_sis_645
+                                ; "SiS645 CPU to PCI Bridge"
+                                dw 01039h,00645h,Offset chip_sis_645
+                                ; "SiS645DX CPU to PCI Bridge"
+                                dw 01039h,00646h,Offset chip_sis_645
+                    ; ? 0648    SiS648 CPU to PCI Bridge
+                    ; ? 0649    CPU to PCI Bridge
+                                ; "SiS650 CPU to PCI Bridge"
+                                dw 01039h,00650h,Offset chip_sis_645
+                    ; ? 0651    SiS651 CPU to PCI Bridge
+                    ; ? 0655    SiS655 CPU to PCI Bridge
+                    ; ? 0660    CPU to PCI Bridge
+                                ; "SiS600 CPU to PCI Bridge"
+                                dw 01039h,05600h,Offset chip_sis_645
+                                ; "SiS630 CPU to PCI Bridge"
+                                dw 01039h,05630h,Offset chip_sis_645
+                                ;
+                                ;------------------------------------
+
+
+                                ;--[ALI Aladdin V]-------------------
+                                ;
+                                ; "ALI M1541 Aladdin V/V+ AGP+PCI North Bridge"
+                                dw 010b9h,01541h,Offset chip_ali_aladdin_v
+                                ;
+                    ; ? 1542    ALI M1542 Aladdin V/V+ AGP+PCI North Bridge
+                                ;
+                                ;------------------------------------
+
+                                ;--[AMD K7]--------------------------
+                                ;
+                                ; SiS: "SiS730 CPU to PCI Bridge"
+                                dw 01039h,00730h,Offset programmiere_amd_k7
+                    ; ? 0735    SiS735 CPU to PCI Bridge
+                    ; ? 0740    SiS740 CPU to PCI Bridge
+                    ; ? 0745    SiS745 CPU to PCI Bridge
+                    ; ? 0746    SiS746 CPU to PCI Bridge
+                    ; ? 0750    SiS750 CPU to PCI Bridge
+                    ; ? 0755    CPU to PCI Bridge
+                                ;
+                                ; VIA VT8368 (KT400) "VT8377 Apollo KT400 CPU to PCI Bridge"
+                                dw 01106h,03189h,Offset programmiere_amd_k7
+                                ;
+                                ; "ALI M1647 ALiMAGiK 1 AGP System Controller"
+                                dw 010b9h,01647h,Offset chip_amd_k7__ALiMAGiK_1
+                                ;
+                                ;------------------------------------
+
+pci_kennungen_tabelle_ende:
+
+;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+;ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+dev00_vend_dev                  dd -1
+
+nichts_gefunden:
+                                ; Suche ber PCI-Kennung
+
+                                cmp w [rom_segment],0f000h
+                                jne wirklich_nichts_pci
+
+                                cmp b [pci_present],0
+                                je wirklich_nichts_pci
+
+                                ; Lade Vendor/DeviceID
+                                null bx                         ; cpu-to-host suchen oder ist 0:0:0 sicher?
+                                null di
+                                mov si,Offset dev00_vend_dev
+                                call pci_read_dword
+                                mov ax,Word Ptr [si+0]
+                                cmp ax,-1
+                                je wirklich_nichts_pci
+
+                                ausschrift text_chip_pci
+                               ;mov ax,ax
+                                call ausschrift_word
+                                mov bx,ax
+
+                                mov al,'/'
+                                call ausschrift_zeichen
+                                mov ax,Word Ptr [si+2]
+                                call ausschrift_word
+                                ausschrift_a text_anf_zeilenumbruch
+
+                                mov si,Offset pci_kennungen_tabelle_anfang
+  suche_eintrag_in_pci_tabelle_schleife:
+                                cmp bx,w [si]
+                                jne nicht_diesen_pci_eintrag
+                                cmp ax,w [si+2]
+                                jne nicht_diesen_pci_eintrag
+                                jmp w [si+4]
+  nicht_diesen_pci_eintrag:
+                                add si,2+2+2
+                                cmp si,Offset pci_kennungen_tabelle_ende
+                                jne suche_eintrag_in_pci_tabelle_schleife
+
+  wirklich_nichts_pci:
+
+                                mov dx,w [text_unbekanntes_bios]
+                                jmp short fehler_ende
+
+fehler_kann_retf_nicht_finden:
+                                mov dx,w [text_kann_retf_nicht_finden]
+
+fehler_ende:
+                                mov b [stumm],'0'
+                                ausschrift_a dx
+                                halt 1
+
+hilfe_anzeigen:
+                                mov b [stumm],'0'
+                                ausschrift text_hilfe1
+                                mov ax,'DR'
+                                int 021
+                                mov dx,text_beispiel_device
+                                cmp ah,010
+                                if e mov dx,text_beispiel_com
+                                ausschrift dx
+
+                                taste
+
+                                ausschrift text_hilfe2a
+                                call liste_der_direkt_implementierten_chipsaetze
+                                ausschrift text_hilfe2b
+
+                                halt 2
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift_prozedur_ind:
+                                xchg dx,bx
+                                mov bx,[bx]
+                                xchg dx,bx
+
+ausschrift_prozedur:
+                                push ax
+                                  cmp b cs:[stumm],'1'
+                                  je ausschrift_prozedur_stumm
+                                  mov ah,009
+                                  int 021
+  ausschrift_prozedur_stumm:
+                                pop ax
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift_xxxx_aehnliches_bios_prozedur:
+                                call ausschrift_prozedur
+                                ausschrift text_aehnliches_bios_gefunden
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift_segment:             push ax,dx,di
+                                  ror di,8
+                                  cmp ah,7
+                                  if nz or di,00020
+                                  mov [ausschrift_segment_text+0],di
+                                  mov dx,ausschrift_segment_text
+                                  call ausschrift_prozedur
+
+                                  call pause_im_debug_modus
+
+                                pop di,dx,ax
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift_edxeax:              xchg_eax_edx
+                                call ausschrift_dword
+                                xchg_eax_edx
+                                ;call ausschrift_dword
+                                ;ret
+
+ausschrift_dword:               ror_eax_16
+                                call ausschrift_word
+                                ror_eax_16
+                                ;call ausschrift_word
+                                ;ret
+
+ausschrift_word:                xchg al,ah
+                                call ausschrift_byte
+                                xchg al,ah
+                                ;call ausschrift_byte
+                                ;ret
+
+ausschrift_byte:                ror al,4
+                                call ausschrift_4bit
+                                ror al,4
+                                ;call ausschrift_4bit
+                                ;ret
+
+ausschrift_4bit:                push ax
+                                  and al,00f
+                                  add al,'0'
+                                  cmp al,'9'
+                                  if a add al,'A'-'0'-10
+                                  call ausschrift_zeichen
+                                pop ax
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift_zeichen:
+                                cmp b cs:[stumm],'1'
+                                je ret
+
+                                push ax,dx
+                                  mov dl,al
+                                  mov ah,002
+                                  int 021
+                                pop dx,ax
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+taste_prozedur:
+                                pusha
+                                  push ds
+
+                                    mov ds,cs
+
+                                    ;ausschrift text_taste
+                                    mov si,w [text_taste]
+                                    mov ah,040
+                                    mov bx,2
+                                    mov cx,[si]
+                                    lea dx,[si+2]
+                                    int 021
+
+
+
+                                    mov ah,007
+                                    int 021
+
+                                    ;ausschrift text_taste_loeschen
+                                    mov si,w [text_taste_loeschen]
+                                    mov ah,040
+                                    mov bx,2
+                                    mov cx,[si]
+                                    lea dx,[si+2]
+                                    int 021
+
+                                  pop ds
+                                popa
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+xchg_ds_es_proc:
+                                push ds
+                                  push es
+                                  pop ds
+                                pop es
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+teste_ob_uram_sys:
+                                cmp b cs:[device_uram_sys],'1'
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+halt_code:
+                                push ax,es
+                                  cmp al,0
+                                  if nz taste
+
+                                  call schreibe_uram_min
+
+
+                                  call teste_ob_uram_sys
+                                  je kein_freigenen_noetig
+
+                                  ; COM
+                                  mov ax,w cs:[rom_segment]
+                                  cmp ax,0f000
+                                  jnz kein_freigenen_noetig
+
+                                  mov es,ax
+                                  mov ah,049
+                                  int 021
+
+kein_freigenen_noetig:
+                                pop es,ax
+
+                                call entferne_int06
+
+                                call teste_ob_uram_sys
+                                mov ah,04ch
+                                if ne int 021h  ; COM: Exit
+                                jmp sys_exit    ; SYS: Rckehr zu sys_kopf.a86
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+schreibe_uram_min:
+                                pusha
+                                  mov dx,name_uram_min
+                                  mov si,uram_min_code
+                                  mov di,uram_min_code_laenge
+                                  cmp b [generiere_uram_min],'1'
+                                  je schreibe_datei
+
+                                  mov dx,name_uram_reb
+                                  mov si,uram_reb_code
+                                  mov di,uram_reb_code_laenge
+                                  cmp b [generiere_uram_min],'2'
+                                  if ne jmp schreibe_datei_ende
+
+  schreibe_datei:
+                                  mov ax,w [uram_min_puffer_gefuellt]
+                                  cmp ax,w [uram_min_wbinvd_min_ende]
+                                  if e jmp schreibe_datei_ende ; sinnlos - fehler ?
+
+                                  ; Erzeugen
+                                  mov ah,03c
+                                  mov cx,0
+                                  int 021
+                                  if c jmp schreibe_datei_fehler
+
+
+                                  ; Schreiben Kopf/Kode
+                                  mov bx,ax
+                                  mov ah,040
+                                  mov cx,di
+                                  mov dx,si
+                                  int 021
+
+
+                                  ; Anh„ngen des 2. Aufrufes von wbinvd_min
+                                  mov al,0e8
+                                  call erzeuge_code_byte
+                                  mov ax,w [uram_min_wbinvd_min_start]
+                                  sub ax,w [uram_min_puffer_gefuellt]
+                                  sub ax,2
+                                  call erzeuge_code_word
+
+
+                                  ; Anh„ngen von Kode zum Speicherfllen
+                                  cmp b [speicher_soll_initalisiert_werden],'1'
+                                  if ne jmp generiere_speicherfueller_ende
+                                  ; JMP SHORT L1
+                                  mov al,0eb
+                                  call erzeuge_code_byte
+                                  mov al,00d
+                                  call erzeuge_code_byte
+                                  ; MOV ES,BX
+                                  mov al,08e
+                                  call erzeuge_code_byte
+                                  mov al,0c3
+                                  call erzeuge_code_byte
+                                  ; SUB DI,DI
+                                  mov al,02b
+                                  call erzeuge_code_byte
+                                  mov al,0ff
+                                  call erzeuge_code_byte
+                                  ; MOV CX,16*1024/2
+                                  mov al,0b9
+                                  call erzeuge_code_byte
+                                  mov al,000
+                                  call erzeuge_code_byte
+                                  mov al,020
+                                  call erzeuge_code_byte
+                                  ; SUB AX,AX
+                                  mov al,02b
+                                  call erzeuge_code_byte
+                                  mov al,0c0
+                                  call erzeuge_code_byte
+                                  ; CLD
+                                  mov al,0fc
+                                  call erzeuge_code_byte
+                                  ; REP MOVSW
+                                  mov al,0f3
+                                  call erzeuge_code_byte
+                                  mov al,0ab
+                                  call erzeuge_code_byte
+                                  ; RET
+                                  mov al,0c3
+                                  call erzeuge_code_byte
+
+
+                                  mov di,0ffed
+                                  mov dx,0a000-00400
+                                  mov si,umb_tabelle-2
+                                  mov cx,4*6
+
+   generiere_speicherfueller_schleife:
+                                  add si,2
+                                  add dx,00400
+                                  mov ax,[si]
+                                  cmp al,unveraendert
+                                  je generiere_speicherfueller_schleife_weiter
+                                  and ah,2 ; Schreiben ?
+                                  cmp ah,2
+                                  jne generiere_speicherfueller_schleife_weiter
+
+                                  ; MOV BX,'??'
+                                  mov al,0bb
+                                  call erzeuge_code_byte
+                                  mov ax,dx
+                                  call erzeuge_code_word
+                                  ; CALL FUELLEN
+                                  mov al,0e8
+                                  call erzeuge_code_byte
+                                  mov ax,di
+                                  call erzeuge_code_word
+                                  sub di,6
+
+   generiere_speicherfueller_schleife_weiter:
+
+                                  loop generiere_speicherfueller_schleife
+
+   generiere_speicherfueller_ende:
+
+                                  ; retf anh„ngen
+                                  mov al,0cb
+                                  call erzeuge_code_byte
+
+                                  ; erzeugten Kode Schreiben
+                                  mov ah,040
+                                  ; mov bx,bx
+                                  mov si,offset uram_min_puffer_gefuellt
+                                  mov cx,w [si]
+                                  inc cx,2
+                                  mov dx,si
+                                  int 021
+
+                                  mov ah,03e
+                                  int 021
+
+  schreibe_datei_ende:
+                                popa
+                                ret
+
+  schreibe_datei_fehler:
+                                  push dx
+                                    ausschrift text_fehler_beim_schreiben_von
+                                  pop dx
+                                  ausschrift_a dx
+                                  ausschrift_a text_anf_zeilenumbruch
+
+                                  jmp schreibe_datei_ende
+
+name_uram_min:                  db 'URAM_MIN.COM',0
+name_uram_reb:                  db 'URAM.DAT',0
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; Eingabe
+;   Di=Segmenttext "D8"
+; Ausgabe
+;   AX=Wert (umb_tabelle)
+berechne_wert_ax:
+                                mov ax,di       ; "D8"
+                                sub ah,'A'      ; ->  3/"8"
+                                shl ah,4        ; -> 30/"8"
+                                sub al,'0'      ; -> 30/ 8
+                                cmp al,'C'-'0'  ; ?C00
+                                if z mov al,0c
+                                or al,ah
+                                mov ah,0        ; -> 0038
+                                shr ax,1        ; umb_tabelle...
+
+                                xchg ax,di
+                                mov di,[umb_tabelle+di]
+                                xchg ax,di
+
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+pause_im_debug_modus:
+                                cmp b [debug_modus],'1'
+                                jne pause_im_debug_modus_nicht
+                                push ax,dx
+                                  taste
+                                pop dx,ax
+pause_im_debug_modus_nicht:
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+kopiere_text_solange_nicht_ah:
+                                cld
+kopiere_text_solange_nicht_ah__schleife:
+                                lodsb
+                                cmp al,ah
+                                jz kopiere_text_solange_nicht_ah__ende
+                                cmp al,' '
+                                if b mov al,'.'
+                                stosb
+                                jmp kopiere_text_solange_nicht_ah__schleife
+kopiere_text_solange_nicht_ah__ende:
+                                ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+registeraenderung_emulation:    dw registeraenderung_direkt
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+bios_aufruf__prozedur_registeraenderung:
+                                call [registeraenderung_emulation]
+                                ret
+
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+registeraenderung_direkt:
+                                installiere_tracer
+                                bios_aufruf w [prozedur_registeraenderung]
+                                entferne_tracer
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+registeraenderung__al__and_bl__or_bh:
+                                call bios_aufruf__prozedur_registerlesen
+                                and al,bl
+                                or al,bh
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+registeraenderung_sis471_ami:
+registeraenderung_mx83c30x_ami:
+                                mov al,cl ; Index
+                                call bios_aufruf__prozedur_registerlesen
+                                and al,bl ; And
+                                or al,bh  ; or
+                                mov ah,al
+                                mov al,cl ; Index
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+registeraenderung_sis496_award:
+                                call bios_aufruf__prozedur_registerlesen
+                                and al,bl
+                                or al,bh
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+registeraenderung_sis496_ami:
+                                mov al,cl
+                                call bios_aufruf__prozedur_registerlesen
+                                and ah,bl
+                                or ah,bh
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+registeraenderung_sis5571_ami:
+                                mov dx,cx
+                                call bios_aufruf__prozedur_registerlesen
+                                and ah,bl
+                                or ah,bh
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+registeraenderung_opti_55x_ersatz:
+                                mov al,dl
+                                call bios_aufruf__prozedur_registerlesen
+
+                                and al,bh
+                                or al,bl
+
+                                mov ah,al
+                                mov al,dl
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+registeraenderung_opti_55x_icl:
+                                mov ah,dl
+                                call bios_aufruf__prozedur_registerlesen
+
+                                and al,bh
+                                or al,bl
+
+                                mov ah,dl
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+registeraenderung_opti_55x_award:
+                                mov cl,dl
+                                sub ch,ch
+                                call bios_aufruf__prozedur_registerlesen
+
+                                and al,bh
+                                or al,bl
+                                call bios_aufruf__prozedur_registerschreiben
+
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+; Index=CX
+; Maske=BX
+registeraenderung_gw2000:
+                                installiere_tracer
+
+                                ; ™ffnen
+                                push ax,dx
+                                  mov dx,00cf8
+                                  mov al,080
+                                  out dx,al
+                                pop dx,ax
+
+                                ; nderung
+                                push dx,ax
+                                  mov dx,cx
+                                  in al,dx
+                                  and al,bl
+                                  or al,bh
+                                  out dx,al
+                                pop ax,dx
+
+                                ; Schliessen
+                                push ax,dx
+                                  mov dx,00cf8
+                                  mov al,000
+                                  out dx,al
+                                pop dx,ax
+
+                                entferne_tracer
+
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+; ş nach auáen
+;   Index=CX
+;   Maske=BX
+; ş zum BIOS
+;   Index=DX
+registeraenderung_index_dx_statt_cx:
+
+                                push cx,dx
+                                  mov dx,cx
+                                  call bios_aufruf__prozedur_registerlesen
+                                pop dx,cx
+
+                                and al,bl
+                                or al,bh
+
+                                push cx,dx
+                                  mov dx,cx
+                                  call bios_aufruf__prozedur_registerschreiben
+                                pop dx,cx
+
+                                ret
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+; AX=Index
+; DX=AND-Maske
+; BX=OR-Maske
+registeraenderung_actionnote:
+                                push ax
+                                  call bios_aufruf__prozedur_registerlesen
+                                  and dx,ax
+                                  or dx,bx
+                                pop ax
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+bios_aufruf__prozedur_registerlesen:
+                                installiere_tracer
+                                bios_aufruf w [prozedur_registerlesen]
+                                entferne_tracer
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+bios_aufruf__prozedur_registerschreiben:
+                                installiere_tracer
+                                bios_aufruf w [prozedur_registerschreiben]
+                                entferne_tracer
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+rol_bl_bh__dl:
+                                push cx
+                                  mov cx,dx
+                                  rol bh,cl
+                                  rol bl,cl
+                                pop cx
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+include 82430tx.a86             ; AWARD,AMI
+
+include actio650.a86            ; SystemSoft
+
+include ali14xx.a86             ; AWARD
+include ali148x.a86             ; AWARD
+include ali154x.a86             ; AWARD
+
+;include amdk7.a86
+
+include chipstec.a86            ; Chips & Technologies
+
+include mx83c30.a86             ; AMI,AWARD
+
+include opti283.a86             ; AMI
+include opti495.a86             ; AMI
+include opti55x.a86             ; AWARD,(Phoenix,AMI),ICL
+include opti596.a86             ; AWARD
+
+include sis461.a86              ; AMI
+include sis471.a86              ; AMI,AWARD
+include sis486.a86              ; AWARD
+include sis496.a86              ; AMI,AWARD
+include sis501.a86              ; AWARD
+include sis551x.a86             ; AWARD
+include sis5571.a86             ; AMI,AWARD
+
+include umc480.a86              ; AMI
+include umc491.a86              ; AMI,AWARD
+include umc498.a86              ; AWARD
+include umc88x.a86              ; AWARD
+include umc89x.a86              ; AWARD
+
+include unichip.a86             ; AMI
+
+;include via580.a86             ; AWARD
+include vlsi.a86
+
+
+include axxflash.a86
+
+
+include bios_her.a86
+include rom.a86
+include suche.a86
+include text.a86
+include signatur.a86
+include debug.a86
+include wbinvd.a86
+include chip.a86
+include int06.a86
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+
+titel:                          db 'URAM * Shadow-ROM->RAM * Veit Kannegieser * 1997.08.21..'
+                                include datum.a86
+                                db 00d,00a,'$'
+
+text_anf_zeilenumbruch:         db '"',00d,00a,'$'
+
+biosherstellername:             db '???$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+                                db '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+                                db '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+
+chipsatzname:                   db '???$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+                                db '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+                                db '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+
+biosdatum:                      db '??/??/??"',00d,00a,'$'
+
+bios_kommentar:                 db '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+                                db '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+
+laenge_chipsatzname_gefordert:  db 0
+chipsatzname_gefordert:         db 80 dup '$'
+
+
+ausschrift_segment_text:        dw '??'
+                                db '00 $'
+
+leerzeichen:                    db ' $'
+
+zeilenumbruch:                  db 00d,00a
+                                db '$'
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+index_basis:                    dw ?
+
+rom_dateiname:                  db 80 dup 0
+
+rom_segment:                    dw 0f000
+
+retf_stelle:                    dw ?
+prozedur_registeraenderung:     dw 00000
+prozedur_registerlesen:         dw 00000
+prozedur_registerschreiben:     dw 00000
+
+
+tabelle_initialisiert:          db 0
+umb_tabelle:
+umb_tabelle_a000:               dw unveraendert
+umb_tabelle_a400:               dw unveraendert
+umb_tabelle_a800:               dw unveraendert
+umb_tabelle_ac00:               dw unveraendert
+umb_tabelle_b000:               dw unveraendert
+umb_tabelle_b400:               dw unveraendert
+umb_tabelle_b800:               dw unveraendert
+umb_tabelle_bc00:               dw unveraendert
+umb_tabelle_c000:               dw unveraendert
+umb_tabelle_c400:               dw unveraendert
+umb_tabelle_c800:               dw unveraendert
+umb_tabelle_cc00:               dw unveraendert
+umb_tabelle_d000:               dw unveraendert
+umb_tabelle_d400:               dw unveraendert
+umb_tabelle_d800:               dw unveraendert
+umb_tabelle_dc00:               dw unveraendert
+umb_tabelle_e000:               dw unveraendert
+umb_tabelle_e400:               dw unveraendert
+umb_tabelle_e800:               dw unveraendert
+umb_tabelle_ec00:               dw unveraendert
+umb_tabelle_f000:               dw unveraendert
+umb_tabelle_f400:               dw unveraendert
+umb_tabelle_f800:               dw unveraendert
+umb_tabelle_fc00:               dw unveraendert
+
+globaler_schreibschutz:         db '0'
+generiere_uram_min:             db '0'
+speicher_soll_initalisiert_werden: db '0'
+debug_modus:                    db '0'
+einzelschrittmodus              db '0'
+device_uram_sys:                db '0'
+stumm:                          db '0'
+
+uram_min_code:
+                                include urammin\urammin.a87
+uram_min_code_laenge            equ $-uram_min_code-2-1
+
+uram_reb_code:
+                                include urammin\uramdat.a87
+uram_reb_code_laenge            equ $-uram_reb_code-2-1
+
+uram_min_wbinvd_min_start:      dw 0
+uram_min_wbinvd_min_ende:       dw 0
+uram_min_puffer_gefuellt:       dw 0
+uram_min_puffer:                ; db 4000 dup ?
+
+;programm_ende:
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+Code                            EndS
+                                End sys_anfang
+

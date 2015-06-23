@@ -1,0 +1,11 @@
+tastaturtreiber
+  - 80+7f - ja. E0 E1...
+  - compiler direktive fr Num-, (E0 bit und scan 53 und shift oder numlock)
+  - unterscheidung alt/altgr
+    alt+X liefert ascii=0 und scancode=scancode
+      fr Buchstaben Umbelegung vornehmen (nur swap!)
+    altgr: alt(.) oder sondertasten(~æÕ@ıü...)ıü{[]}\Õ~|<>>><<###ææ/
+      codepage-abh„ngig?
+      
+  ^~`ï  …ƒ ist zu kompiziert - sind auch nicht alle in 437 vorhanden
+      

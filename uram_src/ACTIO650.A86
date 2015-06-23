@@ -1,0 +1,121 @@
+Title   Epson ActionNote 650
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;  Index portw[$24]
+;  Daten portw[$26]
+;
+;  $0200.15
+;        14
+;        13
+;        12  Lesen F000,64K     F0
+;        11                     EC
+;        10                     E8
+;         9                     E4
+;         8                     E0
+;         7                     DC
+;         6                     D8
+;         5                     D4
+;         4                     D0
+;         3                     CC
+;         2                     C8
+;         1 \ Lesen C000,32K    C4
+;         0 /                   C0
+;
+;  $0207.15
+;        14
+;        13
+;        12 Schreiben (F000,64K)
+;        11
+;        10
+;         9
+;         8
+;         7
+;         6
+;         5
+;         4
+;         3
+;         2
+;         1
+;         0
+;
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_actionnote                macro
+                                  mov di,#1
+                                  mov bx,#2
+                                  call setze_actionnote_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_actionnote_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_actionnote_prozedur_fertig
+
+                                call ausschrift_segment
+
+                                mov dx,0ffff
+                                sub dx,bx
+
+                                ; Lesen ...
+                                push ax,bx,dx
+                                  and ah,001
+                                  cmp ah,001
+                                  if ne sub bx,bx ; Lesebits l봲chen
+                                  mov ax,00200
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop dx,bx,ax
+
+                                ; Schreiben ...
+                                push ax,bx,dx
+                                  and ah,002
+                                  cmp ah,002
+                                  if ne sub bx,bx ; Schreibbits l봲chen
+                                  mov ax,00207
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop dx,bx,ax
+
+
+setze_actionnote_prozedur_fertig:
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_epson_actionnote650:
+                                ausschrift_xxxx_aehnliches_bios text_variante_epson_actionnote650
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+6+1]
+                                add ax,di
+                                add ax,6+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+22+1]
+                                add ax,di
+                                add ax,22+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_actionnote
+
+
+                                setze_actionnote 'C0',Bit0
+                                setze_actionnote 'C4',Bit1
+                                setze_actionnote 'C8',Bit2
+                                setze_actionnote 'CC',Bit3
+
+                                setze_actionnote 'D0',Bit4
+                                setze_actionnote 'D4',Bit5
+                                setze_actionnote 'D8',Bit6
+                                setze_actionnote 'DC',Bit7
+
+                                setze_actionnote 'E0',Bit8
+                                setze_actionnote 'E4',Bit9
+                                setze_actionnote 'E8',Bit10
+                                setze_actionnote 'EC',Bit11
+
+                                setze_actionnote 'F0',Bit12
+
+
+                                jmp initialisieren
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

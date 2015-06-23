@@ -1,0 +1,4 @@
+mov ax,04f57
+int 015
+mov ax,04c00
+int 021

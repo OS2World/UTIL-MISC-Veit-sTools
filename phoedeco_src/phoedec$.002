@@ -1,0 +1,14 @@
+(* nicht editieren! *)
+var
+  sprach_start:longint;
+  textz_hilfe  :^string;
+  textz_datei_ist_zu_gross  :^string;
+  textz_kopfzeile  :^string;
+  textz_Anker_nicht_gefunden  :^string;
+  textz_unbekanntes_verfahren  :^string;
+  textz_kettenfehler  :^string;
+  textz_entpackfehler  :^string;
+  textz_versuchen  :^string;
+  textz_no_header  :^string;
+  textz_remaining_unprocessed  :^string;
+  textz_ist_vermutlich_kein_komprimiertes_phoenix_bios  :^string;

@@ -1,0 +1,100 @@
+importiere_scopy:
+                        mov al,es:[00013] ; Kommentarl„nge
+                        add al,020
+                        null ah
+
+                        mov dx,[datei_start_l]
+                        mov cx,[datei_start_h]
+                        add dx,ax
+                        adc cx,0
+		        call seek
+
+                        call kopiere_ins_xms_zaehler_nullen
+                        call sauberen_kopf_einrichten
+
+                        mov al,es:[0000a] ; Sekt/Spur
+                        mov bl,es:[0000c] ; Spuren * Koepfe
+                        mov cl,es:[0000e] ; Koepfe
+
+                        cmp cl,2
+                        if z shr bl,1     ; /2
+
+                        mov b [sekt_spur],al
+                        mov b [koepfe],cl
+                        mov b [spuren],bl
+                        mul bl
+                        null ch
+                        mul cx
+                        mov w [sektoren],ax
+
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+                        mov w [quell_h],0
+                        mov w [quell_o],hd_copy_entschluesselt
+                        mov w [quell_s],cs
+                        mov w [ziel_h],[xms_handhabe]
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+
+                        call datei_einlesen_512
+                        mov si,0
+
+
+;***************************************************************************
+blockschleife_scopy:
+                        mov cl,[sekt_spur]
+                        null ch
+                        push cx
+                          mov di,diskdupe_pack
+scopy_lade_tabelle_schleife:
+                          call lies_hd_copy_zeichen
+                          cmp ah,1 ; Dateiende
+                          if z jmp scopy_dateiende
+                          stosb
+                          loop scopy_lade_tabelle_schleife
+                        pop cx
+
+                        mov bx,diskdupe_pack
+;***************************************************************************
+scopy_sektor_schleife:
+                        push cx
+                          cmp b ds:[bx],0
+                          jz scopy_kopiere_512
+
+                          ; 1 Zeichen
+                          call lies_hd_copy_zeichen
+                          mov cx,512
+                          mov di,hd_copy_entschluesselt
+scopy_zeichen_512fach:
+                          call schreibe_hd_copy_zeichen
+                          loop scopy_zeichen_512fach
+                          jmp short scopy_sektor_schleife_loop
+
+;***************************************************************************
+scopy_kopiere_512:
+                          mov cx,512
+                          mov di,hd_copy_entschluesselt
+scopy_kopiere_einzel_schleife:
+                          call lies_hd_copy_zeichen
+                          call schreibe_hd_copy_zeichen
+                          loop scopy_kopiere_einzel_schleife
+
+;***************************************************************************
+
+scopy_sektor_schleife_loop:
+                        pop cx
+                        inc bx
+                        loop scopy_sektor_schleife
+;***************************************************************************
+                        jmp blockschleife_scopy
+;***************************************************************************
+scopy_dateiende:
+
+                        pop cx
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+                        ret

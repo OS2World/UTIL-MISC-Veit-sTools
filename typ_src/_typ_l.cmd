@@ -1,0 +1,2 @@
+@ECHO OFF
+FOR %%D IN (K:\TYP\*.*) DO DEL %%D

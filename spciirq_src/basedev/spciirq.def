@@ -1,0 +1,7 @@
+Library SPciIrq
+Protmode
+Stub None
+Segments
+  DATA ReadWrite   Shared Single Alias
+  CODE ExecuteOnly Shared        Alias
+Description '@#V.K:2006.10.22#@Set PCI IRQ'

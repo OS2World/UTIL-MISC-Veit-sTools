@@ -1,0 +1,9 @@
+Name REXX_VIO WindowAPI
+Imports
+  Dos32QueryResourceSize = DOSCALLS.572
+  Dos32GetResource       = DOSCALLS.352
+  Dos32FreeResource      = DOSCALLS.353
+  Dos32FreeMem           = DOSCALLS.304
+  Dos32Write             = DOSCALLS.282
+  RexxStart              = REXX.1
+Description '@#V.K:2006.04.10#@PM EXE REXX code wrapper'

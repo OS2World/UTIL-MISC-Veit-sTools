@@ -1,0 +1,3 @@
+I have translated it, but I am in doubt. Do we really need cyrillic input?
+If CSM does not allow keyboard switching (other then AltGr), then
+tast_ru2.txt (with cyrillic on AltGr layer) will be more useful.

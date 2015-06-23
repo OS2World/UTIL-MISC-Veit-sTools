@@ -1,0 +1,33 @@
+(* nicht editieren! *)
+procedure sprach_modul;assembler;(*&FRAME-*) (*&USES NONE*) (*$S-*)
+  asm
+    db   7,'<SPRA2>'
+    db   4,'ENDE'
+    dw  11
+    db  63,'usage: PHOEDECO <flash rom file> [ <target directory> [/Y|/N]'
+    db     ' ]'
+    db  68,'Benutzung: PHOEDECO <BIOS-Abbilddatei> [ <Zielverzeichnis> [/'
+    db     'J|/N] ]'
+    db  20,'The file ist to big!'
+    db  22,'Die Datei ist zu groá!'
+    db  63,'Position packed   C  unpacked type         target      filena'
+    db     'me'
+    db  64,'Position gepackt  K. entpackt Typ          Ziel        Datein'
+    db     'ame'
+    db  17,'Anchor not found!'
+    db  21,'Anker nicht gefunden!'
+    db  22,'Please contact author!'
+    db  21,'Bitte mir zuschicken!'
+    db  37,'Found an error in modules chain list!'
+    db  48,'Es ist ein Fehler in der Modulkette aufgetreten!'
+    db  27,'Error during decompression!'
+    db  22,'Fehler beim Entpacken!'
+    db  11,'Try (y/n)? '
+    db  17,'Versuchen (j/n)? '
+    db   9,'no header'
+    db   9,'kein Kopf'
+    db  21,'remaining unprocessed'
+    db  21,'Rest unbearbeitet    '
+    db  48,'Source is likely not an compressed Phoenix BIOS.'
+    db  54,'Die Quelle ist vermutlich kein gepacktes Phoenix-BIOS.'
+  end;

@@ -1,0 +1,95 @@
+Title   SiS 461: ISA
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_sis461                    macro
+                                  mov di,#1 ; Segment
+                                  mov bh,#2 ; Bit
+                                  call setze_sis461_prozedur
+                                #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_sis461_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_sis461_prozedur_fertig
+
+                                call ausschrift_segment
+
+
+                                mov bl,0ff
+                                sub bl,bh
+
+                                mov al,ah
+                                and ax,0201
+
+                                cmp al,001              ; Lesen
+                                if ne mov bh,0          ; Lesebit l”schen
+
+                                cmp al,001              ; Lesen
+                                if e or bh,Bit7         ; "Shadow RAM Read Enable"
+
+                                cmp ah,002              ; Schreiben .. global
+                                if e sub bl,Bit6        ; Schreibschutz=Bit6
+
+                                mov al,052              ; Index
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_sis461_prozedur_fertig:
+                                ret
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+variante_sis461:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis461
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+03+1]
+                                add ax,di
+                                add ax,03+3 ; 3 + call
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+0c+1]
+                                add ax,di
+                                add ax,0c+3 ; 12 + call
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_sis461_ami
+
+
+                                setze_sis461 'C0',Bit0
+                                setze_sis461 'C8',Bit1
+                                setze_sis461 'D0',Bit2
+                                setze_sis461 'D8',Bit3
+                                setze_sis461 'E0',Bit4
+                                setze_sis461 'E8',Bit5
+
+                                mov al,052
+                                mov bh,Bit6
+                                mov bl,0ff-Bit6
+                                cmp b [globaler_schreibschutz],'1'
+                                if e call bios_aufruf__prozedur_registeraenderung
+
+                                jmp initialisieren
+
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+; AL=Index
+;
+aenderung_sis461_ami:
+                                push cx
+                                  push ax
+                                    call bios_aufruf__prozedur_registerlesen
+
+                                    and al,bl
+                                    or al,bh
+
+                                    mov ah,al
+                                  pop cx
+                                  mov al,cl              ; Index
+                                  call bios_aufruf__prozedur_registerschreiben
+                                pop cx
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

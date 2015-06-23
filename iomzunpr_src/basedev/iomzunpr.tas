@@ -1,0 +1,1334 @@
+Title   automatic 'unprotect until eject' for IOMEGA ZIP 100 and similar
+
+; Veit Kannegieser 2004.08.09
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        .386p
+
+                        include datum.inc
+                        include mac1.inc
+                        include ibm\devclass.inc
+                        include ibm\devcmd.inc
+                        include ibm\devhdr.inc
+                        include ibm\devhlp.inc
+                        include ibm\iorb.inc
+                        include mac1.inc
+                        include req.inc
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+data                    Segment 'DATA' use16
+                        assume cs:code
+                        assume ds:data
+                        dd -1
+                        dw DEV_CHAR_DEV+DEVLEV_3
+                        dw Offset strategy
+                        dw 0
+                        db 'I$Z$UNP$'
+                        dw 4 dup (0)
+                        dd DEV_16MB+DEV_ADAPTER_DD+DEV_IOCTL2
+
+Device_Help             dd 0
+
+ds_phys                 dd 0
+
+my_add_handle           dw 0
+                        Public Device_Help, ds_phys, my_add_handle
+
+sg1                     Struc
+  sg_ppXferBuf          dd 0                    ; physical addr
+  sg_Xfer_BufLen        dd 0                    ; length
+sg1                     EndS
+
+call_slot               Struc
+  call_slot_entry_used  dw 0                    ; 0/1
+  org_RequestControl    dw 0                    ; maybe without IORB_ASYNC_POST
+  org_NotifyAddress     dd 0                    ; our callers callback addr
+  IORB_addr             dd 0                    ; key: IORB
+  my_unithandle         dw 0                    ; unithandle/ofs filter_data
+call_slot               EndS
+
+filter_data             Struc
+  in_use                dw 0                    ; 0/1
+  org_iorb_handler      dd 0                    ; ADD/FLT DD entrypoint
+  org_unithandle        dw 0                    ; for ADD/FLT
+  delayed_iorb          dd 0                    ; packet delayed while unlocking
+
+  sg                    sg1 <>                  ; scatter-gather list, 1 element for transfer_buffer
+  command               db 6 dup (0)            ; for iorb_passthru
+  iorb_passthru         IORB_ADAPTER_PASSTHRU <>; send/read passthru commands
+  transfer_buffer       dw 0100h dup (0)        ; iorb_passthru buffer
+
+  default_password_len  db 0                    ; try to use this password
+  default_password      db 020h dup (0)         ; for unprotect
+
+  adapterunitinfo_copy  ADAPTERINFO <>          ; when asked for adapter/unit tables
+filter_data             EndS
+
+call_slot_table_begin   label call_slot
+                        db (64*Size call_slot) dup (0)
+call_slot_table_end     label call_slot
+                        public call_slot_table_begin,call_slot_table_end
+
+num_filtered_devices    dw 0
+max_filtered_devices    equ 8
+filter_data_table       filter_data <>          ; 1
+                        filter_data <>          ; 2
+                        filter_data <>          ; 3
+                        filter_data <>          ; 4
+                        filter_data <>          ; 5
+                        filter_data <>          ; 6
+                        filter_data <>          ; 7
+                        filter_data <>          ; 8
+
+                        public num_filtered_devices,filter_data_table
+
+init_done               db false
+                        public init_done
+
+end_resident_data       label byte
+                        include resmgrd.inc
+                        include resmgrdi.inc
+
+dd_request_handler      dd 0
+                        public dd_request_handler
+
+RB_Configuration        IORB_CONFIGURATION <>
+                        public RB_Configuration
+
+ClassTableDisk          dd 0
+                        public ClassTableDisk
+
+InitDeviceTableLen      equ 1*(Size DEVICETABLE)+8*(Size ADAPTERINFO)+32*(Size UNITINFO)
+InitDeviceTable         db InitDeviceTableLen dup (0)
+                        public InitDeviceTable
+current_adpaterinfo     dw 0
+                        public current_adpaterinfo
+
+RB_UnitControl          IORB_UNIT_CONTROL <>
+                        public RB_UnitControl
+
+                        ;  '1234567890123456'
+Add_Name                db 'Z100 UNPROTECT',0,0
+                        public Add_Name
+
+protectstatus_password                  equ 001h
+protectstatus_noread                    equ 002h
+protectstatus_nowrite                   equ 004h
+protectstatus_unprotected_until_eject   equ 008h
+
+data                    EndS
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+code                    Segment 'CODE' use16
+                        assume cs:code
+                        assume ds:data
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  DeviceClassEntrypoint
+                        push bp
+                        mov bp,sp
+                        push eax
+                        push bx
+                        push dx
+                        push si
+                        push di
+                        push ds
+                        push es
+
+                          les bx,ss:[bp+2+4]
+                          mov es:[bx].IOH_Status,0
+                          mov es:[bx].IOH_ErrorCode,0
+
+                          mov si,data
+                          mov ds,si
+
+                          ; can not handle chained commands reliable.
+                          ; reject all parts of the chain.
+                          test es:[bx].IOH_RequestControl,IORB_CHAIN
+                          jz not_chained_command
+
+  reject_chain_loop:
+                          mov es:[bx].IOH_Status,IORB_ERROR+IORB_DONE
+                          mov es:[bx].IOH_ErrorCode,IOERR_CMD_ADD_SOFTWARE_FAILURE
+                          test es:[bx].IOH_RequestControl,IORB_CHAIN
+                          jz exit_DeviceClassEntrypoint_callback
+                          les bx,es:[bx].IOH_pNxtIORB
+                          jmp reject_chain_loop
+  not_chained_command:
+                          ; the IOCC_CONFIGURATION is per driver, not per unit.
+                          ; the filter has to handle it itself
+
+                          cmp es:[bx].IOH_CommandCode,IOCC_CONFIGURATION
+                          jne not_IOCC_CONFIGURATION
+
+                          ;------------------------------------------
+                          ; create an device table with all filtered devices.
+                          cmp es:[bx].IOH_CommandModifier,IOCM_GET_DEVICE_TABLE
+                          jne not_IOCM_GET_DEVICE_TABLE
+
+                          mov ax,Size adapterunitinfo_copy+2
+                          mul num_filtered_devices
+                          add ax,Size DEVICETABLE
+
+                          cmp es:[bx].IOCFG_DeviceTableLen,ax
+                          jb fail_IOCM_GET_DEVICE_TABLE
+
+                          pusha
+                          push es
+                            les bx,es:[bx].IOCFG_pDeviceTable
+                            mov es:[bx].IODT_ADDLevelMajor,ADD_LEVEL_MAJOR
+                            mov es:[bx].IODT_ADDLevelMinor,ADD_LEVEL_MINOR
+                            mov ax,my_add_handle
+                            mov es:[bx].IODT_ADDHandle,ax
+                            mov ax,num_filtered_devices
+                            mov es:[bx].IODT_TotalAdapters,ax
+                            lea bx,[bx].IODT_pAdapter
+                            mov di,bx           ; room for pointers
+                            add di,ax
+                            add di,ax
+
+                            mov si,Offset filter_data_table
+
+                            ; es:bx=@pointer array
+                            ; es:di=@adapter info array
+                            ; ds:si=@filter_data array
+                            ; ax=num entries
+  copy_all_virtual_adapter_unit_info:
+                            mov Word Ptr es:[bx],di
+                            add bx,2
+
+                            push si
+                              add si,Offset adapterunitinfo_copy
+                              mov cx,Size adapterunitinfo_copy
+                              cld
+                              rep movsb
+                            pop si
+                            add si,Size filter_data
+                            dec ax
+                            jnz copy_all_virtual_adapter_unit_info
+
+                          pop es
+                          popa
+
+                          mov es:[bx].IOH_Status,IORB_DONE
+                          mov es:[bx].IOH_ErrorCode,0
+                          jmp exit_DeviceClassEntrypoint_callback
+
+    fail_IOCM_GET_DEVICE_TABLE:
+                          mov es:[bx].IOH_Status,IORB_DONE+IORB_ERROR
+                          mov es:[bx].IOH_ErrorCode,IOERR_CMD_SYNTAX
+                          jmp exit_DeviceClassEntrypoint_callback
+    not_IOCM_GET_DEVICE_TABLE:
+                          ;------------------------------------------
+
+                          ;------------------------------------------
+                          ; since we do not touch hardware, this call does not do anything for us.
+                          cmp es:[bx].IOH_CommandModifier,IOCM_COMPLETE_INIT
+                          jne not_IOCM_COMPLETE_INIT
+
+                          mov es:[bx].IOH_Status,IORB_DONE
+                          mov es:[bx].IOH_ErrorCode,0
+                          jmp exit_DeviceClassEntrypoint_callback
+  not_IOCM_COMPLETE_INIT:
+                          ;------------------------------------------
+
+                          ;------------------------------------------
+                          ; other, unknown IOCC_CONFIGURATION subcommands
+                          mov es:[bx].IOH_Status,IORB_DONE+IORB_ERROR
+                          mov es:[bx].IOH_ErrorCode,IOERR_CMD_NOT_SUPPORTED
+                          jmp exit_DeviceClassEntrypoint_callback
+  not_IOCC_CONFIGURATION:
+                          ;------------------------------------------
+
+                          ;------------------------------------------
+                          ; other calls are per unit,
+                          ; UnitHandle must be valid.
+                          call ValidateUnitHandle
+
+                          ; have ds:si
+                          call allocate_IORB_call_slot
+                          jnz allocate_IORB_call_slot_success
+
+                          ; not slot available
+                          ; DM may try again later
+                          mov es:[bx].IOH_Status,IORB_DONE+IORB_ERROR
+                          mov es:[bx].IOH_ErrorCode,IOERR_CMD_SW_RESOURCE
+                          jmp exit_DeviceClassEntrypoint_callback
+
+  allocate_IORB_call_slot_success:
+                          cmp es:[bx].IOH_CommandCode,IOCC_DEVICE_CONTROL
+                          jne pass_iorb
+                          cmp es:[bx].IOH_CommandModifier,IOCM_LOCK_MEDIA
+                          jne pass_iorb
+                         ;test es:[bx].IOH_RequestControl,IORB_CHAIN
+                         ;jnz pass_iorb
+
+                          lock bts [si].in_use,0
+                          jc pass_iorb
+
+                          ; remember LOCK_MEDIA packet - we delay it.
+                          mov [si].delayed_iorb._OFF,bx
+                          mov [si].delayed_iorb._SEG,es
+
+                          ; get protect state
+                          call setup_passthru_iorb
+
+                          mov [di].IOH_NotifyAddress._OFF,Offset callback_get_protect_status
+                          mov [di].IOH_NotifyAddress._SEG,cs
+                          mov [si].sg.sg_Xfer_BufLen,01eh
+                          mov [di].IOPT_Flags,PT_DIRECTION_IN
+                          mov Byte Ptr [si.command+0],006h
+                          mov Byte Ptr [si.command+1],000h
+                          mov Byte Ptr [si.command+2],002h
+                          mov Byte Ptr [si.command+3],000h
+                          mov Byte Ptr [si.command+4],01eh
+                          mov Byte Ptr [si.command+5],000h
+
+                          push ds
+                          push di
+                          call [si].org_iorb_handler
+                          add sp,2+2
+                          jmp exit_DeviceClassEntrypoint
+
+  pass_iorb:
+                          push es
+                          push bx
+                          call [si].org_iorb_handler
+                          add sp,2+2
+                          jmp exit_DeviceClassEntrypoint
+
+  exit_DeviceClassEntrypoint_callback:
+                          les bx,ss:[bp+2+4]
+                          call do_notify
+
+  exit_DeviceClassEntrypoint:
+                        pop es
+                        pop ds
+                        pop di
+                        pop si
+                        pop dx
+                        pop bx
+                        pop eax
+                        leave
+                        retf
+a_endp                  DeviceClassEntrypoint
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        ; es:bx=(first) IORB (of chain)
+a_proc                  do_notify
+                        pushad
+
+  do_notify_loop:
+                          test es:[bx].IOH_RequestControl,IORB_ASYNC_POST
+                          jz do_notify_skip
+
+                          ; notify...
+                          push es
+                          push bx
+
+                            push es
+                            push bx
+                            call es:[bx].IOH_NotifyAddress
+                            add sp,2+2
+
+                          pop bx
+                          pop es
+
+  do_notify_skip:
+                          test es:[bx].IOH_RequestControl,IORB_CHAIN
+                          jz do_notify_done
+
+                          les bx,es:[bx].IOH_pNxtIORB
+                          jmp do_notify_loop
+  do_notify_done:
+                        popad
+                        ret
+a_endp                  do_notify
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        ; es:bx=IORB
+                        ; ds:si=@filter_data/unithandle
+                        ; ->ds:di , ZF=1:out of resource
+a_proc                  allocate_IORB_call_slot
+                        push eax
+                          mov di,Offset call_slot_table_begin
+  loop_allocate_IORB_call_slot:
+                          cmp [di].call_slot_entry_used,0
+                          jne next_allocate_IORB_call_slot
+                          lock bts [di].call_slot_entry_used,0
+                          jc next_allocate_IORB_call_slot
+
+                          ; cave call slot, fill it and
+                          ; redirect the callback to our procedure
+                          mov ax,es:[bx].IOH_RequestControl
+                          mov [di].org_RequestControl,ax
+                          or  es:[bx].IOH_RequestControl,IORB_ASYNC_POST
+
+                          mov eax,es:[bx].IOH_NotifyAddress
+                          mov [di].org_NotifyAddress,eax
+                          mov es:[bx].IOH_NotifyAddress._OFF,Offset NotifyBackwarder
+                          mov es:[bx].IOH_NotifyAddress._SEG,cs
+
+                          mov [di].IORB_addr._OFF,bx
+                          mov [di].IORB_addr._SEG,es
+
+                          mov [di].my_unithandle,si
+                          mov ax,[si].org_unithandle
+                          mov es:[bx].IOH_UnitHandle,ax
+
+                          sub ax,ax
+                          mov es:[bx].IOH_Status,ax
+                          mov es:[bx].IOH_ErrorCode,ax
+                          jmp exit_allocate_IORB_call_slot
+
+  next_allocate_IORB_call_slot:
+                          add di,Size call_slot
+                          cmp di,Offset call_slot_table_end
+                          jne loop_allocate_IORB_call_slot
+
+  exit_allocate_IORB_call_slot:
+                          cmp di,Offset call_slot_table_end
+
+                        pop eax
+                        ret
+a_endp                  allocate_IORB_call_slot
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; search request packet es:bx
+                        ; undo packet changes
+                        ; free slot
+a_proc                  undo_IORB_call_slot
+                        push eax
+                          mov ax,es
+                          shl eax,16
+                          mov ax,bx
+                          mov di,Offset call_slot_table_begin
+  loop_undo_IORB_call_slot:
+                          cmp [di].call_slot_entry_used,0
+                          je next_undo_IORB_call_slot
+                          cmp [di].IORB_addr,eax
+                          jne next_undo_IORB_call_slot
+
+                          mov eax,[di].org_NotifyAddress
+                          mov es:[bx].IOH_NotifyAddress,eax
+
+                          mov ax,[di].org_RequestControl
+                          mov es:[bx].IOH_RequestControl,ax
+
+                          mov ax,[di].my_unithandle
+                          mov es:[bx].IOH_UnitHandle,ax
+
+                          sub eax,eax
+                          mov [di].my_unithandle,ax
+                          mov [di].IORB_addr,eax
+                          mov [di].org_NotifyAddress,eax
+                          mov [di].org_RequestControl,ax
+                          mov [di].call_slot_entry_used,ax      ; last!
+                          jmp exit_undo_IORB_call_slot
+
+  next_undo_IORB_call_slot:
+                          add di,Size call_slot
+                          cmp di,Offset call_slot_table_end
+                          jne loop_undo_IORB_call_slot
+
+                          TRAP                  ; not found
+
+  exit_undo_IORB_call_slot:
+                        pop eax
+                        ret
+a_endp                  undo_IORB_call_slot
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  NotifyBackwarder
+                        push bp
+                        mov bp,sp
+                        pusha
+                        push ds
+                        push es
+
+                          les bx,ss:[bp+2+4]
+
+                          mov ax,data
+                          mov ds,ax
+
+                          call undo_IORB_call_slot
+
+                          call do_notify
+
+                        pop es
+                        pop ds
+                        popa
+                        leave
+                        retf
+a_endp                  NotifyBackwarder
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; es:bx=@IORB
+                        ; ->TRAP
+                        ; ->si=filter_data
+a_proc                  ValidateUnitHandle
+                        push ax
+                        push bx
+                        push dx
+
+                          mov si,es:[bx].IOH_UnitHandle
+                          mov ax,si
+                          sub ax,Offset filter_data_table
+                          if_c <TRAP>
+
+                          cwd
+                          mov bx,Size filter_data
+                          div bx
+
+                          test dx,dx
+                          if_nz <TRAP>
+
+                          cmp ax,num_filtered_devices
+                          if_ae <TRAP>
+
+                        pop dx
+                        pop bx
+                        pop ax
+                        ret
+a_endp                  ValidateUnitHandle
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; ds:si=filter_data
+                        ; ->ds:di=prepared IORB
+a_proc                  setup_passthru_iorb
+                        push eax
+                          lea di,[si].iorb_passthru
+                          mov [di].IOH_Length,Size iorb_passthru
+                          call clear_IORB
+                          mov ax,[si].org_unithandle
+                          mov [di].IOH_UnitHandle,ax
+                          mov [di].IOH_CommandCode,IOCC_ADAPTER_PASSTHRU
+                          mov [di].IOH_CommandModifier,IOCM_EXECUTE_CDB
+                          mov [di].IOH_RequestControl,IORB_ASYNC_POST
+                         ;mov [di].IOH_Status,0
+                         ;mov [di].IOH_ErrorCode,0
+                         ;mov [di].IOH_Timeout,0
+                         ;mov [di].IOH_StatusBlockLen,0
+                         ;mov [di].IOH_pStatusBlock,0
+                         ;mov [di].IOH_Reserved_1,0
+                         ;mov [di].IOH_pNxtIORB,0
+                          mov [di].IOPT_cSGList,1
+                          lea ax,[si].transfer_buffer
+                          movzx eax,ax
+                          add eax,ds_phys
+                          mov [si].sg.sg_ppXferBuf,eax
+                          mov [si].sg.sg_Xfer_BufLen,0
+                          lea ax,[si].sg
+                          mov [di].IOPT_pSGList._OFF,ax
+                          mov [di].IOPT_pSGList._SEG,ds
+                          movzx eax,ax
+                          add eax,ds_phys
+                          mov [di].IOPT_ppSGLIST,eax
+                          mov [di].IOPT_ControllerCmdLen,6
+                          lea ax,[si].command
+                          mov [di].IOPT_pControllerCmd._OFF,ax
+                          mov [di].IOPT_pControllerCmd._SEG,ds
+                         ;mov [di].IOPT_ppSCB,0
+                        pop eax
+                        ret
+a_endp                  setup_passthru_iorb
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+
+callback_iorb_param     equ ss:[bp+2+4]
+
+                        ; STEP 2:
+                        ; got protect status
+                        ; -> set new protect status
+a_proc                  callback_get_protect_status
+                        push bp
+                        mov bp,sp
+                        push ax
+                        push cx
+                        push si
+                        push di
+                        push ds
+
+                          mov di,data
+                          cmp callback_iorb_param._SEG,di
+                          if_ne <TRAP>
+
+                          lds di,callback_iorb_param
+                          lea si,[di-Offset iorb_passthru]
+                          test [di].IOH_Status,IORB_ERROR
+                          jne callback_get_protect_status_failed
+
+                          mov al,Byte Ptr ds:[si+21].transfer_buffer
+
+                          test al,protectstatus_unprotected_until_eject
+                          jnz protection_inactive
+                          test al,protectstatus_noread+protectstatus_nowrite
+                          jz protection_inactive
+
+                          call setup_passthru_iorb
+
+                         ;and al,not (protectstatus_noread+protectstatus_nowrite)
+                          or  al,protectstatus_unprotected_until_eject
+
+                          mov cx,0
+                          test al,protectstatus_password
+                          jz not_prepare_passed_password
+
+                          mov cl,[si].default_password_len
+                          push es
+                          pusha
+                            push ds
+                            pop es
+                            lea di,[si].transfer_buffer
+                            add si,Offset default_password
+                            cld
+                            rep movsb
+                          popa
+                          pop es
+
+  not_prepare_passed_password:
+
+                          ; al=new protect status
+                          ; cx=number password bytes to transfer
+
+                          mov [di].IOH_NotifyAddress._OFF,Offset callback_set_protect_status
+                          mov [di].IOH_NotifyAddress._SEG,cs
+                          mov Byte Ptr [si].sg.sg_Xfer_BufLen,cl
+                          mov [di].IOPT_Flags,0 ; -PT_DIRECTION_IN
+
+                          mov Byte Ptr [si.command+0],00ch
+                          mov Byte Ptr [si.command+1],al
+                          mov Byte Ptr [si.command+2],000h
+                          mov Byte Ptr [si.command+3],000h
+                          mov Byte Ptr [si.command+4],cl
+                          mov Byte Ptr [si.command+5],000h
+
+                          push ds
+                          push di
+                          call [si].org_iorb_handler
+                          add sp,2+2
+
+
+                          lea di,[si].transfer_buffer
+                          jmp callback_get_protect_status_exit
+
+  callback_get_protect_status_failed:
+  protection_inactive:
+                          call do_org_iorb
+
+  callback_get_protect_status_exit:
+                        pop ds
+                        pop di
+                        pop si
+                        pop cx
+                        pop ax
+                        leave
+                        retf
+a_endp                  callback_get_protect_status
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; STEP 3: have set protect status
+                        ; process delayed IORB.
+a_proc                  callback_set_protect_status
+                        push bp
+                        mov bp,sp
+                        push si
+                        push di
+                        push ds
+
+                          mov di,data
+                          cmp callback_iorb_param._SEG,di
+                          if_ne <TRAP>
+
+                          lds di,callback_iorb_param
+                          lea si,[di-Offset iorb_passthru]
+
+                          ; beep??<<
+
+                          call do_org_iorb
+                        pop ds
+                        pop di
+                        pop si
+                        leave
+                        retf
+a_endp                  callback_set_protect_status
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        ; ds:si=filter_data
+a_proc                  do_org_iorb
+                        push [si].delayed_iorb
+                        call [si].org_iorb_handler
+                        add sp,2+2
+                        mov [si].in_use,0
+                        ret
+a_endp                  do_org_iorb
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+comment $
+                        ; es:bx=IORB that came back from original ADD
+                        ; -> si=@filter_data
+a_proc                  ValidateOrgUnitHandle
+                        push ax
+                        push cx
+                          mov ax,es:[bx].IOH_UnitHandle
+                          mov si,Offset filter_data_table
+                          mov cx,num_filtered_devices
+                          jcxz error_ValidateOrgUnitHandle
+  loop_ValidateOrgUnitHandle:
+                          cmp [si].delayed_iorb._OFF,bx
+                          jne next_ValidateOrgUnitHandle
+                          cmp [si].delayed_iorb._SEG,es
+                          jne next_ValidateOrgUnitHandle
+                          cmp [si].org_unithandle,ax
+                          je exit_ValidateOrgUnitHandle
+
+  next_ValidateOrgUnitHandle:
+                          add si,Size filter_data
+                          loop loop_ValidateOrgUnitHandle
+  error_ValidateOrgUnitHandle:
+                          TRAP                  ; not found!
+  exit_ValidateOrgUnitHandle:
+                        pop cx
+                        pop ax
+                        ret
+a_endp                  ValidateOrgUnitHandle
+end comment $
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  strategy
+                        push eax
+
+                        mov ax,08103h
+
+                        ;--------------------------------------------
+                        cmp es:[bx].Command_Code,CMDInitBase
+                        jne not_CMDInitBase
+
+                        call InitFilter
+                        mov init_done,true
+                        jmp strategy_exit
+  not_CMDInitBase:
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        cmp es:[bx].Command_Code,CMDGenIOCTL
+                        jne not_CMDGenIOCTL
+
+                        call do_CMDGenIOCTL
+                       ;jmp strategy_exit
+  not_CMDGenIOCTL:
+                        ;--------------------------------------------
+
+  strategy_exit:
+                        mov es:[bx].RequestBlock.Request_Packet_Status,ax
+                        pop eax
+                        retf
+a_endp                  strategy
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  do_CMDGenIOCTL
+                        push cx
+                        push si
+                        push di
+                        push bp
+                        push fs
+
+                          cmp es:[bx].RGI_Function_Category,080h
+                          jne not_Function_Category_80
+
+                          ;------------------------------------------
+                          ; Function 80/00: set default password
+                          cmp es:[bx].RGI_Function_Code,000h
+                          jne not_IOCTL_80_00
+
+                          mov cx,2      ; unit[1]/length[1]
+                          lea si,[bx].RGI_Parameter_Buffer
+                          call verify_pointer
+                          jc exit_CMDGenIOCTL_invalid_parameter
+
+                          lfs bp,es:[bx].RGI_Parameter_Buffer
+
+                          movzx cx,Byte Ptr fs:[bp+1]
+                          cmp cx,020h
+                          ja exit_CMDGenIOCTL_invalid_parameter
+
+                          lea si,[bx].RGI_Data_Buffer
+                          call verify_pointer
+                          jc exit_CMDGenIOCTL_invalid_parameter
+
+                          movzx cx,Byte Ptr fs:[bp+0]
+                          cmp cx,num_filtered_devices
+                          jae exit_CMDGenIOCTL_invalid_parameter
+
+                          call get_entry_in_filter_table
+
+                          push ds
+                          push es
+                          pushad
+
+                            lea di,[si].default_password_len
+                            push ds
+                              lds si,es:[bx].RGI_Data_Buffer
+                            pop es
+                            movzx cx,Byte Ptr fs:[bp+1]
+                            mov dx,020h
+                            sub dx,cx
+                            cld
+
+                            mov ax,cx
+                            stosb               ; default_password_len
+
+                            rep movsb           ; default_password
+
+                            mov al,0            ; clear all other info
+                            mov cx,dx
+                            rep stosb
+
+                          popad
+                          pop es
+                          pop ds
+                          mov ax,00100h         ; done, no error
+                          jmp exit_CMDGenIOCTL
+
+  exit_CMDGenIOCTL_invalid_parameter:
+                          mov ax,08113h         ; error,done,invalid parameter
+                          jmp exit_CMDGenIOCTL
+  not_IOCTL_80_00:
+                          ;------------------------------------------
+
+                          ;------------------------------------------
+                          ; Function 80/10: call CDB passthru function
+                          cmp es:[bx].RGI_Function_Code,010h
+                          jne not_IOCTL_80_10
+
+                          mov cx,10      ; unit[1]/length[2]/direction[1]/command[6]
+                          lea si,[bx].RGI_Parameter_Buffer
+                          call verify_pointer
+                          jc exit_CMDGenIOCTL_invalid_parameter
+
+                          lfs bp,es:[bx].RGI_Parameter_Buffer
+
+                          test Byte Ptr fs:[bp+3],not PT_DIRECTION_IN
+                          jnz exit_CMDGenIOCTL_invalid_parameter
+
+                          mov cx,Word Ptr fs:[bp+1]
+                          cmp cx,0100h
+                          ja exit_CMDGenIOCTL_invalid_parameter
+
+                          lea si,[bx].RGI_Data_Buffer
+                          call verify_pointer
+                          jc exit_CMDGenIOCTL_invalid_parameter
+
+                          movzx cx,Byte Ptr fs:[bp+0]
+                          cmp cx,num_filtered_devices
+                          jae exit_CMDGenIOCTL_invalid_parameter
+
+                          call get_entry_in_filter_table
+
+                          lock bts ds:[si].in_use,0
+                          mov ax,08114h         ; error,done,device already in use
+                          jc exit_CMDGenIOCTL
+
+                          call setup_passthru_iorb
+
+                          mov ax,Word Ptr fs:[bp+1]
+                          mov Word Ptr [si].sg.sg_Xfer_BufLen,ax
+                          movzx ax,Byte Ptr fs:[bp+3]
+                          mov [di].IOPT_Flags,ax        ; +/- PT_DIRECTION_IN
+
+                          ; copy command [01/23/45]
+                          mov ax,Word Ptr fs:[bp+4+0]
+                          mov Word Ptr [si+0].command,ax
+                          mov ax,Word Ptr fs:[bp+4+2]
+                          mov Word Ptr [si+2].command,ax
+                          mov ax,Word Ptr fs:[bp+4+4]
+                          mov Word Ptr [si+4].command,ax
+
+
+                          ; copy data->fixed buffer
+                          push ds
+                          push es
+                          pusha
+
+                            mov cx,Word Ptr fs:[bp+1]
+                            lea di,[si].transfer_buffer
+                            push ds
+                            lds si,es:[bx].RGI_Data_Buffer
+                            pop es
+
+                            cld
+                            rep movsb
+
+                          popa
+                          pop es
+                          pop ds
+
+                          call call_add_wait
+
+                          ; copy fixed buffer->data
+                          pushf
+                          push es
+                          pusha
+                            add si,Offset transfer_buffer
+                            les di,es:[bx].RGI_Data_Buffer
+                            mov cx,Word Ptr fs:[bp+1]
+                            cld
+                            rep movsb
+                          popa
+                          pop es
+                          popf
+
+                          mov ax,00100h         ; done, no error
+                          jnc exit_IOCTL_80_10
+
+                          mov ax,[di].IOH_ErrorCode
+                          shr ax,8              ; major error category
+                          mov ah,0c1h           ; error,custom error,done
+  exit_IOCTL_80_10:
+                          mov ds:[si].in_use,0
+                          jmp exit_CMDGenIOCTL
+
+  not_IOCTL_80_10:
+                          ;------------------------------------------
+
+  not_Function_Category_80:
+                         ;jmp exit_CMDGenIOCTL
+  exit_CMDGenIOCTL:
+
+                        pop fs
+                        pop bp
+                        pop di
+                        pop si
+                        pop cx
+                        ret
+a_endp                  do_CMDGenIOCTL
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        ; cx
+                        ; -> si
+a_proc                  get_entry_in_filter_table
+                        push ax
+                        push dx
+
+                            mov ax,Size filter_data
+                            mul cx
+                            add ax,Offset filter_data_table
+                            mov si,ax
+
+                        pop dx
+                        pop ax
+                        ret
+a_endp                  get_entry_in_filter_table
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        ; es:si=@pointer
+                        ; cx=bytes
+                        ; ->
+a_proc                  verify_pointer
+                        pusha
+
+                          clc
+                          jcxz verify_pointer_ok
+
+                          mov ax,es:[si]._SEG
+                         ;mov cx,cx
+                          mov di,es:[si]._OFF
+                          mov dh,1              ; read+write (not needed for para?)
+                          mov dl,DevHlp_VerifyAccess
+                          call [Device_Help]
+                          ; -> cf
+  verify_pointer_ok:
+
+                        popa
+                        ret
+a_endp                  verify_pointer
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  clear_IORB
+                        push es
+                        pusha
+                          mov ax,ds
+                          mov es,ax
+                          mov cx,es:[di].IOH_Length
+                          add di,Size IOH_Length
+                          sub cx,Size IOH_Length
+                          cld
+                          mov al,0
+                          rep stosb
+                        popa
+                        pop es
+                        ret
+a_endp                  clear_IORB
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; ds:di
+                        ; CF=1 -> error
+                        ;after init: ds:si=filter_data
+a_proc                  call_add_wait
+                        push es
+                        pushad
+                          mov [di].IOH_RequestControl,IORB_ASYNC_POST
+                         ;mov [di].IOH_Status,0
+                         ;mov [di].IOH_ErrorCode,0
+                         ;mov [di].IOH_Timeout,0
+                         ;mov [di].IOH_StatusBlockLen,0
+                         ;mov [di].IOH_pStatusBlock,0
+                         ;mov [di].IOH_Reserved_1,0
+                         ;mov [di].IOH_pNxtIORB,0
+                          mov [di].IOH_NotifyAddress._OFF,Offset call_add_unblock
+                          mov [di].IOH_NotifyAddress._SEG,cs
+
+                          push di
+                            push ds
+                            push di
+                            cmp [init_done],false
+                            je call_add_wait_init
+
+                            call [si].org_iorb_handler
+                            jmp call_add_wait_common
+  call_add_wait_init:
+                            call [dd_request_handler]
+
+  call_add_wait_common:
+                            add sp,2+2
+                          pop di
+
+  call_add_wait_check:
+                          test [di].IOH_Status,IORB_DONE
+                          jnz call_add_wait_done
+
+                          push di
+                          cli
+                          mov bx,Word Ptr [ds_phys+0]
+                          mov ax,Word Ptr [ds_phys+2]
+                          add bx,di
+                          adc ax,0
+                          mov cx,-1
+                          mov di,-1
+                          mov dh,1              ; non-interruptible
+                          mov dl,DevHlp_ProcBlock
+                          call [Device_Help]
+                          sti
+                          pop di
+                          jmp call_add_wait_check
+  call_add_wait_done:
+                          test [di].IOH_Status,IORB_ERROR
+                          setnz al
+                          shr al,1
+                        popad
+                        pop es
+                        ret
+a_endp                  call_add_wait
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  call_add_unblock
+                        push bp
+                        mov bp,sp
+                        pusha
+                        push ds
+                          mov ax,data
+                          mov ds,ax
+                          mov bx,Word Ptr [ds_phys+0]
+                          mov ax,Word Ptr [ds_phys+2]
+                          add bx,ss:[bp+2+4]._OFF
+                          adc ax,0
+                          mov dl,DevHlp_ProcRun
+                          call [Device_Help]
+                        pop ds
+                        popa
+                        leave
+                        retf
+a_endp                  call_add_unblock
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+end_resident_code:
+                        include rmcall.inc
+                        include rmcdrvr.inc
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  InitFilter
+
+                        mov eax,es:[bx].Pointer_1
+                        mov Device_Help,eax
+
+                        mov es:[bx].Pointer_1._OFF,Offset end_resident_code
+                        mov es:[bx].Pointer_1._SEG,Offset end_resident_data
+                        sub ax,ax
+
+                        call RegisterResourceManager
+
+                        pushad
+                        push es
+
+                         ;mov ds,ds
+                          sub si,si
+                          mov dl,DevHlp_VirtToPhys
+                          call [Device_Help]
+                          jc error_InitFilter
+
+                          mov Word Ptr [ds_phys+0],bx
+                          mov Word Ptr [ds_phys+2],ax
+
+                          mov al,DHGETDOSV_DEVICECLASSTABLE
+                          mov cx,1              ; Disk
+                          mov dl,DevHlp_GetDOSVar
+                          call [Device_Help]
+                          jc error_InitFilter
+
+                          mov es,ax
+                         ;mov bx,bx
+                          mov cx,es:[bx].DCCount
+                          add bx,Offset DCTableEntries
+                          mov ClassTableDisk._OFF,bx
+                          mov ClassTableDisk._SEG,ax
+                          jcxz error_InitFilter
+  loop_DeviceClassDisk:
+                          call InitFilterDriver
+                          add bx,Size DevClassTableEntry
+                          loop loop_DeviceClassDisk
+  error_InitFilter:
+                        pop es
+                        popad
+
+                        mov ax,00100h           ; no error, done
+                        cmp num_filtered_devices,0
+                        jnz exit_InitFilter
+
+                        ; uninstall
+                        mov es:[bx].Pointer_1,0
+
+                        push es
+                        pushad
+                          push hDriver
+                          CallRM RMDestroyDriver
+                          add sp,4
+                        popad
+                        pop es
+
+                        mov ax,0810ch           ; done, uninstall, no message
+  exit_InitFilter:
+                        ret
+a_endp                  InitFilter
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        ; es:bx=DevClassTableEntry
+a_proc                  InitFilterDriver
+                        pushad
+
+                          mov eax,DWord Ptr es:[bx].DCOffset
+                          mov dd_request_handler,eax
+
+                          ; check for 'IOMEGA' string -- PPAOS2.ADD
+                          cmp DWord Ptr es:[bx].DCName,'EMOI'
+                          jne done_all_adapters
+
+                          mov di,Offset RB_Configuration
+                          mov [di].IOH_Length,Size RB_Configuration
+                          call clear_IORB
+                         ;mov [di].IOH_UnitHandle,0
+                          mov [di].IOH_CommandCode,IOCC_CONFIGURATION
+                          mov [di].IOH_CommandModifier,IOCM_GET_DEVICE_TABLE
+                          mov [di].IOCFG_pDeviceTable._OFF,Offset InitDeviceTable
+                          mov [di].IOCFG_pDeviceTable._SEG,ds
+                          mov [di].IOCFG_DeviceTableLen,InitDeviceTableLen
+                          call call_add_wait
+                          jc done_all_adapters
+
+                          mov cx,InitDeviceTable.IODT_TotalAdapters
+                          jcxz done_all_adapters
+
+                          mov di,Offset InitDeviceTable.IODT_pAdapter
+  loop_all_adapters:
+                          mov si,[di]
+                          call InstallFilterAdapter
+                          add di,2
+                          loop loop_all_adapters
+  done_all_adapters:
+
+                        popad
+                        ret
+a_endp                  InitFilterDriver
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        ; ds:si=AdapterInfo
+a_proc                  InstallFilterAdapter
+                        push cx
+                        push bp
+
+                          mov current_adpaterinfo,si
+
+                          mov cx,[si].ADAPTERINFO.IOAI_AdapterUnits
+                          jcxz done_InstallFilterAdapter
+                          lea bp,[si].IOAI_UnitInfo
+  loop_InstallFilterAdapter:
+                          call InstallFilterUnit
+                          add bp,Size UNITINFO
+                          loop loop_InstallFilterAdapter
+  done_InstallFilterAdapter:
+                        pop bp
+                        pop cx
+                        ret
+a_endp                  InstallFilterAdapter
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        ; ds:bp=UNITINFO
+a_proc                  InstallFilterUnit
+                        pushad
+                        push dd_request_handler
+
+                          mov ax,num_filtered_devices
+                          cmp ax,max_filtered_devices
+                          je exit_InstallFilterUnit
+
+                          ; set ds:si=filter data block
+                          mov si,Offset filter_data_table
+                          imul ax,Size filter_data
+                          add si,ax
+
+                          mov bx,ds:[bp].IOUI_FilterADDHandle
+                          test bx,bx
+                          jz no_previous_filter
+
+                          push es
+                            shl bx,2                    ; 1 -> +4
+                            add bx,ClassTableDisk._OFF
+                            mov es,ClassTableDisk._SEG
+                            mov eax,DWord Ptr es:[bx]
+                            mov dd_request_handler,eax
+                          pop es
+  no_previous_filter:
+                          mov eax,dd_request_handler
+                          mov [si].org_iorb_handler,eax
+                          mov ax,ds:[bp].IOUI_UnitHandle
+                          mov [si].org_unithandle,ax
+
+                          ; try to allocate the unit
+                          mov di,Offset RB_UnitControl
+                          mov [di].IOH_Length,Size RB_UnitControl
+                          call clear_IORB
+                          mov ax,[si].org_unithandle
+                          mov [di].IOH_UnitHandle,ax
+                          mov [di].IOH_CommandCode,IOCC_UNIT_CONTROL
+                          mov [di].IOH_CommandModifier,IOCM_ALLOCATE_UNIT
+                         ;mov [di].IOUC_Flags,0
+                         ;mov [di].IOUC_pUnitInfo,0
+                         ;mov [di].IOUC_UnitInfoLen,0
+                          call call_add_wait
+                          jc exit_InstallFilterUnit
+
+                          ; if this is the first unit, we have
+                          ; to register ourself to the DD deviceclass list
+                          cmp num_filtered_devices,0
+                          jne already_registred_in_dd_list
+
+                          pusha
+                            mov si,Offset Add_Name
+                            mov ax,cs
+                            mov bx,Offset DeviceClassEntrypoint
+                            mov di,0
+                            mov cx,1
+                            mov dl,DevHlp_RegisterDeviceClass
+                            call [Device_Help]
+                            mov my_add_handle,ax
+                          popa
+                          jc not_interested_in_unit
+
+  already_registred_in_dd_list:
+
+                          ; install filter for that unit
+                          mov ds:[bp].IOUI_UnitHandle,si
+                          mov ax,my_add_handle
+                          mov ds:[bp].IOUI_FilterADDHandle,ax
+                          inc num_filtered_devices
+
+                          mov di,Offset RB_UnitControl
+                          mov [di].IOH_Length,Size RB_UnitControl
+                          call clear_IORB
+                          mov ax,[si].org_unithandle
+                          mov [di].IOH_UnitHandle,ax
+                          mov [di].IOH_CommandCode,IOCC_UNIT_CONTROL
+                          mov [di].IOH_CommandModifier,IOCM_CHANGE_UNITINFO
+                         ;mov [di].IOUC_Flags,0
+                          mov [di].IOUC_pUnitInfo._OFF,bp
+                          mov [di].IOUC_pUnitInfo._SEG,ds
+                          mov [di].IOUC_UnitInfoLen,Size UNITINFO
+                          call call_add_wait
+                          ; ignore errors - can not undo the DD registration
+
+                          ; copy adapterinfo/unitinfo
+                          pusha
+                          push es
+
+                            push ds
+                            pop es
+                            mov bx,si           ; ds:bx=filter_data_table
+
+                            ; copy adapterinfo
+                            lea di,[bx].adapterunitinfo_copy
+                            mov si,[current_adpaterinfo]
+                            mov cx,Offset ADAPTERINFO.IOAI_UnitInfo
+                            cld
+                            rep movsb
+
+                            ; 'our' adapter has only one unit
+                            mov ds:[bx].adapterunitinfo_copy.ADAPTERINFO.IOAI_AdapterUnits,1
+
+                            ; copy unitinfo
+                            mov si,bp
+                            lea di,[bx].adapterunitinfo_copy.ADAPTERINFO.IOAI_UnitInfo
+                            mov cx,Size UNITINFO
+                            rep movsb
+
+                            ; set adapter driver index
+                            lea di,[bx].adapterunitinfo_copy.ADAPTERINFO.IOAI_UnitInfo
+                            mov ax,num_filtered_devices
+                            dec ax                              ; zero based?
+                            mov [di].IOUI_AdapterIndex,ax
+                           ;mov [di].IOUI_UnitHandle            -- is already changed
+                           ;mov [di].IOUI_FilterADDHandle       -- is already changed
+                           ;mov [di].IOUI_QueuingCount - ??
+                          pop es
+                          popa
+
+  not_interested_in_unit:
+                          ; deallocate unit
+                          mov di,Offset RB_UnitControl
+                          mov [di].IOH_Length,Size RB_UnitControl
+                          call clear_IORB
+                          mov ax,[si].org_unithandle
+                          mov [di].IOH_UnitHandle,ax
+                          mov [di].IOH_CommandCode,IOCC_UNIT_CONTROL
+                          mov [di].IOH_CommandModifier,IOCM_DEALLOCATE_UNIT
+                         ;mov [di].IOUC_Flags,0
+                         ;mov [di].IOUC_pUnitInfo,0
+                         ;mov [di].IOUC_UnitInfoLen,0
+                          call call_add_wait
+
+  exit_InstallFilterUnit:
+                        pop dd_request_handler
+                        popad
+                        ret
+a_endp                  InstallFilterUnit
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+code                    EndS
+
+                        End
+

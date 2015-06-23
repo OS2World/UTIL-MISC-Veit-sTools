@@ -1,0 +1,4 @@
+Title   produce os2csm.s or os2csm.s_m -- espangnol
+
+language_es=1
+include lader.inc

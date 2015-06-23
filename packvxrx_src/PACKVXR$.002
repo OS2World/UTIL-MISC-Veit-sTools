@@ -1,0 +1,17 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_Fehler_  :^string;
+  textz_zu_klein_  :^string;
+  textz_Nicht_mit_VX_Rexx_erzeugt_  :^string;
+  textz_VX_Rexx_Format_  :^string;
+  textz___nicht_unterstuetzt_  :^string;
+  textz_Positionsaenderung__LxLite___um_  :^string;
+  textz___Einsparung__  :^string;
+  textz_hilfe1  :^string;
+  textz_hilfe2  :^string;
+  textz_hilfe3  :^string;
+  textz_hilfe4  :^string;
+  textz_hilfe5  :^string;
+  textz_zweck  :^string;
+  textz_nicht_gefunden_  :^string;

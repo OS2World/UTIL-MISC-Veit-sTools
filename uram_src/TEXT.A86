@@ -1,0 +1,407 @@
+Title   šbersetzbare Zeichenketten
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+textd_aehnliches_bios_gefunden: db '-„hnliches BIOS gefunden.',00d,00a,'$'
+texte_aehnliches_bios_gefunden: db '-similar BIOS found.',00d,00a,'$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_amdk7:            db 'AMD K7','$'
+text_variante_ali_14xx:         db 'ALI-1449/51/61','$'
+text_variante_ali_148x:         db 'ALI-1487/89','$'
+text_variante_ali_154x:         db 'ALI-154X','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_chips_technologies_peacock:
+                                db 'Chips & Technologies, Peacock 386SX/20 [SCAT]','$'
+text_variante_chips_technologies_siemens:
+                                db 'Chips & Technologies, Siemens [SCAT]','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+text_variante_82430tx:          db '82430TX','$'
+
+text_variante_sis551x:          db 'SIS551X','$'
+
+textd_variante_82430tx_unbekannt:
+                                db '82430TX/SIS551X-„hnliches BIOS gefunden.',00d,00a
+                                db 'hat aber ungew”hnliche Indexwerte -> Bitte mir schicken !',00d,00a,'$'
+texte_variante_82430tx_unbekannt:
+                                db '82430TX/SIS551X-similar BIOS found',00d,00a
+                                db 'but has unexpected  index-values -> please send to me !',00d,00a,'$'
+
+text_variante_i440fx_awdflash:  db 'i440FX [AWDFLASH]','$'
+
+text_variante_asi_ami:          db 'i4X0 [AMI,ASI]','$'
+
+text_variante_gw2000:           db 'Gateway-2000','$'
+
+text_variante_pci82430_batio:   db 'PCI82430 "BatIO"','$'
+
+text_variante_pci82430_alfredo: db 'PCI82430 "Alfredo"','$'
+
+text_variante_mirko_ami_i430VX: db 'I430VX (AMI) [Hallo Mirko !]','$'
+
+text_variante_i82440fx_ami:     db 'i82440FX [AMI]','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_opti_82495:       db 'OPTI-82495','$'
+text_variante_opti_82596:       db 'OPTI-596/546/82','$'
+text_variante_opti_802:         db 'OPTI-802','$'
+text_variante_opti_55x:         db 'OPTI-82C556/57/58','$'
+text_variante_icl_opti55yy:     db 'OPTI-82C556/57/58 [ICL]','$'
+text_variante_opti_55x_award:   db 'OPTI-82C556/57/58 [AWARD]','$'
+text_variante_opti_55x_award_2: db 'OPTI-82C556/57/58 [AWARD:2]','$'
+text_variante_opti_82c283:      db 'OPTI-82C283','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_sis461:           db 'SIS461','$'
+text_variante_sis471:           db 'SIS471','$'
+text_variante_sis471_1995:      db 'SIS471 [1995]','$'
+text_variante_sis471_ami:       db 'SIS471 [AMI]','$'
+text_variante_sis486:           db 'SIS486','$'
+text_variante_sis496:           db 'SIS496','$'
+text_variante_sis496_ami:       db 'SIS496 [AMI]','$'
+text_variante_sis501:           db 'SIS501/503','$'
+text_variante_sis501_asus:      db 'SIS501/503 [ASUS]','$'
+text_variante_sis5571_5598:     db 'SIS5571/5598','$'
+text_variante_sis5571_ami:      db 'SIS5571/5598 [AMI]','$'
+text_variante_sis650_awardflash:db 'SIS650 [AWDFLASH]','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_umc480:           db 'UMC-480','$'
+text_variante_umc498:           db 'UMC-498','$'
+text_variante_umc491:           db 'UMC-491','$'
+text_variante_umc_881_886:      db 'UMC-881/886','$'
+text_variante_umc_881_886_awdflash:
+                                db 'UMC-881/886 [AWDFLASH]','$'
+text_variante_umc_891_892_886:  db 'UMC-891/892/886','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_unichip:          db 'UNICHIP','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_via580_awdflash:  db 'VIA 580/590/ETEQ/AMD 640','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_epson_actionnote650:
+                                db 'Epson AcionNote-650','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_mx83c30x:         db 'MX83C305/306/IC','$'
+text_variante_mx83c30x_ami:     db 'MX83C305/306/IC [AMI]','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_variante_disable_shadowing_vlsi_lynx:
+                                db 'VLSI-LYNX','$'
+text_variante_intel845_awardflash: db 'Intel Canterwood [AWDFLASH]','$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+textd_nichts_aber_asusflash:    db 'Signatur "ASUS_FLASH" gefunden',00d,00a,'$'
+texte_nichts_aber_asusflash:    db 'found signature "ASUS_FLASH"',00d,00a,'$'
+textd_nichts_aber_awardflash:   db 'Signatur "AWDFLASH" gefunden',00d,00a,'$'
+texte_nichts_aber_awardflash:   db 'found signature "AWDFLASH"',00d,00a,'$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+textd_initialisieren_fehler:    db 'Fehler: eingeblendeter Speicher ist immernoch schreibgeschtzt',00d,00a,'$'
+texte_initialisieren_fehler:    db 'Error: memory is still write-protected',00d,00a,'$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+textd_taste:                    pstr 'Weiter mit Leertaste '
+texte_taste:                    pstr 'to continue press space bar '
+
+textd_taste_loeschen:           pstr 21 dup 008,21 dup ' ',21 dup 008
+texte_taste_loeschen:           pstr 28 dup 008,28 dup ' ',28 dup 008
+
+textd_wbinvd_nicht_unterstuetzt:db 'WBINVD nicht untersttzt',00d,00a,'$'
+texte_wbinvd_nicht_unterstuetzt:db 'WBINVD not supported',00d,00a,'$'
+
+textd_cpu_typ:                  db 'Prozessortyp   : ','$'
+texte_cpu_typ:                  db 'processor type   : ','$'
+
+textd_wbinvd_test:              db 'Cache-Leeren   : ','$'
+texte_wbinvd_test:              db 'Cache flush      : ','$'
+
+textd_ok:                       db 'gut$'
+texte_ok:                       db 'OK$'
+
+textd_wbinvd_v86:               db 'Warnung! schon im virtuellen Modus! $'
+texte_wbinvd_v86:               db 'warning! virtual86 mode! $'
+
+textd_mtrr_v86:                 db 'Kann auf ''Memory Type Range''-Regsiter nicht im virtuellen Modus zugreifen!',13,10,'$'
+texte_mtrr_v86:                 db 'Can not access Memory Type Range Registers in virtual mode!',13,10,'$'
+
+textd_pci_version:              db 'PCI BIOS       : ','$'
+texte_pci_version:              db 'PCI BIOS         : ','$'
+
+textd_bios_hersteller:          db 'BIOS-Hersteller:"','$'
+texte_bios_hersteller:          db 'BIOS-manufacturer:"','$'
+
+textd_chipsatz:                 db 'Chipsatz       :"','$'
+texte_chipsatz:                 db 'chipset          :"','$'
+
+textd_biosdatum:                db 'Datum          :"','$'
+texte_biosdatum:                db 'date             :"','$'
+
+textd_bios_kommentar:           db 'Kommentar      :"','$'
+texte_bios_kommentar:           db 'comment          :"','$'
+
+textd_chip_pci:                 db 'PCI-Chipsatz   :"','$'
+texte_chip_pci:                 db 'PCI chipset      :"','$'
+
+textd_unbekannter_chip_para:    db 'der mit C=... angegebene Chipsatz ist unbekannt',00d,00a,'$'
+texte_unbekannter_chip_para:    db 'the with C=... specified chipset is unknown',00d,00a,'$'
+
+textd_unbekanntes_bios:         db 'Unbekanntest oder berschriebenes BIOS -> mir schicken',00d,00a
+                                db 'um eine BIOS-Kopie zu erstellen besorgen Sie sich HOLEN.COM',00d,00a
+                                db 'Mit C=... k”nnen Sie die Benutzung eines Chipsatzes erzwingen.',00d,00a,'$'
+
+texte_unbekanntes_bios:         db 'unknown or overwritten BIOS -> please send to me',00d,00a
+                                db 'to dump BIOS to file download HOLEN.COM',00d,00a
+                                db 'with C=... you can force use of an known chipset',00d,00a,'$'
+
+textd_rom_datei_fehlt:          db 'Fehler beim ™ffnen der ROM-Datei',00d,00a,'$'
+texte_rom_datei_fehlt:          db 'Error on opening ROM-file',00d,00a,'$'
+
+
+textd_fehler_bei_speicheranforderung:
+                                db 'Fehler bei Speicheranforderung aufgetreten !',00d,00a,'$'
+texte_fehler_bei_speicheranforderung:
+                                db 'Error on memory allocation occured !',00d,00a,'$'
+
+textd_lesefehler:               db 'Lesefehler !',00d,00a,'$'
+texte_lesefehler:               db 'Read error !',00d,00a,'$'
+
+textd_register_index:           db 'Register Index:','$'
+texte_register_index:           db 'register index:','$'
+
+textd_port_nummer:              db 'Port Nummer:','$'
+texte_port_nummer:              db 'port number:','$'
+
+textd_bis:                      db ' bis ','$'
+texte_bis:                      db ' to ','$'
+
+textd_prozedur_registeraenderung:
+                                db 'Prozedur Register„nderung:','$'
+texte_prozedur_registeraenderung:
+                                db 'Procedure register modification:','$'
+
+textd_prozedur_lesen:           db 'Register Leseprozedur:','$'
+texte_prozedur_lesen:           db 'Procedure register read:','$'
+
+textd_prozedur_schreiben:       db 'Register Schreibprozedur:','$'
+texte_prozedur_schreiben:       db 'Procedure register write:','$'
+
+textd_prozedur_enable_shadow_rom:
+                                db 'Prozedur zum Einschalten von Shadow-ROM:','$'
+texte_prozedur_enable_shadow_rom:
+                                db 'Procedure for enabling shadow-ROM:','$'
+textd_prozedur_disable_shadow_rom:
+                                db 'Prozedur zum Ausschalten von Shadow-ROM:','$'
+texte_prozedur_disable_shadow_rom:
+                                db 'Procedure for disabling shadow-ROM:','$'
+
+textd_fehler_d800d000:          db 'Prozedur fr D800 aber nicht fr D000 gefunden !',00d,00a,'$'
+texte_fehler_d800d000:          db 'Procedure for D800 but not for D000 found !',00d,00a,'$'
+
+textd_indexregisterfehler:      db 'Unerwartete Differenz zwischen Indexregister fr D000 und D800 !',00d,00a,'$'
+texte_indexregisterfehler:      db 'Unexpcted difference between register index for D000 and D800 !',00d,00a,'$'
+
+textd_kann_retf_nicht_finden:   db 'URAM kann kein Byte "0cb"/retf im BIOS finden !',00d,00a,'$'
+texte_kann_retf_nicht_finden:   db 'URAM can not find a byte "0cb"/retf in the BIOS area !',00d,00a,'$'
+
+textd_fehler_beim_schreiben_von:db 'Fehler: kann Datei nicht erzeugen : ','$'
+texte_fehler_beim_schreiben_von:db 'Error: can not create file : ','$'
+
+textd_hilfe1:                   db 'URAM.COM R=XXXXXXXXXXXXXXXXXXXXXXXX [B=Dateiname] [I Q G D W C T]',00d,00a
+                                db '           ÃÁÁÙ    ³³³³³³³³³³³³ÃÁÁÙ    ÀErsatzbios À(n„chste Seite)',00d,00a
+                                db '           ³       ³³³³³³³³³³³³³',00d,00a
+                                db '           ³       ³³³³³³³³³³³³³                             X=. unver„ndert',00d,00a
+                                db '           ³       ³³³³³³³³³³³³ÀÄÄÄÄ F000-FFFF System BIOS   X=A automatisch',00d,00a
+                                db '           ³       ³³³³³³³³³³³ÀÄÄÄÄÄ EC00-EFFF',00d,00a
+                                db '           ³       ³³³³³³³³³³ÀÄÄÄÄÄÄ E800-EBFF                 ÚÄÄÄÄÄ Lesen',00d,00a
+                                db '           ³       ³³³³³³³³³ÀÄÄÄÄÄÄÄ E400-E7FF                 ³ ÚÄÄÄ Schreiben',00d,00a
+                                db '           ³       ³³³³³³³³ÀÄÄÄÄÄÄÄÄ E000-E3FF              X  ³ ³ ÚÄ Cache',00d,00a
+                                db '           ³       ³³³³³³³ÀÄÄÄÄÄÄÄÄÄ DC00-DFFF              ³  ³ ³ ³',00d,00a
+                                db '           ³       ³³³³³³ÀÄÄÄÄÄÄÄÄÄÄ D800-DBFF              0  - - -',00d,00a
+                                db '           ³       ³³³³³ÀÄÄÄÄÄÄÄÄÄÄÄ D400-D7FF              1  û - -',00d,00a
+                                db '           ³       ³³³³ÀÄÄÄÄÄÄÄÄÄÄÄÄ D000-D3FF              2  - û -',00d,00a
+                                db '           ³       ³³³ÀÄÄÄÄÄÄÄÄÄÄÄÄÄ CC00-CFFF              3  û û -',00d,00a
+                                db '           ³       ³³ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄ C800-CBFF              4  - - û',00d,00a
+                                db '           ³       ³ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ C400-C7FF VGA BIOS     5  û - û',00d,00a
+                                db '           ³       ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ C000-C3FF VGA BIOS     6  - û û',00d,00a
+                                db '           ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ A000-AFFF Grafik       7  û û û',00d,00a
+                                db 00d,00a
+                                db 'Diese feine Gliederung wird nicht von alle Platinen untersttzt.',00d,00a
+                                db 00d,00a
+                                db '$'
+
+
+
+texte_hilfe1:                   db 'URAM.COM R=XXXXXXXXXXXXXXXXXXXXXXXX [B=BIOSfile] [I Q G D W C T]',00d,00a
+                                db '           ÃÁÁÙ    ³³³³³³³³³³³³ÃÁÁÙ  Àreplacebios À(next page)',00d,00a
+                                db '           ³       ³³³³³³³³³³³³³',00d,00a
+                                db '           ³       ³³³³³³³³³³³³³                             X=. unmodified',00d,00a
+                                db '           ³       ³³³³³³³³³³³³ÀÄÄÄÄ F000-FFFF System BIOS   X=A auto',00d,00a
+                                db '           ³       ³³³³³³³³³³³ÀÄÄÄÄÄ EC00-EFFF',00d,00a
+                                db '           ³       ³³³³³³³³³³ÀÄÄÄÄÄÄ E800-EBFF                 ÚÄÄÄÄÄ Read',00d,00a
+                                db '           ³       ³³³³³³³³³ÀÄÄÄÄÄÄÄ E400-E7FF                 ³ ÚÄÄÄ Write',00d,00a
+                                db '           ³       ³³³³³³³³ÀÄÄÄÄÄÄÄÄ E000-E3FF              X  ³ ³ ÚÄ Cache',00d,00a
+                                db '           ³       ³³³³³³³ÀÄÄÄÄÄÄÄÄÄ DC00-DFFF              ³  ³ ³ ³',00d,00a
+                                db '           ³       ³³³³³³ÀÄÄÄÄÄÄÄÄÄÄ D800-DBFF              0  - - -',00d,00a
+                                db '           ³       ³³³³³ÀÄÄÄÄÄÄÄÄÄÄÄ D400-D7FF              1  û - -',00d,00a
+                                db '           ³       ³³³³ÀÄÄÄÄÄÄÄÄÄÄÄÄ D000-D3FF              2  - û -',00d,00a
+                                db '           ³       ³³³ÀÄÄÄÄÄÄÄÄÄÄÄÄÄ CC00-CFFF              3  û û -',00d,00a
+                                db '           ³       ³³ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄ C800-CBFF              4  - - û',00d,00a
+                                db '           ³       ³ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ C400-C7FF VGA BIOS     5  û - û',00d,00a
+                                db '           ³       ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ C000-C3FF VGA BIOS     6  - û û',00d,00a
+                                db '           ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ A000-AFFF Graphics     7  û û û',00d,00a
+                                db 00d,00a
+                                db 'This fine partition ist not supported for all boards.',00d,00a
+                                db 00d,00a
+                                db '$'
+
+textd_beispiel_device:          db 'Beispiel:  DEVICE=C:\URAM\URAM.COM R=..........7777777777....',00d,00a
+                                db '           DEVICE=C:\URAM\UMB.SYS C800-EFFF',00d,00a
+                                db '$'
+
+texte_beispiel_device:          db 'example:  DEVICE=C:\URAM\URAM.COM R=..........7777777777....',00d,00a
+                                db '          DEVICE=C:\URAM\UMB.SYS C800-EFFF',00d,00a
+                                db '$'
+
+textd_beispiel_com:             db 'Beispiel:  INSTALL=C:\URAM\URAM.COM R=..........7777777777....',00d,00a
+                                db '           DEVICE=C:\NWDOS\HIMEM.SYS Chipset=Ram Use=C800-EFFF',00d,00a
+                                db '$'
+
+texte_beispiel_com:             db 'example:  INSTALL=C:\URAM\URAM.COM R=..........7777777777....',00d,00a
+                                db '          DEVICE=C:\NWDOS\HIMEM.SYS Chipset=Ram Use=C800-EFFF',00d,00a
+                                db '$'
+
+textd_hilfe2a:                  db 00d,00a
+                                db 'Q           weniger Bildschirmausgaben',00d,00a
+                                db 'I           Speicher mit Nullen berschreiben',00d,00a
+                                db 'G=M         erzeuge URAMMIN.COM',00d,00a
+                                db 'G=R         erzeuge URAM.DAT (REB_MENU)',00d,00a
+                                db 'D           Pause zwischen der Bearbeitung der einzelnen Speicherbereiche',00d,00a
+                                db 'T           Einzelschrittmodus mit Anzeige von Eingabe/Ausgabe',00d,00a
+                                db 'W           Schreibschutz einschalten - bei einigen Chips„tze steuert',00d,00a
+                                db '            ein einziges Bit den Schreibschutz von A000-FFFF',00d,00a
+                                db 'C=Chipname  Festlegen des Chipsatzes:',00d,00a
+                                db '$'
+
+texte_hilfe2a:                  db 00d,00a
+                                db 'Q           quiet',00d,00a
+                                db 'I           initialtize memory',00d,00a
+                                db 'G=M         generate URAMMIN.COM',00d,00a
+                                db 'G=R         generate URAM.DAT (REB_MENU)',00d,00a
+                                db 'D           debug: pause between processing of memory segments',00d,00a
+                                db 'T           trace: display port input/output',00d,00a
+                                db 'W           turn on writeprotection - on some chipset one single bit',00d,00a
+                                db '            controls protection of entire range A000-FFFF',00d,00a
+                                db 'C=Chipname  force chipset:',00d,00a
+                                db '$'
+
+chip_einruecken:                db '            $'
+
+textd_hilfe2b:                  db 'Die vollst„ndige Liste der untersttzten',00d,00a
+                                db 'Chips„tze ist in chip.txt nachzulesen',00d,00a,'$'
+texte_hilfe2b:                  db 'for complete list of supported chip see chip.txt',00d,00a,'$'
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+textd_int06_1:                  db 'Ungltiger Befehlskode: CS=$'
+texte_int06_1:                  db 'Invalid opcode: CS=$'
+textd_int0d_1:                  db 'Allgemeine Schutzverletzung: CS=$'
+texte_int0d_1:                  db 'General protecttion violation: CS=$'
+textd_int06_2:                  db ' IP=$'
+texte_int06_2:                  db ' IP=$'
+textd_int06_3:                  db '.',00d,00a
+                                db 'Bitte melden Sie sich beim Autor.',00d,00a,'$'
+texte_int06_3:                  db '.',00d,00a
+                                db 'Please contact the author.',00d,00a,'$'
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+textd_failed_to_restore_a20:    db 'Fehler bei Wiederherstellung der Adressleitung 20.',00d,00d,'$'
+texte_failed_to_restore_a20:    db 'Failed to restore A20 line.',00d,00d,'$'
+
+textd_peripheral_controller_unbekannt:
+                                db 'Hinweis: Perepherie-Baustein unbekannt/nicht untersttzt (kein ISA DMA!).',13,10
+                                db 'Bitte den Autor fragen: "$'
+texte_peripheral_controller_unbekannt:
+                                db 'Hint: Peripheral chip not known/supported (no ISA-DMA!).',13,10,
+                                db 'Please ask the author. "$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_tabelle_start:
+                                spracheintrag _aehnliches_bios_gefunden
+                                spracheintrag _variante_82430tx_unbekannt
+                                spracheintrag _nichts_aber_asusflash
+                                spracheintrag _nichts_aber_awardflash
+                                spracheintrag _initialisieren_fehler
+                                spracheintrag _taste
+                                spracheintrag _taste_loeschen
+                                spracheintrag _wbinvd_nicht_unterstuetzt
+                                spracheintrag _bios_hersteller
+                                spracheintrag _bios_kommentar
+                                spracheintrag _chip_pci
+                                spracheintrag _unbekannter_chip_para
+                                spracheintrag _chipsatz
+                                spracheintrag _biosdatum
+                                spracheintrag _unbekanntes_bios
+                                spracheintrag _rom_datei_fehlt
+                                spracheintrag _fehler_bei_speicheranforderung
+                                spracheintrag _lesefehler
+                                spracheintrag _register_index
+                                spracheintrag _port_nummer
+                                spracheintrag _bis
+                                spracheintrag _prozedur_registeraenderung
+                                spracheintrag _prozedur_lesen
+                                spracheintrag _prozedur_schreiben
+                                spracheintrag _prozedur_enable_shadow_rom
+                                spracheintrag _prozedur_disable_shadow_rom
+                                spracheintrag _fehler_d800d000
+                                spracheintrag _indexregisterfehler
+                                spracheintrag _kann_retf_nicht_finden
+                                spracheintrag _fehler_beim_schreiben_von
+                                spracheintrag _hilfe1
+                                spracheintrag _beispiel_device
+                                spracheintrag _beispiel_com
+                                spracheintrag _hilfe2a
+                                spracheintrag _hilfe2b
+                                spracheintrag _int06_1
+                                spracheintrag _int0d_1
+                                spracheintrag _int06_2
+                                spracheintrag _int06_3
+                                spracheintrag _failed_to_restore_a20
+                                spracheintrag _cpu_typ
+                                spracheintrag _pci_version
+                                spracheintrag _wbinvd_test
+                                spracheintrag _wbinvd_v86
+                                spracheintrag _ok
+                                spracheintrag _peripheral_controller_unbekannt
+                                spracheintrag _mtrr_v86
+
+text_tabelle_ende:
+
+text_tabellen_groesse           equ text_tabelle_ende-text_tabelle_start
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+spracheinstellung:
+
+                                ;include ..\country\country.a86
+                                include country.a86
+
+                                call teste_ob_uram_sys
+                                jne aufruf_bestimme_country_bx__com
+
+                                ; SYS
+                                bestimme_country_bx_sys
+                                jmp short aufruf_bestimme_country_bx__weiter
+
+aufruf_bestimme_country_bx__com:
+                                ; COM
+                                bestimme_country_bx_com
+
+aufruf_bestimme_country_bx__weiter:
+
+                                cmp bx,49 ; D
+                                je spracheinstellung_fertig
+                                cmp bx,43 ; ™
+                                je spracheinstellung_fertig
+                                cmp bx,41 ; CH
+                                je spracheinstellung_fertig
+
+
+                                cld
+                                mov cx,(text_tabellen_groesse-2)/2
+                                mov si,text_tabelle_start+2
+                                mov di,text_tabelle_start
+                                rep movsw
+
+spracheinstellung_fertig:
+                                ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+

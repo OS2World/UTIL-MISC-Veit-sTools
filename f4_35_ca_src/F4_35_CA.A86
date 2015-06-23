@@ -1,0 +1,109 @@
+; 10.01.1998 1.Implementierung (INT 28 untersucht)
+; 22.01.1998 nur bei ROLLEN=1
+; 11.03.1998 deencom neu
+
+                        jmp einrichten
+
+even 010
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+tastaturleuchte         equ 000400+00017
+rollen                  equ 010 ; Bit4
+
+int_16_org:
+int_16_org_o		dw ?
+int_16_org_s		dw ?
+
+int_16_neu:
+                        cmp ah,001
+                        jz behandlung
+			cmp ah,011
+			jnz weiter
+behandlung:
+			push ax
+                          push dx
+                            push ds
+                              xor dx,dx
+                              mov ds,dx
+                              test b [tastaturleuchte],rollen
+                              jz rollen_angeschaltet
+
+                              mov ax,1
+                              sti
+                              hlt     ; OS/2: Sleep(DX:AX)
+                              db 035,0ca
+rollen_angeschaltet:
+                            pop ds
+                          pop dx
+			pop ax
+weiter:
+			jmp d cs:[int_16_org]
+tsr_ende:
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+include ..\lhtsr\lh.a86
+include ..\lhtsr\prg.a86
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+programm_name:		db 'F4_35_CA'
+programm_resident_ende: dw tsr_ende
+
+programm_int            equ 016
+programm_int_neu        equ int_16_neu
+programm_int_org        equ int_16_org
+
+installation_text:	db 'lade F4_35_CA',00d,00a
+			db '$'
+deinstallation_text:	db 'entferne F4_35_CA',00d,00a
+			db '$'
+doppelt_text:		db 'mehrfache Installation von F4_35_CA !',00d,00a
+			db '$'
+nichtaktiv_text:	db 'F4_35_CA nicht aktiv im Speicher gefunden !',00d,00a
+			db '$'
+
+
+einrichten:
+                        mov ah,009
+                        mov dx,text_titel
+                        int 021
+
+                        mov ax,04010
+                        int 02f
+                        cmp ax,04010
+                        jz kein_os2
+
+                        einfaches_tsr
+
+			mov ax,04c00
+			int 021
+                        
+kein_os2:
+                        mov ah,009
+                        mov dx,text_kein_os2
+                        int 021
+                        
+                        mov ax,04cff
+                        int 021
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+installations_prozedur:
+			ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+deinstallations_prozedur:
+			ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+
+text_titel:             db 'F4_35_CA * V.K. * 10.01úú11.03.1998',00d,00a
+#if englisch
+                        db 'CPU-Release on INT 16 AH=01/11, if SCROLL-LED is on',00d,00a,'$'
+text_kein_os2:          db 'OS/2 not found',00d,00a,'$'
+#else
+                        db 'CPU-Freigabe bei INT 16 AH=01/11, wenn ROLLEN leuchtet',00d,00a,'$'
+text_kein_os2:          db 'OS/2 nicht gefunden',00d,00a,'$'
+#endif

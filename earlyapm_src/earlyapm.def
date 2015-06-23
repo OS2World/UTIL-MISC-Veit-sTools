@@ -1,0 +1,7 @@
+Library earlyapm
+Protmode
+Stub None
+Segments
+  DATA ReadWrite   Shared Single Alias
+  CODE ExecuteOnly Shared        Alias
+DESCRIPTION '@#Veit Kannegieser:2005.03.14#@early connect or disable APM'

@@ -1,0 +1,6 @@
+(* nicht editieren! *)
+var
+  sprach_start:longint;
+  textz_benutzung1  :^string;
+  textz_benutzung2  :^string;
+  textz_SAVE2DSK_XGA_Signature_not_present_  :^string;

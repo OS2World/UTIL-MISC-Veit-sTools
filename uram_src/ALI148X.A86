@@ -1,0 +1,176 @@
+Title   ALI 148x
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; Index: port[22]
+; Daten: port[23]
+;
+; schreibschutz aus:         <14> or 20             ; +20
+; schreibschutz ein und ???: <14> and df or 10      ; -20 +10
+;
+; -> 20= schreiben
+;    10= lesen
+;
+;
+;
+; C000\<13> or 03/01
+; C400/          \02
+; C800 <13> or 04
+; CC00 <13> or 08
+; D000 <13> or 10
+; D400 <13> or 20
+; D800 <13> or 40
+; DC00 <13> or 80
+; E000 <14> or 01
+; E800 <14> or 02
+; F000   ? <14> or 04
+; F800   ? <14> or 08
+;
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_ali_148x                  macro
+                                  mov di,#1 ; Segment
+                                  mov cl,#2 ; Index
+                                  mov dl,#3 ; Bit
+                                  call setze_ali_148x_prozedur
+                                #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_ali_148x_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_ali_148x_prozedur_fertig
+
+                                call ausschrift_segment
+
+
+                                mov al,ah
+                                and ax,00201
+
+                                mov dh,0ff
+                                xor dh,dl
+                                cmp al,001      ; Lesen ?
+                                if ne mov dl,0  ; Bit l”schen
+
+                                push ax
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop ax
+
+                                ; globales Schreiben
+                                ; nicht abschalten
+                                cmp ah,002
+                                jne setze_ali_148x_prozedur_fertig
+
+                                mov cl,014
+                                mov dh,0ff-Bit5
+                                mov dl,Bit5
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_ali_148x_prozedur_fertig:
+                                ret
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+variante_ali_1487_89:
+                                ausschrift_xxxx_aehnliches_bios text_variante_ali_148x
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+14+1]
+                                add ax,di
+                                add ax,14+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+19+1]
+                                add ax,di
+                                add ax,19+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_ali_1487_89__maske_dx
+
+ali_148x_gemeinsam:
+
+                                setze_ali_148x 'C0',013,Bit0
+                                setze_ali_148x 'C4',013,Bit1
+                                setze_ali_148x 'C8',013,Bit2
+                                setze_ali_148x 'CC',013,Bit3
+
+                                setze_ali_148x 'D0',013,Bit4
+                                setze_ali_148x 'D4',013,Bit5
+                                setze_ali_148x 'D8',013,Bit6
+                                setze_ali_148x 'DC',013,Bit7
+
+                                setze_ali_148x 'E0',014,Bit0
+                                setze_ali_148x 'E8',014,Bit1
+
+                                setze_ali_148x 'F0',014,Bit2
+                                setze_ali_148x 'F8',014,Bit3
+
+                                ; globales Schreiben l”schen ?
+                                mov cl,014
+                                mov dh,0ff-Bit5
+                                mov dl,0
+                                cmp b [globaler_schreibschutz],'1'
+                                if e call bios_aufruf__prozedur_registeraenderung
+
+                                jmp initialisieren
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+; CL=Index
+; DH=AND
+; DL=OR
+; ge„ndert: AX
+aenderung_ali_1487_89__maske_dx:
+                                call bios_aufruf__prozedur_registerlesen
+                                and al,dh
+                                or al,dl
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+chip_ali_148x:
+                                mov w [registeraenderung_emulation],aenderung_chip_ali_148x
+                                jmp ali_148x_gemeinsam
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+; CL=Index
+; DH=AND
+; DL=OR
+; ge„ndert: AX
+aenderung_chip_ali_148x:
+                                installiere_tracer
+
+                                ; Lesen ...
+                                ; [3]:=C5
+                                mov al,003
+                                out 022,al
+                                                        out 0e1,al
+                                mov al,0c5
+                                out 023,al
+                                                        out 0e1,al
+                                mov al,cl
+                                out 022,al
+                                                        out 0e1,al
+                                in al,023
+                                                        out 0e1,al
+
+                                ; ndern ...
+                                and al,dh
+                                or al,dl
+
+                                ; Schreiben ...
+                                push ax
+                                  ; [3]:=C5
+                                  mov al,003
+                                  out 022,al
+                                                        out 0e1,al
+                                  mov al,0c5
+                                  out 023,al
+                                                        out 0e1,al
+                                  mov al,cl
+                                  out 022,al
+                                                        out 0e1,al
+                                pop ax
+                                out 023,al
+                                                        out 0e1,al
+
+                                entferne_tracer
+
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

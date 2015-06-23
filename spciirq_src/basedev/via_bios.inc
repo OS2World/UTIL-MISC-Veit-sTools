@@ -1,0 +1,69 @@
+Title   automaticly generated BIOS serach strings to determine meaning of link values for VIA/AMD
+
+via_bios_string_0001 db 034h,02Eh,03Bh,01Ch,075h,031h,08Bh,0DAh,02Eh,08Ah,020h,00Ah,0E4h,074h,031h,0B0h,001h,080h,0FCh,001h,074h,017h,0FEh,0C0h,080h,0FCh,002h,074h,010h,0FEh,0C0h,080h,0FCh,003h,074h,009h,0FEh,0C0h,080h,0FCh,005h,074h,002h,08Ah,0C4h,08Ah,0E5h,0B5h,0FFh,0E8h,03Fh,03Fh,0F8h
+via_bios_string_0002 db 03Eh,0B9h,056h,03Fh,03Ch,002h,076h,002h,0B1h,057h,0A8h,001h,074h,017h,0C0h,0E4h,004h,051h,050h,0E8h,03Fh,03Fh,024h,00Fh,08Ah,0C8h,058h,08Ah,0C1h,00Ah,0C4h,059h,0E8h,03Fh,03Fh,0EBh,01Ah,03Ch,004h,075h,004h,0B1h,055h,0EBh,0E1h,051h,050h,0E8h,03Fh,03Fh,024h,0F0h,08Ah,0C8h,058h,08Ah,0C1h,00Ah,0C4h,059h,0E8h,03Fh,03Fh
+via_bios_string_0003 db 00Ch,001h,056h,004h,002h,056h,000h,003h,057h,004h,005h,055h,004h
+via_bios_string_0004 db 032h,03Bh,01Ch,075h,03Fh,08Bh,0DAh,08Ah,020h,00Ah,0E4h,074h,031h,0B0h,001h,080h,0FCh,001h,074h,017h,0FEh,0C0h,080h,0FCh,002h,074h,010h,0FEh,0C0h,080h,0FCh,003h,074h,009h,0FEh,0C0h,080h,0FCh,005h,074h,002h,08Ah,0C4h,08Ah,0E5h,0B5h,0FFh,0E8h,03Fh,03Fh,0F8h
+via_bios_string_0007 db 034h,02Eh,03Bh,01Ch,075h,031h,08Bh,0DAh,02Eh,08Ah,020h,00Ah,0E4h,074h,031h,0B0h,001h,080h,0FCh,001h,074h,017h,0FEh,0C0h,080h,0FCh,002h,074h,010h,0FEh,0C0h,080h,0FCh,003h,074h,009h,0FEh,0C0h,080h,0FCh,004h,074h,002h,08Ah,0C4h,08Ah,0E5h,0B5h,0FFh,0E8h,03Fh,03Fh,0F8h
+via_bios_string_0008 db 01Bh,0B9h,055h,03Fh,08Ah,0D8h,0D0h,0EBh,002h,0CBh,03Ch,002h,074h,007h,0C0h,0E4h,004h,0B0h,00Fh,0EBh,002h,0B0h,0F0h,08Bh,0D8h,0E8h,03Fh,03Fh
+via_bios_string_0009 db 00Ch,001h,055h,004h,002h,056h,000h,003h,056h,004h,004h,057h,004h
+via_bios_string_0010 db 032h,03Bh,01Ch,075h,03Fh,08Bh,0DAh,08Ah,020h,00Ah,0E4h,074h,031h,0B0h,001h,080h,0FCh,001h,074h,017h,0FEh,0C0h,080h,0FCh,002h,074h,010h,0FEh,0C0h,080h,0FCh,003h,074h,009h,0FEh,0C0h,080h,0FCh,004h,074h,002h,08Ah,0C4h,08Ah,0E5h,0B5h,0FFh,0E8h,03Fh,03Fh,0F8h
+via_bios_string_0014 db 02Bh,0B9h,056h,03Fh,03Ch,002h,076h,003h,0B9h,057h,03Fh,0A8h,001h,075h,011h,0C0h,0E4h,004h,050h,0E8h,03Fh,03Fh,05Bh,024h,00Fh,00Ah,0C7h,0E8h,03Fh,03Fh,0EBh,00Ch,050h,0E8h,03Fh,03Fh,05Bh,024h,0F0h,00Ah,0C7h,0E8h,03Fh,03Fh
+via_bios_string_0015 db 00Ch,001h,056h,000h,002h,056h,004h,003h,057h,000h,004h,057h,004h
+via_bios_string_0019 db 050h,02Eh,03Bh,01Ch,075h,04Dh,08Bh,0DAh,02Eh,08Ah,020h,00Ah,0E4h,074h,04Dh,0B0h,001h,080h,0FCh,001h,074h,033h,0FEh,0C0h,080h,0FCh,002h,074h,02Ch,0FEh,0C0h,080h,0FCh,003h,074h,025h,0FEh,0C0h,080h,0FCh,005h,074h,01Eh,0FEh,0C0h,080h,0FCh,006h,074h,017h,0FEh,0C0h,080h,0FCh,007h,074h,010h,0FEh,0C0h,080h,0FCh,008h,074h,009h,0FEh,0C0h,080h,0FCh,009h,074h,002h,08Ah,0C4h,08Ah,0E5h,0B5h,0FFh,0E8h,03Fh,03Fh,0F8h
+via_bios_string_0020 db 01Dh,051h,050h,0B9h,055h,03Fh,08Ah,0D8h,0D0h,0EBh,002h,0CBh,03Ch,002h,074h,007h,0C0h,0E4h,004h,0B0h,00Fh,0EBh,002h,0B0h,0F0h,08Bh,0D8h,0E8h,03Fh,03Fh
+via_bios_string_0021 db 018h,001h,055h,004h,002h,056h,000h,003h,056h,004h,005h,057h,004h,006h,057h,004h,007h,058h,004h,008h,058h,004h,009h,059h,004h
+via_bios_string_0022 db 04Eh,03Bh,01Ch,075h,04Ch,08Bh,0DAh,08Ah,020h,00Ah,0E4h,074h,04Dh,0B0h,001h,080h,0FCh,001h,074h,033h,0FEh,0C0h,080h,0FCh,002h,074h,02Ch,0FEh,0C0h,080h,0FCh,003h,074h,025h,0FEh,0C0h,080h,0FCh,005h,074h,01Eh,0FEh,0C0h,080h,0FCh,006h,074h,017h,0FEh,0C0h,080h,0FCh,007h,074h,010h,0FEh,0C0h,080h,0FCh,008h,074h,009h,0FEh,0C0h,080h,0FCh,009h,074h,002h,08Ah,0C4h,08Ah,0E5h,0B5h,0FFh,0E8h,03Fh,03Fh,0F8h
+via_bios_string_0025 db 03Ah,080h,0E9h,00Ah,0B8h,003h,000h,0F6h,0E1h,003h,0F0h,08Ah,04Ch,002h,080h,0FDh,006h,074h,03Fh,080h,0FDh,007h,074h,03Fh,066h,060h,08Ah,0DDh,0F6h,0C1h,001h,074h,003h,0C0h,0E3h,004h,08Ah,0F9h,066h,0B9h,055h,03Fh,03Fh,080h,08Ah,0C7h,0D0h,0E8h,002h,0C8h,051h,066h,08Bh,0C1h,0BAh,0F8h,00Ch,066h,0EFh
+via_bios_string_0026 db 000h
+via_bios_string_0027 db 00Ch,001h,055h,004h,002h,056h,000h,003h,056h,004h,005h,057h,004h
+via_bios_string_0028 db 00Ch,056h,000h,00Fh,056h,004h,0F0h,057h,000h,00Fh,057h,004h,0F0h
+via_bios_string_0032 db 020h,0B9h,055h,03Fh,08Ah,0D8h,0D0h,0EBh,002h,0CBh,03Ch,002h,074h,00Ch,0C0h,0E4h,004h,0B0h,00Fh,08Bh,0D8h,0E8h,03Fh,03Fh,0EBh,007h,0B0h,0F0h,08Bh,0D8h,0E8h,03Fh,03Fh
+via_bios_string_0040 db 034h,09Ch,00Ah,0C0h,074h,04Bh,066h,060h,050h,050h,0BFh,054h,000h,0BBh,03Fh,03Fh,0E8h,03Fh,03Fh,058h,08Ah,0D0h,0C0h,0E2h,002h,066h,0C1h,0C9h,008h,066h,087h,0D1h,066h,0D3h,0CAh,080h,0E2h,0F0h,00Ah,0D4h,066h,0D3h,0C2h,066h,087h,0D1h,066h,0C1h,0C1h,008h,0E8h,03Fh,03Fh
+via_bios_string_0042 db 00Fh,001h,055h,004h,002h,056h,000h,003h,056h,004h,004h,057h,000h,005h,057h,004h
+
+via_bios_string_table_begin  label word
+  dw Offset via_bios_string_0001
+  dw Offset via_bios_string_0002
+  dw Offset via_bios_string_0003
+  dw Offset via_bios_string_0004
+  dw Offset via_bios_string_0002
+  dw Offset via_bios_string_0003
+  dw Offset via_bios_string_0007
+  dw Offset via_bios_string_0008
+  dw Offset via_bios_string_0009
+  dw Offset via_bios_string_0010
+  dw Offset via_bios_string_0008
+  dw Offset via_bios_string_0009
+  dw Offset via_bios_string_0007
+  dw Offset via_bios_string_0014
+  dw Offset via_bios_string_0015
+  dw Offset via_bios_string_0010
+  dw Offset via_bios_string_0014
+  dw Offset via_bios_string_0015
+  dw Offset via_bios_string_0019
+  dw Offset via_bios_string_0020
+  dw Offset via_bios_string_0021
+  dw Offset via_bios_string_0022
+  dw Offset via_bios_string_0020
+  dw Offset via_bios_string_0021
+  dw Offset via_bios_string_0025
+  dw Offset via_bios_string_0026
+  dw Offset via_bios_string_0027
+  dw Offset via_bios_string_0028
+  dw Offset via_bios_string_0026
+  dw Offset via_bios_string_0015
+  dw Offset via_bios_string_0001
+  dw Offset via_bios_string_0032
+  dw Offset via_bios_string_0027
+  dw Offset via_bios_string_0004
+  dw Offset via_bios_string_0032
+  dw Offset via_bios_string_0027
+  dw Offset via_bios_string_0001
+  dw Offset via_bios_string_0008
+  dw Offset via_bios_string_0027
+  dw Offset via_bios_string_0040
+  dw Offset via_bios_string_0026
+  dw Offset via_bios_string_0042
+via_bios_string_table_end    label word
+

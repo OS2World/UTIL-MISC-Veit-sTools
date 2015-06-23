@@ -1,0 +1,462 @@
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+rueckkehr                       equ iret_flags
+
+funktionstabelle_int13:
+                                dw funktion_000
+                                dw funktion_001
+                                dw funktion_002
+                                dw funktion_003
+                                dw funktion_004
+                                dw funktion_005
+                                dw funktion_006
+                                dw funktion_007
+                                dw funktion_008
+                                dw funktion_009
+                                dw funktion_00a
+                                dw funktion_00b
+                                dw funktion_00c
+                                dw funktion_00d
+                                dw funktion_00e
+                                dw funktion_00f
+                                dw funktion_010
+                                dw funktion_011
+                                dw funktion_012
+                                dw funktion_013
+                                dw funktion_014
+                                dw funktion_015
+                                dw funktion_016
+                                dw funktion_017
+                                dw funktion_018
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+keine_behandlung:
+                                ; alles ber 019 .. Hyperdisk,Syqest,...
+                                jmp d cs:[orgint13_oder_40]
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+
+int_13_oder_40_handler:
+                                jmp int_13_oder_40_handler_nach_markierung
+
+                                db 'E0X'
+  int_13_oder_40_handler_nach_markierung:
+
+                                cmp dl,cs:[laufwerk]
+                                jnz keine_behandlung
+
+                                cmp ah,016
+                                if z jmp call_funktion_016
+
+                                cmp b cs:[sperre],0
+                                jnz keine_behandlung
+
+
+                                ; BIOS-Variable
+                                push ds
+                                  push 00040
+                                  pop ds
+                                  push ax
+		                    push di
+		                      mov ax,00090
+		                      add al,cs:[laufwerk]
+		                      mov di,ax
+                                      mov al,cs:[bios_90]
+                                      mov ds:[di],al
+                                    pop di
+                                  pop ax
+                                pop ds
+
+                                cmp ah,018
+                                ja keine_behandlung
+
+                                push bp
+                                  mov bp,ax
+                                  shr bp,8
+				  shl bp,1
+                                  add bp,funktionstabelle_int13
+                                  call cs:[bp]
+                                pop bp
+
+                                jmp rueckkehr
+
+call_funktion_016:
+                                call funktion_016
+                                jmp rueckkehr
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_000:
+				clc
+				mov ah,0
+				ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_001:                   ; Statusbyte holen
+				clc
+				mov ah,0        ; kein Fehler
+				ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_002:
+				mov ah,0
+				push ax
+				  push bx
+				    push cx
+				      push dx
+					push si
+					  push di
+					    push ds
+					      push cs
+					      pop ds
+
+					      push ax
+						shl ax,9
+						mov [anzahl_lo],ax
+						mov [quell_h],[xms_handhabe]
+						mov w [ziel_h],0
+						mov [ziel_o],bx
+						mov bx,es
+						mov [ziel_s],bx
+					      pop ax
+
+					      call off_berechnung
+					      cmp bx,0ffff
+					      jz fehler_bei_002
+
+					      mov [quell_s],cx
+					      mov [quell_o],dx
+
+					      ; Auftrag Kopiere
+					      mov ah,funktion_xms_move
+					      mov si,kopierer
+					      mov bl,0        ; Annahme: Kein Fehler
+					      call xmm_aufruf
+
+					    pop ds
+					  pop di
+					pop si
+				      pop dx
+				    pop cx
+				  pop bx
+				pop ax
+				clc
+				ret
+
+fehler_bei_002:
+					    pop ds
+					  pop di
+					pop si
+				      pop dx
+				    pop cx
+				  pop bx
+				pop ax
+				stc
+				mov ax,00400
+				ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_003:
+				cmp b cs:[schreibschutz],'0'
+				if z jmp schreibschutz_003
+
+				mov ah,0
+				push ax
+				  push bx
+				    push cx
+				      push dx
+					push si
+					  push di
+					    push ds
+					      push cs
+					      pop ds
+
+					      push ax
+						shl ax,9
+						mov [anzahl_lo],ax
+						mov [ziel_h],[xms_handhabe]
+						mov w [quell_h],0
+						mov [quell_o],bx
+						mov bx,es
+						mov [quell_s],bx
+					      pop ax
+
+					      call off_berechnung
+
+					      cmp bx,0ffff
+					      jz fehler_bei_003
+
+					      mov [ziel_s],cx
+					      mov [ziel_o],dx
+
+					      ; Auftrag Kopiere
+					      mov ah,funktion_xms_move
+					      mov si,kopierer
+					      mov bl,0        ; Annahme: Kein Fehler
+					      call xmm_aufruf
+
+					      mov b [veraendert],001
+
+					    pop ds
+					  pop di
+					pop si
+				      pop dx
+				    pop cx
+				  pop bx
+				pop ax
+				clc
+				ret
+
+fehler_bei_003:
+					    pop ds
+					  pop di
+					pop si
+				      pop dx
+				    pop cx
+				  pop bx
+				pop ax
+				stc
+				mov ax,00400
+				ret
+
+
+schreibschutz_003:
+				stc
+				mov ah,003      ; Schreibschutz
+				mov al,0        ; 0 Sektoren geschrieben
+				ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_004:
+				mov ah,0
+				push ax
+				  push bx
+				    push cx
+				      push dx
+					push si
+					  push di
+					    push ds
+					      push cs
+					      pop ds
+
+					      call off_berechnung
+					      cmp bx,0ffff
+					      jz fehler_bei_004
+
+					    pop ds
+					  pop di
+					pop si
+				      pop dx
+				    pop cx
+				  pop bx
+				pop ax
+				clc
+				ret
+
+fehler_bei_004:
+					    pop ds
+					  pop di
+					pop si
+				      pop dx
+				    pop cx
+				  pop bx
+				pop ax
+				stc
+				mov ax,00400
+				ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_005:
+
+				cmp b cs:[schreibschutz],'0'
+				if z jmp schreibschutz_005
+
+				cmp b es:[bx+3],2 ; 512 ?
+				if nz jmp fehler_bei_005_nicht_512_Byte
+
+gemeinsam_weiter_formatieren:
+				mov ah,0
+				push ax
+				  push bx
+				    push cx
+				      push dx
+					push si
+					  push di
+					    push ds
+					      push cs
+					      pop ds
+
+					      ; Annahme: Tabelle enth„lt nur Werte fr die angegeben Spur
+					      ;--mov ch,b es:[bx+0]   ; Spur
+					      ;--mov dh,b es:[bx+1]   ; Kopf
+					      ;--mov cl,b es:[bx+2]   ; Sektornummer
+					      ;--cmp    b es:[bx+3],2 ; 512 ?
+
+					      mov ax,1
+					      shl ax,9
+					      mov [anzahl_lo],ax
+					      mov [ziel_h],[xms_handhabe]
+					      mov w [quell_h],0
+					      mov w [quell_o],0
+					      mov w [quell_s],[lese_puffer_seg]
+
+					      mov al,cs:[sekt_spur] ; genau 1 Spur ...
+					      call off_berechnung
+
+					      cmp bx,0ffff
+					      jz fehler_bei_005
+
+					      mov [ziel_s],cx
+					      mov [ziel_o],dx
+
+					      mov ax,0f6f6
+					      call fuelle_lese_puffer
+
+					      mov cl,cs:[sekt_spur]
+					      xor ch,ch
+  sektoren_formatieren:
+					      ; Auftrag Kopiere
+					      mov [anzahl_lo],512
+					      mov ah,funktion_xms_move
+					      mov si,kopierer
+					      mov bl,0        ; Annahme: Kein Fehler
+					      call xmm_aufruf
+					      add w [ziel_o],512
+					      adc w [ziel_s],0
+					      loop sektoren_formatieren
+
+					      mov b [veraendert],001
+
+					    pop ds
+					  pop di
+					pop si
+				      pop dx
+				    pop cx
+				  pop bx
+				pop ax
+				clc
+				ret
+
+fehler_bei_005:
+
+					    pop ds
+					  pop di
+					pop si
+				      pop dx
+				    pop cx
+				  pop bx
+				pop ax
+fehler_bei_005_nicht_512_Byte:
+				stc
+				mov ax,00400
+				ret
+
+schreibschutz_005:
+				stc
+				mov ah,003      ; Schreibschutz
+				mov al,0        ; 0 Sektoren geschrieben
+				ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_006:
+				cmp b cs:[schreibschutz],'0'
+				if z jmp schreibschutz_005
+
+				jmp gemeinsam_weiter_formatieren
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_007:
+                		jmp funktion_005
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_008:
+				les di,cs:[dbt]     ; ES:DI=DBT
+				cmp b cs:[laufwerks_typ],1 ;  360
+				jz funktion_008_1200
+
+				cmp b cs:[laufwerks_typ],2 ; 1200
+				jz funktion_008_1200
+
+				cmp b cs:[laufwerks_typ],3 ;  720
+				jz funktion_008_1440
+
+				cmp b cs:[laufwerks_typ],4 ; 1440
+				jz funktion_008_1440
+
+
+  funktion_008_2880:
+				mov bl,5
+				mov cl,2880*1024/512/80/2
+				jmp short funktion_008_weiter
+
+  funktion_008_1200:
+				mov bl,2
+				mov cl,1200*1024/512/80/2
+				jmp short funktion_008_weiter
+
+  funktion_008_1440:
+                		mov bl,4
+				mov cl,1440*1024/512/80/2
+
+  funktion_008_weiter:
+
+				mov ch,80-1
+				mov dh,2-1
+				mov dl,2
+				mov al,0 ; ??? - PCFORMAT / PC-Tools
+				mov ah,000
+				clc
+				ret
+
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_009:
+funktion_00a:
+funktion_00b:
+funktion_00c:
+funktion_00d:
+funktion_00e:
+funktion_00f:
+funktion_010:
+funktion_011:
+funktion_012:
+funktion_013:
+funktion_014:
+				breakpoint 'Festplattenfunktion'
+				mov ah,001 	; invalid function
+				stc
+				ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_015:
+				mov ah,001 ; Diskette , keine Wechsel-Erkennung
+				clc
+				ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_016:
+				mov ah,cs:[plattenwechsel]
+
+				cmp ah,platte_gewechselt_nein
+				jz funktion_016_gleichbleibend
+
+				mov ah,006
+				stc
+				ret
+
+funktion_016_gleichbleibend:
+				clc
+                		ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_017:
+				mov ah,000
+                		clc        ; wird schon richtig sein ...
+                		ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+funktion_018:
+                		cmp ch,cs:[spuren]
+				jnz unterschiedlich
+				cmp cl,cs:[sekt_spur]
+				jnz unterschiedlich
+
+				; KEINE nderung des Formates
+				les di,cs:[dbt]     ; ES:DI=DBT
+
+				mov ah,000  ; Werte werden untersttzt
+				clc
+				ret
+
+unterschiedlich:
+                		push bx
+				  mov bl,kopierschutz_farbe
+				  call faerben
+				pop bx
+
+				mov ah,00c ; nicht untersttzt
+				stc
+				ret
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת

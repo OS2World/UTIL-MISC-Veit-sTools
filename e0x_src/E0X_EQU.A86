@@ -1,0 +1,23 @@
+sekt_spur_max		equ 50            ; bis zu 50 Sektoren je Spur
+
+koepfe_max		equ 2		  ; bis zu 2 K”pfe
+
+spur_max		equ 100		  ; bis zu 100 Spuren
+
+pfadlaenge              equ 64+1
+
+arbeit_farbe            equ 00e
+
+schwarz_farbe           equ 000
+
+fehler_farbe            equ 00c
+
+kopierschutz_farbe      equ 00b
+
+xms_fehler_farbe        equ 001
+
+schreib_farbe           equ 002
+
+schreib_fehler_farbe    equ 006
+
+cache_reset_farbe       equ 00f

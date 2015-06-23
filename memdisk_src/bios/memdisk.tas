@@ -1,0 +1,184 @@
+Title                   include all needed sources form memdisk.bin/com
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        .386p
+                        locals @@
+
+memdisk                 equ 1
+
+IFNDEF dos
+IFNDEF bios
+                        .err dos tsr or bios target
+ENDIF ; bios
+ENDIF ; dos
+
+IFNDEF nodebug
+
+verify_memory           equ 1
+
+ENDIF ; -nodebug
+
+serial_debug            equ 1
+
+IFNDEF dos
+
+fastboot_function       equ 1
+; ScrewDrv              equ 1
+
+ENDIF ; -dos
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        include vga_attr.inc
+IFDEF language_de
+                        include lang_de.inc
+ENDIF
+IFDEF language_en
+                        include lang_en.inc
+ENDIF
+IFDEF language_es
+                        include lang_es.inc
+ENDIF
+IFDEF language_fr
+                        include lang_fr.inc
+ENDIF
+IFDEF language_it
+                        include lang_it.inc
+ENDIF
+IFDEF language_jp
+                        include lang_jp.inc
+ENDIF
+IFDEF language_nl
+                        include lang_nl.inc
+ENDIF
+IFDEF language_ru
+                        include lang_ru.inc
+ENDIF
+                        include datum.inc
+                        include begin.inc
+                        include cfgarea1.inc
+
+                        include mac.inc
+                        include typedef.inc
+                        include packfile.inc
+                        include cdboot.inc
+                        include bs.inc
+                        include lvm.inc
+                        include fat_dir.inc
+                        include ..\os2\mbios.inc
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                        ; code - not needed for int 13/15
+
+                        include int_0_6.inc
+IFDEF fastboot_function
+                        include fastboo1.inc
+                        include boot.inc
+                        ;db '--fb--'
+                        ; align to (640-4) KiB to avoid minivdm problems
+                        db (1024-(($-anfang_org) and 003ffh)) dup (0cch)
+                        include int_0_6u.inc
+                        include intu.inc
+                        include uninstal.inc
+ENDIF ; fastboot_function
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                        ; code - must be mapped for int 13/15
+
+  resident_code_mapped_for_minivdm:
+                        include deb_com2.inc
+                        include ausschri.inc
+                        include palette.inc
+                        include iret.inc
+                        include int13.inc
+                        include a20.inc
+IFNDEF dos
+                        include int15.inc
+ENDIF
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                        ;db '--end resident part--'
+                        ; nonresident part
+
+                        include scan_dl.inc
+                        include memalloc.inc
+                       ;include inithd.inc
+                        include a20i.inc
+                        include wrap_irq.inc
+                        include deb_com1.inc
+                        include srscreen.inc
+                        include point.inc
+                        include menu.inc
+                        include frame.inc
+                        include key_box.inc
+IFNDEF language_en
+                        include ..\..\os2csm\lader\tastatur.inc
+ENDIF ; -language_en
+                        include readme.inc
+                        include font.inc
+                        include memtest.inc
+                        include cache.inc
+                        include cd_menu.inc
+                        include update.inc
+IFDEF language_de
+                        include menu_de.inc
+ENDIF
+IFDEF language_en
+                        include menu_en.inc
+ENDIF
+IFDEF language_es
+                        include menu_es.inc
+ENDIF
+IFDEF language_fr
+                        include menu_fr.inc
+ENDIF
+IFDEF language_it
+                        include menu_it.inc
+ENDIF
+IFDEF language_jp
+                        include menu_jp.inc
+ENDIF
+IFDEF language_nl
+                        include menu_nl.inc
+ENDIF
+IFDEF language_ru
+                        include menu_ru.inc
+ENDIF
+
+                        include format.inc
+                        include speicher.inc
+                       ;include dump.inc
+
+                        include depack15.inc
+                        include crc32.inc
+                        include dep16s.inc
+                        include unpackfi.inc
+                        include cdconfig.inc
+                        include cdread.inc
+                        include sektor.inc
+                        include int_0_6i.inc
+IFNDEF fastboot_function
+                        include int_0_6u.inc
+                        include intu.inc
+ENDIF
+                        include inti.inc
+                        include i_csm_md.inc
+                        include call_csm.inc
+IFDEF ScrewDrv
+                        include sd_load.inc
+                        include sd_rom.inc
+ENDIF
+                        include fatfile.inc
+                        include memload.inc
+                        include driveacc.inc
+                        include cdemterm.inc
+                        include cfgarea2.inc
+                        include puffer.inc
+
+code                    EndS
+
+end                     anfang_org
+
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

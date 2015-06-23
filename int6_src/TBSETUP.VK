@@ -1,0 +1,4 @@
+% GENVK
+INT6.COM     *       *       0011 ; TSR + DEENCOM
+INT6s.COM    *       *       0011 ; TSR + DEENCOM
+TESTI6.COM   *       *       0001 ; "UD2"

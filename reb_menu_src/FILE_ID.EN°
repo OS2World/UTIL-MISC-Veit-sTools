@@ -1,0 +1,4 @@
+
+Prevents system reboot if
+* system-BIOS-shadow is overwritten (URAM)
+* TASKMGR is loaded

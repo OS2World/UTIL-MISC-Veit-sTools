@@ -1,0 +1,35 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_access_error  :^string;
+  textz_Cannot_initialize_stream  :^string;
+  textz_Read_beyond_end_of_stream  :^string;
+  textz_Cannot_expand_stream  :^string;
+  textz_Entpacker  :^string;
+  textz_Zielverzeichnis  :^string;
+  textz_Suche_Anfang  :^string;
+  textz_unbekanntes_WISE_Version_Autor_benachrichtigen  :^string;
+  textz_EXE_Typ  :^string;
+  textz_EXE_Laenge  :^string;
+  textz_dll_laenge  :^string;
+  textz_bitte_Pk_Un_zip_benutzen  :^string;
+  textz_Entpacke_Dateien  :^string;
+  textz_Fehler_beim_Erstellen  :^string;
+  textz_Pruefsummenfehler  :^string;
+  textz_Suche_Datei_mit_den_Installationsanweisungen  :^string;
+  textz_Datei_mit_den_Dateiinformationen_nicht_gefunden  :^string;
+  textz_Erzeuge  :^string;
+  textz_mit_den_gefundenen_Dateinamen  :^string;
+  textz_Quelle  :^string;
+  textz_Dateiname  :^string;
+  textz_REM_Dateilaenge_wird_benutzt_bei  :^string;
+  textz_benutztung  :^string;
+  textz_start_des_wise_setup_programmes  :^string;
+  textz_codeseg_laenge  :^string;
+  textz_lade_Datenbank_der_bekannten_Formate  :^string;
+  textz_Formatdatenbank__kann_nicht_geoeffnet_werden_1  :^string;
+  textz_Formatdatenbank__kann_nicht_geoeffnet_werden_2  :^string;
+  textz_Zu_viele_Formatdefinitionen  :^string;
+  textz_keine_Eintraege_in_e_wise_cfg_gefunden  :^string;
+  textz_patchformat_vollstaendig  :^string;
+  textz_patchformat_unvollstaendig  :^string;

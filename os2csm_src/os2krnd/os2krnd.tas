@@ -1,0 +1,53 @@
+Title   OS2LDR AC module to load os2krnd instead of os2krnl without os2csm
+
+; Veit Kannegieser 2003.11.01
+
+; usage: ac.exe e:\os2ldr x:\y\os2krnd.ac
+
+                        .386p
+
+code                    Segment 'CODE' use16
+                        Assume cs:code
+                        org 0100h
+entrypoint:
+                        xchg al,al      ; Signatur
+                        jmp short nach_kopf
+
+                        db 00d
+                        db 'OS2LDR Patch to OS2KRND when Scroll-Lock is active'
+                        db 26 ; ^z
+   nach_kopf:
+                        mov ah,002h             ; get shift state
+                        int 016h
+                        test al,010h            ; scroll lock?
+                        jz patch_done           ; no
+
+                        push es
+                        pusha
+                          push 01000h           ; search 1000:XXXX
+                          pop es
+                          sub di,di
+                          cld
+                          mov al,'O'            ; 'O' 'S2KR' 'NL'
+                          mov cx,0f000h
+  search_again:
+                          repne scasb
+                          cmp DWord Ptr es:[di+0],'RK2S'
+                          jne not_found
+                          cmp Word Ptr es:[di+4],'LN'
+                          jne not_found
+
+                          mov Byte Ptr es:[di+5],'D' ; OS2KRN<D>
+  not_found:
+                          test cx,cx
+                          jnz search_again
+
+                        popa
+                        pop es
+
+  patch_done:
+                        ret
+
+code                    EndS
+
+End                     entrypoint

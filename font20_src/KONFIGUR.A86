@@ -1,0 +1,104 @@
+; Anpassung an verschiedene Bildschirme
+; 1999.08.04 Veit Kannegieser
+;----------------------------------------------------------------------------
+lies_hex:
+                lodsb
+                cmp al,'-'
+                je lies_ff
+
+                cmp al,'9'
+                ja lies_hex_buchstabe
+
+                sub al,'0'
+                ret
+
+  lies_hex_buchstabe:
+                and al,0ff-020
+                sub al,'A'-10
+                ret
+
+
+  lies_ff:
+                mov al,0ff
+                ret
+
+;----------------------------------------------------------------------------
+
+konfigration:
+                pusha
+                  push ds
+                    mov ds,[0002c]
+                    mov si,0
+                    cld
+
+  vergleiche_umgebungsvariable:
+                    cmp b [si],0
+                    je ende_der_umgebung
+
+                    cmp w [si],'2F' ; 'F20='
+                    jne suche_naechsten_block
+                    cmp w [si+2],'=0'
+                    je f20_umgebubgsvariable_gefunden
+
+  suche_naechsten_block:
+                    lodsb
+                    cmp al,0
+                    jne suche_naechsten_block
+                    jmp vergleiche_umgebungsvariable
+
+  f20_umgebubgsvariable_gefunden:
+                    add si,4
+
+                    ;--------------------------------------
+                    #if et4000
+                    call lies_hex
+                    mov b cs:[clock_80_25],al
+                    call lies_hex
+                    mov b cs:[clock_rest],al
+                    #endif
+                    ;--------------------------------------
+
+                    ;--------------------------------------
+                    #if et4000
+                    call lies_hex
+                    mov b cs:[clock_80_25],al
+                    call lies_hex
+                    mov b cs:[clock_rest],al
+                    #endif
+                    ;--------------------------------------
+
+                    ;--------------------------------------
+                    #if s3_trio
+                    mov dx,0ffff
+                    call lies_hex
+                    cmp al,0ff
+                    je umgebungsfehler
+                    mov dh,al
+
+                    call lies_hex
+                    cmp al,0ff
+                    je umgebungsfehler
+                    shl dh,4
+                    or dh,al
+
+                    call lies_hex
+                    cmp al,0ff
+                    je umgebungsfehler
+                    mov dl,al
+
+                    call lies_hex
+                    cmp al,0ff
+                    je umgebungsfehler
+                    shl dl,4
+                    or dl,al
+
+  umgebungsfehler:
+                    mov w cs:[clock_80_25],dx
+
+                    #endif
+                    ;--------------------------------------
+  ende_der_umgebung:
+                  pop ds
+                popa
+                ret
+;----------------------------------------------------------------------------

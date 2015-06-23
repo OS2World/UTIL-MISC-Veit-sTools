@@ -1,0 +1,925 @@
+(*$S-*)
+unit m5; (* 2000.10.04 30i3107a.rom *)
+
+interface
+
+procedure entpacke_m5(const quelle,ziel;const laenge:longint);
+
+implementation
+
+var
+  m5_speicher           :array[0..$184F*4-1] of byte;
+  m5_speicher2          :array[$184F*4..$ffff] of byte;
+
+
+procedure m5_pr7;assembler;(*$Frame-*)(*$Uses None*)
+  asm
+                mov     word ptr m5_speicher+60BCh, ax
+                mov     dword ptr m5_speicher+60BEh, esi
+                mov     word ptr m5_speicher+60C6h, bx
+                mov     dword ptr m5_speicher+60C2h, edi
+                mov     edi, offset m5_speicher+60CAh
+                mov     ecx, 8
+                xor     eax, eax
+
+@loc_0_C0:
+                mov     [edi], eax
+                add     edi, 4
+                dec     ecx
+                jnz     @loc_0_C0
+                movzx   eax, word ptr m5_speicher+60BCh
+                xor     ebx, ebx
+                mov     edi, offset m5_speicher+60C8h
+                xor     ecx, ecx
+
+@loc_0_DA:
+                cmp     ecx, eax
+                jnb     @loc_0_F2
+                movzx   ebx, byte ptr [esi]
+                inc     esi
+                shl     ebx, 1
+                inc     word ptr (m5_speicher+60C8h)[ebx]
+                inc     ecx
+                jmp     @loc_0_DA
+
+@loc_0_F2:
+                mov     word ptr m5_speicher+610Eh, 0
+                mov     esi, offset m5_speicher+60CAh
+                mov     edi, offset m5_speicher+610Eh
+                mov     eax, 1
+
+@loc_0_107:
+                cmp     eax, 10h
+                ja      @loc_0_127
+                mov     ecx, 10h
+                sub     ecx, eax
+                movzx   edx, word ptr [esi]
+                shl     edx, cl
+                add     dx, [edi]
+                inc     edi
+                inc     edi
+                mov     [edi], dx
+                inc     eax
+                inc     esi
+                inc     esi
+                jmp     @loc_0_107
+
+@loc_0_127:
+                cmp     word ptr m5_speicher+612Eh, 0
+                jz      @loc_0_132
+                mov     eax, 0FFFFh
+                jmp     @ret
+
+@loc_0_132:
+                mov     ecx, 10h
+                movzx   ebp, word ptr m5_speicher+60C6h
+                sub     ecx, ebp
+                mov     word ptr m5_speicher+6132h, cx
+                mov     eax, 1
+                mov     edi, offset m5_speicher+610Eh
+                mov     esi, offset m5_speicher+60ECh
+
+@loc_0_14E:
+                cmp     eax, ebp
+                ja      @loc_0_170
+                shr     word ptr [edi], cl
+                mov     word ptr [esi], 1
+                mov     ebx, ebp
+                sub     ebx, eax
+                xchg    ecx, ebx
+                shl     word ptr [esi], cl
+                xchg    ecx, ebx
+                inc     ax
+                inc     edi
+                inc     edi
+                inc     esi
+                inc     esi
+                jmp     @loc_0_14E
+
+@loc_0_170:
+                mov     edx, ecx
+
+@loc_0_172:
+                cmp     eax, 10h
+                ja      @loc_0_18B
+                mov     ecx, 10h
+                sub     ecx, eax
+                mov     word ptr [esi], 1
+                shl     word ptr [esi], cl
+                inc     esi
+                inc     esi
+                inc     ax
+                jmp     @loc_0_172
+
+@loc_0_18B:
+                movzx   ebx, bp
+                inc     ebx
+                shl     ebx, 1
+                add     ebx, offset m5_speicher+610Ch
+                mov     ecx, edx
+                movzx   eax, word ptr [ebx]
+                shr     eax, cl
+                or      eax, eax
+                jz      @loc_0_1CA
+                xor     edi, edi
+                mov     edi, eax
+                shl     edi, 1
+                add     edi, dword ptr m5_speicher+60C2h
+                mov     edx, 1
+                mov     ecx, ebp
+                shl     edx, cl
+
+@loc_0_1BA:
+                cmp     eax, edx
+                jz      @loc_0_1CA
+                mov     word ptr [edi], 0
+                inc     edi
+                inc     edi
+                inc     ax
+                jmp     @loc_0_1BA
+
+@loc_0_1CA:
+                movzx   eax, word ptr m5_speicher+60BCh
+                mov     word ptr m5_speicher+6134h, ax
+                mov     edx, 1
+                mov     ecx, 0Fh
+                sub     ecx, ebp
+                shl     edx, cl
+                xor     ebx, ebx
+
+@loc_0_1DD:
+                cmp     bx, word ptr m5_speicher+60BCh
+                jnb     @loc_0_2FB
+                mov     word ptr m5_speicher+6138h, bx
+                mov     edi, ebx
+                add     edi, dword ptr m5_speicher+60BEh
+                movzx   eax, byte ptr [edi]
+                mov     word ptr m5_speicher+6130h, ax
+                or      al, al
+                jz      @loc_0_2F7
+                push    ebx
+                  push    eax
+                    mov     ebx, eax
+                    shl     ebx, 1
+                    mov     edi, ebx
+                    add     edi, offset m5_speicher+610Ch
+                    movzx   eax, word ptr [edi]
+                    mov     ecx, eax
+                    mov     edi, ebx
+                    add     edi, offset m5_speicher+60EAh
+                    add     ax, [edi]
+                    mov     word ptr m5_speicher+6136h, ax
+                  pop     eax
+                pop     ebx
+                cmp     eax, ebp
+                ja      @loc_0_258
+              //xor     edi, edi
+                mov     edi, ecx
+                shl     edi, 1
+                add     edi, dword ptr m5_speicher+60C2h
+                push    ebx
+                  movzx   ebx, word ptr m5_speicher+6136h
+                  movzx   eax, word ptr m5_speicher+6138h
+
+@loc_0_245:
+                  cmp     ecx, ebx
+                  jnb     @loc_0_253
+                  mov     [edi], ax
+                  add     edi, 2
+                  inc     ecx
+                  jmp     @loc_0_245
+
+@loc_0_253:
+                pop     ebx
+                jmp     @loc_0_2DD
+
+@loc_0_258:
+                xor     esi, esi
+                mov     eax, ecx
+                movzx   ecx, word ptr m5_speicher+6132h
+                mov     esi, eax
+                shr     esi, cl
+                shl     esi, 1
+                add     esi, dword ptr m5_speicher+60C2h
+                movzx   ebx, word ptr m5_speicher+6130h
+                sub     ebx, ebp
+
+@loc_0_276:
+                or      ebx, ebx
+                jz      @loc_0_2D4
+                cmp     word ptr [esi], 0
+                jnz     @loc_0_2B1
+                movzx   ecx, word ptr m5_speicher+6134h
+                shl     ecx, 1
+                mov     edi, offset m5_speicher+2814h
+                add     edi, ecx
+                mov     word ptr [edi], 0
+                mov     edi, offset m5_speicher+201Eh
+                add     edi, ecx
+                mov     word ptr [edi], 0
+                shr     ecx, 1
+                mov     [esi], cx
+                inc     word ptr m5_speicher+6134h
+
+@loc_0_2B1:
+                mov     edi, offset m5_speicher+201Eh
+                movzx   ecx, word ptr [esi]
+                test    edx, eax
+                jz      @loc_0_2C6
+                mov     edi, offset m5_speicher+2814h
+
+@loc_0_2C6:
+                shl     ecx, 1
+                add     edi, ecx
+                mov     esi, edi
+                shl     ax, 1
+                dec     ebx
+                jmp     @loc_0_276
+
+@loc_0_2D4:
+                movzx   ecx, word ptr m5_speicher+6138h
+                mov     [esi], cx
+                mov     ebx, ecx
+
+@loc_0_2DD:
+                mov     edi, offset m5_speicher+610Ch
+                movzx   ecx, word ptr m5_speicher+6130h
+                shl     ecx, 1
+                add     edi, ecx
+                movzx   ecx, word ptr m5_speicher+6136h
+                mov     [edi], cx
+
+@loc_0_2F7:
+                inc     ebx
+                jmp     @loc_0_1DD
+
+@loc_0_2FB:
+                xor     eax, eax
+@ret:
+ end; (* m5_pr7 *)
+
+procedure m5_pr2;assembler;(*$Frame-*)(*$Uses EBP*)
+  asm
+                mov     ecx, eax
+                movzx   eax, word ptr m5_speicher
+                shl     ax, cl
+                movzx   ebx, word ptr m5_speicher+6
+                movzx   edx, word ptr m5_speicher+2
+                mov     ebp, dword ptr m5_speicher+0Eh
+                mov     esi, dword ptr m5_speicher+16h
+
+@loc_0_49:
+                cmp     ecx, ebx
+                jbe     @loc_0_70
+                push    edx
+                  sub     ecx, ebx
+                  shl     dx, cl
+                  or      eax, edx
+                pop     edx
+                or      ebp, ebp
+                jz      @loc_0_69
+                dec     ebp
+                mov     edx, eax
+                lodsb
+                movzx   eax, al
+                xchg    eax, edx
+                mov     ebx, 8
+                jmp     @loc_0_49
+
+@loc_0_69:
+                mov     ebx, 8
+                xor     edx, edx
+                jmp     @loc_0_49
+
+@loc_0_70:
+                mov     dword ptr m5_speicher+0Eh, ebp
+                sub     ebx, ecx
+                mov     ecx, ebx
+                push    edx
+                  shr     dx, cl
+                  or      eax, edx
+                pop     edx
+                mov     word ptr m5_speicher+6, cx
+                mov     dword ptr m5_speicher+16h, esi
+                mov     word ptr m5_speicher+2, dx
+                mov     word ptr m5_speicher, ax
+  end; (* m5_pr2 *)
+
+procedure m5_pr6;assembler;(*$Frame-*)(*$Uses None*)
+  asm
+                mov     ecx, 10h
+                sub     ecx, eax
+                movzx   ebx, word ptr m5_speicher
+                shr     ebx, cl
+                push    ebx
+                call    m5_pr2
+                pop     eax
+  end; (* m5_pr6 *)
+
+procedure m5_pr9;assembler;(*$Frame-*)(*$Uses None*)
+  asm
+                mov     eax, 9
+                call    m5_pr6
+                or      eax, eax
+                jnz     @loc_0_4BD
+                mov     eax, 9
+                call    m5_pr6
+                xchg    ebx, edi
+                xchg    eax, edx
+                mov     edi, offset m5_speicher+5EA2h
+                mov     ecx, 1FEh
+                xor     eax, eax
+
+@loc_0_496:
+                mov     [edi], al
+                inc     edi
+                dec     ecx
+                jnz     @loc_0_496
+                mov     edi, offset m5_speicher+3800h
+                mov     ecx, 800h
+                xchg    eax, edx
+                shl     eax, 10h
+                mov     ax, dx
+
+@loc_0_4AE:
+                mov     [edi], eax
+                add     edi, 4
+                dec     ecx
+                jnz     @loc_0_4AE
+                xchg    ebx, edi
+                jmp     @ret
+
+@loc_0_4BD:
+                xor     edx, edx
+                xor     ebx, ebx
+
+@loc_0_4C3:
+                cmp     edx, eax
+                jnb     @loc_0_597
+                push    eax
+                  xor     ebx, ebx
+                  movzx   ebx, word ptr m5_speicher
+                  shr     ebx, 8
+                  shl     ebx, 1
+                  add     ebx, offset m5_speicher+5C32h
+                  movzx   ebx, word ptr [ebx]
+                  cmp     ebx, 13h
+                  jb      @loc_0_514
+                  mov     ecx, 80h
+                  push    eax
+                    movzx   eax, word ptr m5_speicher
+
+@loc_0_4EF:
+                    mov     ebp, offset m5_speicher+201Eh
+                    test    eax, ecx
+                    jz      @loc_0_4FF
+                    mov     ebp, offset m5_speicher+2814h
+
+@loc_0_4FF:
+                    add     ebp, ebx
+                    add     ebp, ebx
+                    movzx   ebx, word ptr ds:[ebp+0]
+                    shr     ecx, 1
+                    cmp     ebx, 13h
+                    jnb     @loc_0_4EF
+                  pop     eax
+
+@loc_0_514:
+                  mov     ebp, offset m5_speicher+60A0h
+                  add     ebp, ebx
+                  movzx   eax, byte ptr ds:[ebp+0]
+                  push    ebx
+                    push    edx
+                      call    m5_pr2
+                    pop     edx
+                  pop     ebx
+                  cmp     ebx, 2
+                  ja      @loc_0_57D
+                  or      ebx, ebx
+                  jnz     @loc_0_53B
+                  mov     ebx, 1
+                  jmp     @loc_0_55C
+
+@loc_0_53B:
+                  cmp     ebx, 1
+                  jnz     @loc_0_54F
+                  mov     eax, 4
+                  push    edx
+                    call    m5_pr6
+                  pop     edx
+                  mov     ebx, eax
+                  add     bx, 3
+                  jmp     @loc_0_55C
+
+@loc_0_54F:
+                  mov     eax, 9
+                  push    edx
+                    call    m5_pr6
+                  pop     edx
+                  mov     ebx, eax
+                  add     bx, 14h
+
+@loc_0_55C:
+                  xchg    edi, ebp
+                  xor     eax, eax
+                  movzx   edi, dx
+                  add     edi, offset m5_speicher+5EA2h
+
+@loc_0_56D:
+                  dec     bx
+                  js      @loc_0_578
+                  mov     [edi], al
+                  inc     edi
+                  inc     dx
+                  jmp     @loc_0_56D
+
+@loc_0_578:
+                  xchg    edi, ebp
+                  jmp     @loc_0_593
+
+@loc_0_57D:
+                  xor     ebp, ebp
+                  movzx   ebp, dx
+                  add     ebp, offset m5_speicher+5EA2h
+                  mov     al, bl
+                  sub     al, 2
+                  mov     ds:[ebp+0], al
+                  inc     dx
+
+@loc_0_593:
+                pop     eax
+                jmp     @loc_0_4C3
+
+
+@loc_0_597:
+                mov     ebp, edi
+                xor     eax, eax
+                movzx   edi, dx
+                add     edi, offset m5_speicher+5EA2h
+
+@loc_0_5A8:
+                cmp     dx, 1FEh
+                jnb     @loc_0_5B6
+                mov     [edi], al
+                inc     edi
+                inc     dx
+                jmp     @loc_0_5A8
+
+@loc_0_5B6:
+                mov     edi, ebp
+                push    edi
+                  push    esi
+                    mov     eax, 1FEh
+                    mov     esi, offset m5_speicher+5EA2h
+                    mov     ebx, 0Ch
+                    mov     edi, offset m5_speicher+3800h
+                    call    m5_pr7
+                  pop     esi
+                pop     edi
+@ret:
+  end; (* m5_pr9 *)
+
+procedure m5_pr8;assembler;(*$Frame-*)(*$Uses None*)
+  asm
+                mov     word ptr m5_speicher+60B4h, ax
+                mov     word ptr m5_speicher+60B6h, bx
+                mov     word ptr m5_speicher+60B8h, cx
+                movzx   eax, bx
+                call    m5_pr6
+                mov     word ptr m5_speicher+60BAh, ax
+                or      eax, eax
+                jnz     @loc_0_3C3
+                movzx   eax, word ptr m5_speicher+60B6h
+                call    m5_pr6
+                push    edi
+                  mov     edi, offset m5_speicher+5C32h
+                  mov     ecx, eax
+                  shl     eax, 10h
+                  mov     ax, cx
+                  mov     ecx, 80h
+
+@loc_0_39F:
+                  mov     [edi], eax
+                  add     edi, 4
+                  dec     ecx
+                  jnz     @loc_0_39F
+                  mov     edi, offset m5_speicher+60A0h
+                  movzx   ecx, word ptr m5_speicher+60B4h
+                  xor     eax, eax
+
+@loc_0_3B6:
+                  mov     [edi], al
+                  inc     edi
+                  dec     ecx
+                  jnz     @loc_0_3B6
+                pop     edi
+                xor     eax, eax
+                jmp     @ret
+
+@loc_0_3C3:
+                xor     edx, edx
+
+@loc_0_3C6:
+                movzx   ecx, word ptr m5_speicher
+                movzx   eax, word ptr m5_speicher+60BAh
+                cmp     edx, eax
+                jnb     @loc_0_439
+                mov     ebx, ecx
+                shr     ebx, 0Dh
+                cmp     ebx, 7
+                jnz     @loc_0_3EB
+                push    edx
+                  mov     edx, 1000h
+
+@loc_0_3E0:
+                  test    ecx, edx
+                  jz      @loc_0_3E9
+                  shr     edx, 1
+                  inc     ebx
+                  jmp     @loc_0_3E0
+
+@loc_0_3E9:
+                pop     edx
+
+@loc_0_3EB:
+                push    ebx
+                  push    edx
+                    cmp     bx, 7
+                    jnb     @loc_0_3F7
+                    mov     eax, 3
+                    jmp     @loc_0_3FC
+
+@loc_0_3F7:
+                    mov     eax, ebx
+                    sub     eax, 3
+
+@loc_0_3FC:
+                    call    m5_pr2
+                  pop     edx
+                pop     ebx
+                mov     ebp, offset m5_speicher+60A0h
+                add     ebp, edx
+                mov     ds:[ebp+0], bl
+                inc     dx
+                cmp     dx, word ptr m5_speicher+60B8h
+                jnz     @loc_0_3C6
+                push    edx
+                  mov     eax, 2
+                  call    m5_pr6
+                pop     edx
+                mov     ebp, offset m5_speicher+60A0h
+                add     ebp, edx
+                mov     ebx, eax
+
+@loc_0_429:
+                dec     ax
+                js      @loc_0_3C6
+                mov     byte ptr ds:[ebp+0], 0
+                inc     ebp
+                inc     dx
+                jmp     @loc_0_429
+
+@loc_0_439:
+                mov     ebx, offset m5_speicher+60A0h
+                add     ebx, edx
+                movzx   ecx, word ptr m5_speicher+60B4h
+                xor     eax, eax
+
+@loc_0_448:
+                cmp     edx, ecx
+                jnb     @loc_0_455
+                mov     byte ptr [ebx], 0
+                inc     ebx
+                inc     dx
+                jmp     @loc_0_448
+
+@loc_0_455:
+                push    edi
+                  push    esi
+                    movzx   eax, word ptr m5_speicher+60B4h
+                    mov     esi, offset m5_speicher+60A0h
+                    mov     ebx, 8
+                    mov     edi, offset m5_speicher+5C32h
+                    call    m5_pr7
+                  pop     esi
+                pop     edi
+@ret:
+  end; (* m5_pr8 *)
+
+procedure m5_pr4;assembler;(*$Frame-*)(*$Uses None*)
+  asm
+                xor     eax, eax
+                cmp     word ptr m5_speicher+8, 0
+                jnz     @loc_0_616
+                mov     eax, 10h
+                call    m5_pr6
+                mov     word ptr m5_speicher+8, ax
+                mov     eax, 13h
+                mov     ebx, 5
+                mov     ecx, 3
+                call    m5_pr8
+                mov     word ptr m5_speicher+1Ch, ax
+                cmp     eax, 0FFFFh
+                jz      @ret
+
+                call    m5_pr9
+                mov     eax, 0Eh
+                mov     ebx, 4
+                mov     ecx, 0FFFFh
+                call    m5_pr8
+                mov     word ptr m5_speicher+1Ch, ax
+                cmp     eax, 0FFFFh
+                jz      @ret
+
+@loc_0_616:
+                xor     eax, eax
+                dec     word ptr m5_speicher+8
+                movzx   ebx, word ptr m5_speicher
+                shr     ebx, 4
+                shl     ebx, 1
+                add     ebx, offset m5_speicher+3800h
+                movzx   eax, word ptr [ebx]
+                cmp     eax, 1FEh
+                jb      @loc_0_665
+                mov     ecx, 8
+                movzx   edx, word ptr m5_speicher
+
+@loc_0_643:
+                test    ecx, edx
+                jnz     @loc_0_64F
+                mov     ebx, offset m5_speicher+201Eh
+                jmp     @loc_0_655
+
+@loc_0_64F:
+                mov     ebx, offset m5_speicher+2814h
+
+@loc_0_655:
+                add     ebx, eax
+                add     ebx, eax
+                movzx   eax, word ptr [ebx]
+                shr     ecx, 1
+                cmp     eax, 1FEh
+                jnb     @loc_0_643
+
+@loc_0_665:
+                push    eax
+                  mov     ebx, offset m5_speicher+5EA2h
+                  add     ebx, eax
+                  movzx   eax, byte ptr [ebx]
+                  call    m5_pr2
+                pop     eax
+@ret:
+  end; (* m5_pr4 *)
+
+procedure m5_pr5;assembler;(*$Frame-*)(*$Uses EBX*)
+  asm
+                movzx   ebx, word ptr m5_speicher
+                mov     edx, ebx
+                shr     ebx, 8
+                shl     ebx, 1
+                add     ebx, offset m5_speicher+5C32h
+                movzx   eax, word ptr [ebx]
+                cmp     eax, 0Eh
+                jb      @loc_0_346
+                mov     ecx, 80h
+
+@loc_0_324:
+                test    ecx, edx
+                jnz     @loc_0_330
+                mov     ebx, offset m5_speicher+201Eh
+                jmp     @loc_0_336
+
+@loc_0_330:
+                mov     ebx, offset m5_speicher+2814h
+
+@loc_0_336:
+                add     ebx, eax
+                add     ebx, eax
+                movzx   eax, word ptr [ebx]
+                shr     ecx, 1
+                cmp     eax, 0Eh
+                jnb     @loc_0_324
+
+@loc_0_346:
+                push    eax
+                  mov     ebx, offset m5_speicher+60A0h
+                  add     ebx, eax
+                  movzx   eax, byte ptr [ebx]
+                  call    m5_pr2
+                pop     eax
+                or      eax, eax
+                jz      @ret
+                dec     ax
+                mov     ebx, 1
+                mov     ecx, eax
+                shl     bx, cl
+                push    ebx
+                  call    m5_pr6
+                pop     ebx
+                add     eax, ebx
+@ret:
+  end; (* m5_pr5 *)
+
+procedure m5_pr3;assembler;(*$Frame-*)(*$Uses ESI,EDI*)
+  asm
+                movzx   ecx, word ptr m5_speicher+4
+                mov     edi, offset m5_speicher+1Eh
+                mov     esi, dword ptr m5_speicher+0Ah
+                add     esi, offset m5_speicher+1Eh
+                mov     ebp, offset m5_speicher+201Eh
+                xor     eax, eax
+
+@loc_0_69D:
+                dec     cx
+                or      cx, cx
+                js      @loc_0_6CB
+                movsb
+                cmp     esi, ebp
+                jb      @loc_0_6B0
+                sub     esi, 2000h{!}
+
+@loc_0_6B0:
+                inc     ax
+                cmp     eax, ebx
+                jnz     @loc_0_69D
+
+@loc_0_6B6:
+                sub     esi, offset m5_speicher+1Eh
+                mov     dword ptr m5_speicher+0Ah, esi
+                mov     word ptr m5_speicher+1Ah, ax
+                mov     word ptr m5_speicher+4, cx
+                jmp     @ret
+
+@loc_0_6CB:
+                sub     esi, offset m5_speicher+1Eh
+                mov     dword ptr m5_speicher+0Ah, esi
+                mov     word ptr m5_speicher+1Ah, ax
+                mov     word ptr m5_speicher+4, cx
+
+@loc_0_6DC:
+                push    edi
+                  push    ebx
+                    push    ecx
+                      call    m5_pr4
+                    pop     ecx
+                  pop     ebx
+                pop     edi
+                cmp     word ptr m5_speicher+1Ch, 0
+                jnz     @loc_0_6B6
+                or      ah, ah
+                jnz     @loc_0_709
+                mov     [edi], al
+                inc     edi
+                inc     word ptr m5_speicher+1Ah
+                movzx   eax, word ptr m5_speicher+1Ah
+                cmp     edi, offset m5_speicher+201Eh
+                jb      @loc_0_6DC
+                jmp     @loc_0_6B6
+
+@loc_0_709:
+                sub     ax, 0FDh
+                movzx   ecx, ax
+                movzx   edx, word ptr m5_speicher+1Ah
+                push    ecx
+                  push    ebx
+                    push    edx
+                      push    edi
+                        call    m5_pr5
+                      pop     edi
+                    pop     edx
+                  pop     ebx
+                pop     ecx
+                sub     dx, ax
+                dec     dx
+                and     edx, 1FFFh
+                mov     dword ptr m5_speicher+0Ah, edx
+                movzx   eax, word ptr m5_speicher+1Ah
+                mov     edi, offset m5_speicher+1Eh
+                add     edi, eax
+                mov     esi, edx
+                add     esi, offset m5_speicher+1Eh
+                mov     ebp, offset m5_speicher+201Eh
+
+@loc_0_74F:
+                dec     cx
+                or      cx, cx
+                js      @loc_0_782
+                movsb
+                cmp     esi, ebp
+                jb      @loc_0_762
+                sub     esi, 2000h
+
+@loc_0_762:
+                inc     ax
+                cmp     edi, offset m5_speicher+201Eh
+                jb      @loc_0_74F
+                sub     esi, offset m5_speicher+1Eh
+                mov     dword ptr m5_speicher+0Ah, esi
+                mov     word ptr m5_speicher+1Ah, ax
+                mov     word ptr m5_speicher+4, cx
+                jmp     @ret
+
+@loc_0_782:
+                sub     esi, offset m5_speicher+1Eh
+                mov     dword ptr m5_speicher+0Ah, esi
+                mov     word ptr m5_speicher+1Ah, ax
+                mov     word ptr m5_speicher+4, cx
+                jmp     @loc_0_6DC
+@ret:
+  end; (* m5_pr3 *)
+
+procedure m5_pr1;assembler;(*$Frame-*)(*$Uses None*)
+  asm
+    push    edi
+      mov     edx, eax
+      mov     edi, offset m5_speicher
+      mov     ecx, 184Fh
+      xor     eax, eax
+      repe stosd
+    pop     edi
+
+    mov     word ptr m5_speicher+4, $FFFF
+    mov     dword ptr m5_speicher+$16, esi
+    mov     dword ptr m5_speicher+$0E, ebx
+    mov     dword ptr m5_speicher+$12, edx
+    xor     eax, eax
+    mov     word ptr m5_speicher+1Ch, ax
+    mov     dword ptr m5_speicher+0Ah, eax
+    mov     eax, 10h
+    call    m5_pr2
+    mov     ecx, dword ptr m5_speicher+$12
+
+@loc_0_7DD:
+                or      ecx, ecx
+                jz      @ret
+               {mov     ebx, offset m5_speicher+2000h}
+                mov     ebx, 2000h
+                cmp     ecx, ebx
+                ja      @loc_0_7F0
+                mov     ebx, ecx
+
+@loc_0_7F0:
+                push    ecx
+                  push    ebx
+                    push    edi
+                      call    m5_pr3
+                    pop     edi
+                  pop     ebx
+                  movzx   eax, word ptr m5_speicher+1Ch
+                  cmp     eax, 0FFFFh
+                  jz      @loc_0_830
+                  mov     esi, offset m5_speicher+1Eh
+                  mov     ecx, ebx
+
+                  push    ecx
+                    and     ecx, 0FFFFFFFCh
+                    jz      @loc_0_81E
+                    shr     ecx, 2
+                    repe movsd
+
+@loc_0_81E:
+                  pop     ecx
+                  and     ecx, 3
+                  jz      @loc_0_829
+                  repe movsb
+
+@loc_0_829:
+                pop     ecx
+                sub     ecx, ebx
+                jmp     @loc_0_7DD
+
+@loc_0_830:
+                pop     ecx
+
+@ret:
+  end; (* m5_pr1 *)
+
+procedure m5_auspacken;assembler;(*$Frame-*)(*$Uses ALL,EFL*)
+  asm
+    cld
+    lodsd
+    mov     ebx, ecx
+    sub     ebx, 4
+    call    m5_pr1
+    mov     ecx, $184F
+    xor     eax, eax
+    mov     edi, offset m5_speicher
+    repe stosd
+  end;
+
+
+(* 7269845310 *)
+
+procedure entpacke_m5(const quelle,ziel;const laenge:longint);
+  begin
+    (*$Alters ESI,EDI,ECX*)
+    asm
+      mov esi,quelle
+      mov edi,ziel
+      mov ecx,laenge
+      call m5_auspacken
+    end;
+  end;
+
+end.
+

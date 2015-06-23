@@ -1,0 +1,221 @@
+logische_blitzcopy_position:
+                        dd 0
+blitzcopy_blockgroesse:
+                        dw 100
+
+;****************************************************************************
+
+blitzcopy_entschluesselung:
+
+                        mov si,0
+                        mov di,hd_copy_entschluesselt
+
+                        mov dx,w [dskf_tabellenstart_l]
+                        mov cx,w [dskf_tabellenstart_h]
+                        add dx,00056+2
+                        adc cx,0
+                        add dx,w [logische_blitzcopy_position+0]
+                        adc cx,w [logische_blitzcopy_position+2]
+                        call seek
+                        call datei_einlesen_512
+
+                        mov cx,0 ; Schreiben
+                        mov dx,0 ; Lesen
+
+blitzcopy_entschluesselung_schleife:
+                        call lies_hd_copy_zeichen
+                        inc dx
+                        cmp al,090
+                        jz blitzcopy_entschluesselung_90
+
+                        mov bl,al
+                        call schreibe_hd_copy_zeichen
+                        inc cx
+                        jmp short blitzcopy_entschluesselung_weiter
+
+blitzcopy_entschluesselung_90:
+                        call lies_hd_copy_zeichen
+                        inc dx
+                        cmp al,0
+                        jz blitzcopy_entschluesselung_90_00
+
+                        dec al
+                        add cl,al
+                        adc ch,0
+                        push cx
+                          mov cl,al
+                          mov ch,0
+                          mov al,bl
+blitzcopy_entschluesselung_90_mehrfach_schleife:
+                          call schreibe_hd_copy_zeichen
+                          loop blitzcopy_entschluesselung_90_mehrfach_schleife
+                        pop cx
+                        jmp short blitzcopy_entschluesselung_weiter
+
+blitzcopy_entschluesselung_90_00:
+                        mov al,090
+                        call schreibe_hd_copy_zeichen
+                        inc cx
+
+blitzcopy_entschluesselung_weiter:
+                        cmp cx,[blitzcopy_blockgroesse]
+                        jb blitzcopy_entschluesselung_schleife
+
+                        inc dx,2
+                        add w [logische_blitzcopy_position+0],dx
+                        adc w [logische_blitzcopy_position+2],0
+
+                        ret
+
+;****************************************************************************
+
+berechne_blitzcopy_anzahl_sektoren:
+                        push es
+                          mov ax,cs
+                          mov es,ax
+                          call blitzcopy_entschluesselung
+                          mov ax,[hd_copy_entschluesselt+00013]
+                          cmp ax,0
+                          if z mov ax,[hd_copy_entschluesselt+00020]
+                        pop es
+                        ret
+
+;****************************************************************************
+
+importiere_blitzcopy:
+                        call kopiere_ins_xms_zaehler_nullen
+                        call sauberen_kopf_einrichten
+
+                        mov ax,[hd_copy_entschluesselt+00013]
+                        cmp ax,0
+                        if z mov ax,[hd_copy_entschluesselt+00020]
+                        mov w [sektoren],ax
+                        mov bx,[hd_copy_entschluesselt+00018]
+                        mov b [sekt_spur],bl
+                        div bl
+                        mov bx,[hd_copy_entschluesselt+0001a]
+                        mov b [koepfe],bl
+                        div bl
+                        mov b [spuren],al
+
+                        mov bl,al
+                        mov ax,w [sektoren]
+                        div bl
+                        shl ax,9 ; *512
+                        mov w [blitzcopy_blockgroesse],ax
+
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+
+                        mov dx,w [dskf_tabellenstart_l]
+                        mov cx,w [dskf_tabellenstart_h]
+                        call seek
+
+                        mov cx,85
+                        call datei_einlesen_cx
+
+                        mov si,0
+                        mov di,zusatzinformation
+                        mov cx,85
+                        cld
+lies_blitzcopy_spur_tabelle:
+                        call lies_hd_copy_zeichen
+                        call schreibe_hd_copy_zeichen
+                        loop lies_blitzcopy_spur_tabelle
+
+
+                        mov w [quell_h],0
+                        mov w [quell_o],hd_copy_entschluesselt
+                        mov w [quell_s],cs
+                        mov w [ziel_h],[xms_handhabe]
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+
+
+                        mov w [logische_blitzcopy_position+0],0
+                        mov w [logische_blitzcopy_position+2],0
+
+                        mov cx,0
+
+blitzcopy_spurcodierung_schleife:
+
+                        push cx
+                          mov si,cx
+                          add si,zusatzinformation
+                          mov al,[si]
+                          cmp al,1
+                          jz blitzcopy_spurcodierung_01
+                          cmp al,2
+                          jz blitzcopy_spurcodierung_02
+
+                          mov ax,'öö'
+                          call fuelle_hdcopy_puffer
+                          mov al,[sekt_spur]
+                          mov ah,[koepfe]
+                          mul ah
+                          mov cx,ax
+  blitzcopy_fuell_schleife:
+                          call kopiere_ins_xms_512
+                          loop blitzcopy_fuell_schleife
+                          jmp short blitzcopy_spurcodierung_weiter
+
+;-----------------------
+
+blitzcopy_spurcodierung_01:
+                          mov si,0
+			  mov di,hd_copy_entschluesselt
+
+			  mov dx,w [dskf_tabellenstart_l]
+			  mov cx,w [dskf_tabellenstart_h]
+			  add dx,00056+2
+			  adc cx,0
+			  add dx,w [logische_blitzcopy_position+0]
+			  adc cx,w [logische_blitzcopy_position+2]
+			  call seek
+
+                          mov al,[sekt_spur]
+                          mov ah,[koepfe]
+                          mul ah
+                          mov cx,ax
+
+			  shl ax,9 ; *512
+			  inc ax,2
+			  add w [logische_blitzcopy_position+0],ax
+			  adc w [logische_blitzcopy_position+2],0
+			  
+                          push w [quell_o]
+                            push w [quell_s]
+
+			      mov w [quell_o],0
+			      mov w [quell_s],[lese_puffer_seg]
+
+  blitzcopy_normal_schleife:
+			      call datei_einlesen_512
+			      call kopiere_ins_xms_512
+			      loop blitzcopy_normal_schleife
+			      
+			    pop w [quell_s]
+  			  pop w [quell_o]
+
+                          jmp short blitzcopy_spurcodierung_weiter
+
+;-----------------------
+
+blitzcopy_spurcodierung_02:
+                          call blitzcopy_entschluesselung
+
+;-----------------------
+blitzcopy_spurcodierung_weiter:
+                        pop cx
+                        inc cx
+
+mov bx,w [kopi_ins_xms_512_zaehler]
+
+                        cmp cl,b [spuren]
+                        if b jmp blitzcopy_spurcodierung_schleife
+
+			ret
+
+;****************************************************************************

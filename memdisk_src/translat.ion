@@ -1,0 +1,5 @@
+to do when adding translation:
+  - BIOS\source files: add ifdef language_xx
+  - BIOS\*.cmd/bat files: add xx line
+  - memdisk.vk\descript.ion
+  - memdisk.vk\documentation

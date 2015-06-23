@@ -1,0 +1,145 @@
+Title   Benhandlung von Ausnahmebedingen, nicht implementierten CPU-Befehlen
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+neu_int06:
+                        push bp
+                        mov bp,sp
+                        push ds
+                        push si
+                        pushf
+
+                          ; trap_protect (mac.inc)?
+                          lds si,ss:[bp+2]
+                          cmp Word Ptr ds:[si-3],0fc83h ; cmp sp,00??h
+                          jne not_trap_protect
+
+                          push ax
+                            mov ah,0
+                            mov al,Byte Ptr ds:[si-1]
+                            add ss:[bp+2],ax
+                          pop ax
+
+                        popf
+                        pop si
+                        pop ds
+                        pop bp
+                        iret
+
+  not_trap_protect:
+                        popf
+                        pop si
+                        pop ds
+                        pop bp
+
+                        mov bx,text_int06_1
+                        jmp short neu_int06_oder_int0d
+neu_int0d:
+                        mov bx,text_int0d_1
+                       ;jmp short neu_int06_oder_int0d
+neu_int06_oder_int0d:
+                        push cs
+                        pop ds
+                        push cs
+                        pop es
+
+                        mov b [stumm],'0'
+
+                        call entferne_int06
+
+                        mov bp,sp
+
+                        ausschrift bx
+
+                        ; CS
+                        mov ax,[bp+2]
+                        call ausschrift_word
+
+                        ausschrift text_int06_2
+
+                        ; IP
+                        mov ax,[bp+0]
+                        call ausschrift_word
+
+                        mov al,' '
+                        call ausschrift_zeichen
+                        mov al,'['
+                        call ausschrift_zeichen
+
+                        ; [CS:IP]
+                        push ds
+                          lds si,[bp+0]
+                          cld
+                          mov cx,8
+  int06_speicherauszug:
+                          lodsb
+                          call ausschrift_byte
+                          mov al,' '
+                          cmp cx,1
+                          if ne call ausschrift_zeichen
+                          loop int06_speicherauszug
+
+                        pop ds
+
+                        mov al,']'
+                        call ausschrift_zeichen
+
+
+
+                        ausschrift text_int06_3
+
+                        call teste_ob_uram_sys
+                        if ne halt 99
+
+  endlos:
+                        sub ax,ax
+                        int 016
+                        jmp endlos
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+org_int06:              dd ?
+org_int0d:              dd ?
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+installiere_int06:
+                        push ax,dx,ds
+
+                          push 0
+                          pop ds
+
+                          mov ax,neu_int06
+                          mov dx,cs
+                          xchg ax,w [4*6+0]
+                          xchg dx,w [4*6+2]
+                          mov w cs:[org_int06+0],ax
+                          mov w cs:[org_int06+2],dx
+
+                          ; Test: db 00f,00b
+
+
+                          mov ax,neu_int0d
+                          mov dx,cs
+                          xchg ax,w [4*0d+0]
+                          xchg dx,w [4*0d+2]
+                          mov w cs:[org_int0d+0],ax
+                          mov w cs:[org_int0d+2],dx
+
+                        pop ds,dx,ax
+                        ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+entferne_int06:
+                        push ax,dx,ds
+
+                          push 0
+                          pop ds
+
+                          mov ax,w cs:[org_int06+0]
+                          mov dx,w cs:[org_int06+2]
+                          mov w [4*6+0],ax
+                          mov w [4*6+2],dx
+
+                          mov ax,w cs:[org_int0d+0]
+                          mov dx,w cs:[org_int0d+2]
+                          mov w [4*0d+0],ax
+                          mov w [4*0d+2],dx
+
+                        pop ds,dx,ax
+                        ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

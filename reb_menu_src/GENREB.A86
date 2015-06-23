@@ -1,0 +1,166 @@
+; 11.03.1998 deencom neu
+
+                        mov ah,009
+                        mov dx,titel
+                        int 021
+
+                        mov ah,03c ; ôffnen
+                        mov cx,0
+                        mov dx,dateiname
+                        int 021
+
+                        jc fehler
+
+                        mov bx,ax  ; Handhabe
+                        mov ah,040 ; Schreiben
+                        mov cx,bios_anfang-exe_anfang
+                        mov dx,exe_anfang
+                        int 021
+
+                        mov ax,0f000
+                        mov ds,ax
+                        mov ax,cs
+                        add ax,puffer/16
+                        mov es,ax
+                        sub si,si
+                        sub di,di
+                        mov cx,08000
+                        cld
+                        rep movsw
+
+                        mov ax,cs
+                        add ax,puffer/16
+                        mov ds,ax
+                        mov ah,040
+                        mov cx,08000 ; 1. 32K
+                        mov dx,0
+                        int 021
+
+                        mov ax,cs
+                        add ax,puffer/16+08000/16
+                        mov ds,ax
+                        mov ah,040
+                        mov cx,08000 ; 2. 32K
+                        mov dx,0
+                        int 021
+
+                        mov ah,03e ; Schliessen
+                        int 021
+
+                        mov dx,zeilenumbruch
+ende:
+                        mov ah,009
+                        mov ax,04c00
+                        int 021
+
+fehler:
+                        mov dx,fehlertext
+                        jmp ende
+
+;**************************************************************************
+
+even 16
+
+exe_anfang:
+                        db 'MZ'
+                        dw bios_anfang-exe_anfang ; mod 512
+                        dw (010000/512)+1       ; div 512
+                        dw 0                    ; Relo
+                        dw 32/16                ; Kopf
+                        dw 1                    ; min
+                        dw 1                    ; max
+                        dw 0                    ; SS:SP
+                        dw stack_ende-programm_anfang
+                        dw 0                    ; CRC
+                        dw 0                    ; IP
+                        dw 0                    ; CS
+                        dw 0                    ; Relo
+                        dw 0                    ; OV
+                        db 'REB '
+
+programm_anfang:
+                        push cs
+                        pop ds
+                        mov ah,009
+                        mov dx,titel_und_frage-programm_anfang
+                        int 021
+
+                        cmp b es:[080],3
+                        jne eingabe_schleife
+                        cmp b es:[081],' '
+                        jne eingabe_schleife
+                        cmp b es:[082],'/'
+                        jne eingabe_schleife
+                        mov al,b es:[083]
+                        jmp short zeichen_auswerten
+
+eingabe_schleife:
+                        mov ah,001
+                        int 021
+zeichen_auswerten:
+                        and al,0ff-020
+                        cmp al,'J'
+                        jz reboot_ja
+                        cmp al,'Y'
+                        jz reboot_ja
+                        cmp al,'N'
+                        jnz eingabe_schleife
+
+                        mov ax,04c00
+                        int 021
+
+reboot_ja:
+                        mov ax,cs
+                        add ax,(bios_anfang-programm_anfang)/16
+                        mov ds,ax
+                        mov ax,0f000
+                        mov es,ax
+                        sub si,si
+                        sub di,di
+                        mov cx,08000 ; 32K
+                        cld
+                        cli
+                        rep movsw
+                        jmp 0ffff:00000
+
+titel_und_frage:
+#if englisch
+                        db 'to prevent data-loss disable diskcache before !',00d,00a
+                        db 'overwrite BIOS and reboot PC (y/n) ? ','$'
+#else
+                        db 'um Datenverlust zu vermeiden mÅssen alle Plattenpufferungsprogramme',00d,00a
+                        db 'vorher abgeschaltet werden !',00d,00a
+                        db 'BIOS Åberschreiben und Rechnerneustart (j/n) ? ','$'
+#endif
+
+even 16
+                        db 8*16 dup '%'
+stack_ende:
+bios_anfang:
+;**************************************************************************
+
+dateiname:              db 'REB.EXE',0
+
+titel:
+                        db 'GENREB * 05˙˙11.03.1998 * '
+#if englisch
+                        db 'please boot clean befor usage',00d,00a
+                        db 'creating REB.EXE ...$'
+#else
+                        db 'bitte vor Benutzung ohne Speicherverwaltung starten',00d,00a
+                        db 'Erzeuge REB.EXE ...$'
+#endif
+
+
+fehlertext:
+#if englisch
+                        db ' Error !',007
+#else
+                        db ' Fehler !',007
+#endif
+
+zeilenumbruch:          db 00d,00a,'$'
+
+;**************************************************************************
+even 16
+puffer:                 ; db 64K dup ?

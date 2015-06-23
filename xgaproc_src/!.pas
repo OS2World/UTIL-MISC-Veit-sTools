@@ -1,0 +1,1 @@
+vielleicht RGBLineLengthPad in einer Prozedur berechnen

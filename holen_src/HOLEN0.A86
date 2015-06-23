@@ -1,0 +1,108 @@
+; BIOS und CMOS sichern
+; V.K. 01.02.1996
+
+		mov ah,009
+		mov dx,titel
+		int 021
+
+                mov ah,03c
+                mov cx,0
+                mov dx,dateiname
+                int 021
+                mov bx,ax ; DateischlÅssel
+
+
+                mov ax,0e000
+                call kopiere_bios
+                mov dx,puffer
+                mov ah,040
+                mov cx,08000 ; 32k
+                int 021
+		mov ah,009
+		mov dx,punkt
+		int 021
+
+
+                mov ax,0e800
+                call kopiere_bios
+                mov dx,puffer
+                mov ah,040
+                mov cx,08000 ; 32k
+                int 021
+                mov ah,009
+		mov dx,punkt
+		int 021
+
+                mov ax,0f000
+                call kopiere_bios
+                mov dx,puffer
+                mov ah,040
+                mov cx,08000 ; 32k
+                int 021
+                mov ah,009
+		mov dx,punkt
+		int 021
+
+                mov ax,0f800
+                call kopiere_bios
+                mov dx,puffer
+                mov ah,040
+                mov cx,08000 ; 32k
+                int 021
+                mov ah,009
+		mov dx,punkt
+		int 021
+
+                mov di,puffer
+                mov cl,0
+
+cmos_lesen:
+
+                mov al,cl
+                out 070,al
+                db 0eb,00
+                in al,071
+                stosb
+
+                inc cl
+                cmp cl,080
+                jnz cmos_lesen
+
+                mov ah,040
+                mov cx,080
+                mov dx,puffer
+                int 021
+                mov ah,009
+		mov dx,punkt
+		int 021
+
+                mov ah,03e
+                int 021
+
+                mov ax,04c00
+                int 021
+
+kopiere_bios:
+
+                push ds
+                mov ds,ax
+                push cx
+                cld
+                mov si,0
+                mov di,puffer
+                mov cx,08000
+                rep movsb
+                pop cx
+                pop ds
+                ret
+
+titel:		db 'Sichern - BIOS : $'
+
+punkt:		db '..$'
+
+cmos:		db ' - CMOS $'
+
+dateiname:      db 'BIOSCMOS.DAT',0
+
+puffer:         db 08000 dup (?)
+

@@ -1,0 +1,103 @@
+Title   MX83C305/306/IC
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; Index: port[$22]
+; Daten: port[$23]
+;
+; $3A.7 ?  ??? F000 ???
+;    .6 Schreiben
+;    .5 E800
+;    .4 E000
+;    .3 D800
+;    .2 D000
+;    .1 C800
+;    .0 C000
+;
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_mx83c30x                   macro
+                                  mov di,#1
+                                  mov bh,#2
+                                  call setze_mx83c30x_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_mx83c30x_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_mx83c0x_prozedur_fertig
+
+                                call ausschrift_segment
+
+
+                                mov bl,0ff
+                                sub bl,bh
+
+                                mov al,ah
+                                and ax,0201
+
+                                cmp al,001              ; Lesen
+                                if ne mov bh,0          ; Lesebit l봲chen
+
+                                cmp ah,002              ; Schreiben .. global
+                                if e or bh,Bit6
+
+                                mov cl,03a              ; Index
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_mx83c0x_prozedur_fertig:
+                                ret
+
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_mx83c30x:
+                                ausschrift_xxxx_aehnliches_bios text_variante_mx83c30x
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+17+1]
+                                add ax,di
+                                add ax,17+3
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+mx83c30x_gemeinsam:
+
+                                setze_mx83c30x 'C0',Bit0
+                                setze_mx83c30x 'C8',Bit1
+                                setze_mx83c30x 'D0',Bit2
+                                setze_mx83c30x 'D8',Bit3
+                                setze_mx83c30x 'E0',Bit4
+                                setze_mx83c30x 'E8',Bit5
+                                setze_mx83c30x 'F0',0
+                            ;?? setze_mx83c30x 'F0',Bit7
+
+                                mov al,03a
+                                mov bx,000ff-Bit6
+                                cmp b [globaler_schreibschutz],'1'
+                                if e call bios_aufruf__prozedur_registeraenderung
+
+                                jmp initialisieren
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_mx83c30x_ami:
+
+                                ausschrift_xxxx_aehnliches_bios text_variante_mx83c30x_ami
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+21+1]
+                                add ax,di
+                                add ax,21+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+28+1]
+                                add ax,di
+                                add ax,28+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_mx83c30x_ami
+
+                                jmp mx83c30x_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

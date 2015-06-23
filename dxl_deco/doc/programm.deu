@@ -1,0 +1,94 @@
+Name     DOS OS/2 Quelltext Beschreibung
+
+83       +   -    +         Speichern/Enpacken von unzulÑssigne Dateinamen
+AC       +   +    +         AnhÑngen von Vorprogrammen an EXE/COM/BIN
+AMI_PPM  +   +    +         Konvertiert AMI GRFX nach PPM
+AMIDECO  +   +    +         Entpackt AMI/Intel/IBM-BIOS
+APM_UHR  +   -    +         Zeitkorrektur fÅr Stromsparrechner
+APMBIOS  -   +    +         Schiebt APM.SYS ein geÑndertes APM-BIOS unter, um Zugriffe von F000 im BIOS zu umgehen. Beispiel: GigaByte K8NSC939
+AUTODET  +   *    +         Erkennung, welches Programm in OS/2 DOS-Sitzung gestartet wird
+AWARDECO +   +    +         Entpackt Award-Bios
+AWBM_PPM +   +    +         Konvertiert Award BMP nach PPM
+BDSAP    -   +    +         Erzeugt kleine und schnelle Selbstentpacker
+BILDSCHI *   -    +         Startsektor mit Registeranzeige und Speicherbetrachter
+BLINKX   +   -    +         Blinken->helle Hintergrundfarben
+CADH     -   +    +         Strg+Alt+Entferen-MenÅ
+CBENABLE -   +    +         OS/2 CardBus Enabler client
+COMPDECO +   +    +         Entpacker fÅr COMPAQ BIOS
+D1D2CRK  +   +    +         Erzeugt .CRK und .PAT-Dateien
+DAT_LOG  +   -    +         Dateimonitor
+DENYNONE +   -    +         mehrfachen Zugriff auf eine Datei (NC)
+DGCP_PAT +   -    +         Fehlerbehebung fÅr WATCOM dos_get_code_page_
+DLURLEA  -   +    +         FÅgt .URL/.SUBJECT Erweiterte Attribute zu von Mozilla heruntergeladenen Datein hinzu
+DOG212A  +   *    +         DOG 2.12 modifiziert und Entpacker
+DXL_DECO +   +    +         EntschlÅsselt DOORS DXL Dateien
+E_LC10   +   +    +         Entpacker fÅr LC10-kompimierte DOS4/G[W]-Programme
+E_MSGF   +   +    +         Erzeugt Quelltext zu mit MKMSGF erzeuget .MSG Dateien
+E_VXREXX -   -    -         VX-Rexx Entpacker
+E_WISE   +   +    +         WISE Setup Entpacker
+E0X      +   *    +         Diskettenemulator
+EARLYAPM -   +    +         Schaltet frÅhzeitig APM ein, um Probleme zu vermeiden (testcfg/apm.sys)
+ENTPACK  +   -    -         EXE/COM Entpacker
+ES       +   -    +         ZusammenfÅgen von EXE-Dateien
+F4_35_CA +   *    +         CPU-Freigabe unter OS/2
+FB_MENU  +   -    +         Schneller Neustart, Verhindern des Neustartes bei geladenem TaskMgr
+FONT19   -   +    +         Schrift 16->20 Punkte im Textmodus
+FONT20   +   +    +         Schrift 16->20 Punkte im Textmodus
+HDD_VHD  +   +    +         Konverter fÅr Festplattenabbilder: DFSee/SVISTA/Virtual PC
+HOLEN    +   -    +         Abbild des System-BIOS erzeugen
+IHPFS    +   -    (GPL)     HPFS Treiber fÅr DOS
+IHPFSIOM +   -    +         Zugriff auf HPFS IOMEGA-ZIP-100 mit IHPFS (alt)
+IMG      +   +    +         Kopierprogramm Dateine <-> Laufwerke
+INT6     +   -    +         Programmabbruch wenn Prozessor fehlerhafte Befehle ausfÅht
+IOMZUNPR -   +    +         Automatisches Entfernen von Lese/Schreibschutz fÅr IOMEGA ZIP 100
+LB_M2E   -   +    +         ESS/AC97[Maestro2E]-Treiber fÅr LbMix
+LGOPROC  -   +    +         OS/2 Boot logo Dateiformatprozedur fÅr MMOS2
+LMICRO   +   +    +         Einspielung von Verbesserungen fÅr Intel P6+ und AMD K8 Prozessor-Microkode
+MEMDISK  +   +    +         Startbare emulierte Festplatte, CD-Boot
+MRDECO   +   -    +         Entpackt MR-BIOS
+NELITE   +   +    +         OS/2 NE EXE Packer, auch fÅr BP7 DPMI16
+NORM_FAT +   +    +         Korrektur von FAT-VerzeichniseintrÑgen
+OLE2X    +   +    +         OLE2 Entpacker
+OS2CSM   +   +    +         MenÅ zum Ñndern der OS/2 Config.sys im Speicher
+PACKVXRX +   +    +         Kompression von VX-Rexx Programmen
+PATCHVPT +   *    +         Erhîhung der Bildwiederholrate
+PCCOFF   +   +    +         Abschalten von PCMCIA/Cardbus-Karten
+PCI0??VK +   +    +         Portierung des Hardwareerkennungsprogrammes PCI
+PCICONF  *   +    +         PCI Konfigurationstreiber, Verbesserung fÅr PCIBUS.SNP
+PCIUTILS +   +    (GPL)     Portierung von lspci/setpci
+PG_PPM   +   +    +         Konvertiert Phoenix Grafik nach PPM
+PHOEDECO +   +    +         Entpackt Phoenix BIOS 4.x, 6.0, BCPVPD und $COMPIBM, SNIPAC
+PMMGPG   -   +    +         ermîglicht Benutzung von GnuPG mit PMMail
+PMVDMCC  -   +    +         Behebt Probleme in OS2KRLN wenn wenig "DOS"-Speicher frei ist (memdisk)
+PROTMENU -   +    +         MenÅprogramm CMD/PMShell/PMShell mit WPS
+PRSYS    +   +    +         EXE2BIN Packer fÅr DOS Treiberdateien
+R_EADATA -   +    +         Werkzeug zum Lîschen von "EA DATA. SF"
+R200FIX  +   -    +         Turbo/Borland Pascal Runtime error 200 [CRT]
+REB_MENU +   -    +         Verhinderung Neustart bei Åberschriebenem BIOS oder wenn andere Prozesse noch laufen
+REXX_EXE -   +    +         AnhÑngen von REXX-Programmen an einen VIO- oder PM-EXE-Lader
+RXUNLOCK -   +    +         Rexx-Funktionen zum Entsperren von Programmodulen, Digest, Zufall,..
+SAUBER   +   -    +         Arbeitsspeicher sÑubern
+SCHNITT  +   +    +         Herauskopieren von Dateiteilen
+SETAMP   +   +    +         Ein/Ausschalten des VerstÑrkers der MiroSound PCM pro und Ñhnlicher Karten
+SPCIIRQ  +   +    +         éndern von IRQ-Zuteilungen fÅr PCI-Karten
+STIX     +   +    +         InstallShield Entpacker
+STOP_LH  +   -    +         Verhindert hochladen von Programmteilen
+SYSODECO +   +    +         Entpacker fÅr SystemSoft-BIOS Abbilddateien
+TEXTREIN +   +    +         Steuerzeichen entfernen/Tab+Zeilenumbruch umwandeln
+TYP      +   +    +         Dateityperkennung/Archivlister/Compilersuche
+UNXLINK  +   +    +         XLINK 2.02 Entpacker
+URAM     +   -    +         Speicherverwalungswerkzeug Shadow-RAM
+VESAMAX  +   -    +         BeschrÑnkung der maximalen Bildschirmauflîsung
+VPART    +   +    +         Betriebsystemauswahl
+WAKEUP   +   +    +         Aufwecken von schlafenden PCI-GerÑten beim Systemstart
+XGAPROC  -   +    +         Phoenix Suspend Graphic Dateiformatprozedur fÅr MMOS2
+XGA_PPM  +   +    +         Grafikkonverter fÅr Phoenix BIOS Auslagerungs/Aufwachgrafik, zum Beispiel ThinkPad T42
+ZUFPASS  +   +    +         Kennwortgenerator
+
+Ein gro·er Teil meiner Programme unterstÅtzt mehr als eine Sprache.
+Um in den Programmen deutsche Sprache zu erzwingen, fÅgen Sie
+'SET COUNTRY=049' (nur e0x/uram) oder 'SET LANG=de_DE' in Ihre
+AUTOEXEC.BAT beziehungsweise CONFIG.SYS ein. Wenn keine dieser
+Umgebungsvariablen vorhanden ist, dann wird anhand des im Betriebssystem
+eingestellten Landes entscheiden.
+

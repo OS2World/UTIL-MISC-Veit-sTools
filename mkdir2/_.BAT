@@ -1,0 +1,3 @@
+@ECHO OFF
+CALL ..\TPU MKDIR2
+

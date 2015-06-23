@@ -1,0 +1,163 @@
+Title   erase files to make room for swapper.dat on memdisk
+;2002.02.03 aus find_cd
+                        .486p
+                        locals @@
+
+;####################################################################
+
+data16                  Segment 'DATA' Public 'DATA' Use16
+
+                        dd -1
+                        dw 08000h
+                        dw Offset code16:stratey
+                        dw 0
+                        db 'ERASE$FI'
+                        dw 4 dup (0)
+
+                        include def1.inc
+
+DirHandle               dw 1
+                        Public DirHandle
+
+SearchRec               FileFindBuf <>
+                        Public SearchRec
+
+SearchCount             dw ?
+                        Public SearchCount
+
+SearchAttribute         equ (1 shl 1)+(1 shl 2)+(1 shl 5) ; all but directory or read-only
+
+FindFileName            db CCHMAXPATHCOMP dup (?)
+                        Public FindFileName
+
+data16                  ends
+
+;####################################################################
+
+Extrn                   Dos16Delete             :Far
+Extrn                   Dos16FindFirst          :Far
+Extrn                   Dos16FindNext           :Far
+Extrn                   Dos16FindClose          :Far
+
+;####################################################################
+
+code16                  Segment 'CODE' Public Use16
+                        assume cs:code16
+                        assume ds:data16
+
+                        include mac1.inc
+
+;--------------------------------------------------------------------
+
+a_proc                  find_skip_blank
+  @@find_loop:
+                        mov al,fs:[si]
+                        cmp al,9
+                        je @@skip_blank
+                        cmp al,' '
+                        jb @@find_skip_blank_exit
+                        je @@skip_blank
+                        inc si
+                        jmp @@find_loop
+  @@skip_blank:
+                        mov al,fs:[si]
+                        inc si
+                        cmp al,9
+                        je @@skip_blank
+                        cmp al,' '
+                        je @@skip_blank
+
+                        dec si
+  @@find_skip_blank_exit:
+                        ret
+a_endp                  find_skip_blank
+
+;--------------------------------------------------------------------
+
+a_proc                  stratey
+
+                        ; copy label
+                        lfs si,es:[bx].RequestBlock.Pointer_2
+
+                        ;--------------------------------------------
+
+  @@process_next_argument:
+
+                        call find_skip_blank
+                        cmp byte ptr fs:[si],'"'
+                        jne @@exit                      ; Error or End of parameter line
+
+                        inc si                          ; '"'
+                        mov di,Offset FindFileName
+  @@copy_Filename_loop:
+                        mov al,fs:[si]
+                        cmp al,'"'
+                        je @@Filename_end
+                        inc si
+                        mov ds:[di],al
+                        inc di
+                        jmp @@copy_Filename_loop
+  @@Filename_end:
+                        mov byte ptr ds:[di],0
+
+                        mov DirHandle,1
+                        mov SearchCount,1
+
+                        push ds                         ; File path name string
+                        push Offset FindFileName
+                        push ds                         ; Directory search handle (returned)
+                        push Offset DirHandle
+                        push SearchAttribute            ; Search attribute
+                        push ds                         ; Result buffer
+                        push Offset SearchRec
+                        push Size SearchRec             ; Result buffer length
+                        push ds                         ; Number of entries to find
+                        push Offset SearchCount
+                        push DWord Ptr 0                ; Reserved (must be zero)
+                        call Dos16FindFirst
+
+                        test ax,ax
+                        jnz @@no_more_files
+  @@delete_next_file:
+                        push ds
+                        push Offset SearchRec.findbuf_achName
+                        push DWord Ptr 0
+                        call Dos16Delete
+                        ;ignore errors..
+
+                        mov SearchCount,1
+                        push DirHandle                  ; Directory search handle
+                        push ds                         ; Result buffer
+                        push Offset SearchRec
+                        push Size SearchRec             ; Result buffer length
+                        push ds                         ; Number of entries to find
+                        push Offset SearchCount
+                        call Dos16FindNext
+                        test ax,ax
+                        jz @@delete_next_file
+  @@no_more_files:
+                        push DirHandle
+                        call Dos16FindClose
+                        jmp @@process_next_argument
+
+                        ;--------------------------------------------
+  @@exit:
+
+                        ; no code
+                        ; no data
+                        and Dword Ptr es:[bx].RequestBlock.Pointer_1,0
+                        ; error+done+noncritical
+                        mov Word Ptr es:[bx].RequestBlock.Request_Packet_Status,08115h
+
+                        retf
+
+a_endp                  stratey
+
+
+
+code16                  Ends
+
+;####################################################################
+
+                        End
+

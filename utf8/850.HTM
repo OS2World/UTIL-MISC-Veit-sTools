@@ -1,0 +1,33 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>if you see garbage use lynx or select utf8 encoding. monotype preferd...</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf8">
+</head>
+ <body text="#ffff00" bgcolor="#000099" link="#0000ee" vlink="#551a8b" alink="#0000ee">
+ <tt>
+<pre><font color="#ffff00">
+╔═[■]══════════════════════ F:\082\utf8\utf8.pas ════════════════════2═[|]═╗
+║        c:=Ord(source[sourcepos]);                                        A
+║        case c of                                                         ▒
+║(*                                                                        ▒
+║ U-00000000 - U-0000007F: 0xxxxxxx                                        ▒
+║ U-00000080 - U-000007FF: 110xxxxx 10xxxxxx                               ■
+║ U-00000800 - U-0000FFFF: 1110xxxx 10xxxxxx 10xxxxxx                      ▒
+║ U-00010000 - U-001FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx             ▒
+║ U-00200000 - U-03FFFFFF: 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx    ▒
+║ U-04000000 - U-7FFFFFFF: 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10x▒
+║                                                                          ▒
+║        $00..$7f: (* 1 byte *)                                            ▒
+║          begin                                                           ▒
+║            (*c:=c and $7f;*)                                             ▒
+║            trail:=0;                                                     ▒
+║            Inc(sourcepos);                                               ▒
+║          end;                                                            ▒
+║                                                                          ▒
+║        $80..$bf: (* broken code ! *)                                     V
+╚══════ 39:1 ═════&lt;■▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒&gt;─┘
+</font><br></pre>
+ </tt>
+</body>
+</html>

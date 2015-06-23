@@ -1,0 +1,159 @@
+                        mov si,00081
+                        cld
+                        cmp b [si],' '
+                        if e inc si
+                        cmp b [si],'$'
+                        jne nicht_hex
+                        mov w [faktor],16
+                        inc si
+nicht_hex:
+
+
+                        sub cx,cx
+                        sub bx,bx
+
+schleife:
+                        sub ax,ax
+                        lodsb
+                        cmp al,'0'
+                        jb setze
+
+                        or al,020
+                        sub al,'0'
+                        cmp al,9
+                        if a sub al,'a'-'0'-10
+
+                        xchg ax,bx
+                        mul w [faktor]
+                        add bx,ax
+                        inc cx
+                        jmp schleife
+
+setze:
+                        or cx,cx
+                        jnz mit_parameter
+
+                        mov bx,25
+
+mit_parameter:
+                        push ds
+                          push 00040
+                          pop ds
+                          mov ax,00003
+                          ; Wenn nicht schon "80*25" Textmodus (3)
+                          cmp b [00049],al
+                          ; dann erstmal setzen
+                          if ne int 010
+
+                          ; Zeilenzahl (al/84) und Zeichenh”he (ah/85) holen
+                          mov ax,[00084] ; [84] [85]
+                          inc al
+
+                        pop ds
+                        ; Zeilenzahl in Punkten ausrechnen
+                        mul ah
+
+                        ;----------------------------------
+                        ; 80*25 ist schon gesetzt
+                        cmp bx,25
+                        je ende
+                        ;----------------------------------
+
+                        ;----------------------------------
+                        ; 80*28: Font 8*14 (Font20: 9*16)
+                        cmp bx,28
+                        jne nicht_80_28
+
+                        mov ax,01111
+                        mov bl,0
+                        int 010
+                        jmp ende
+                        ;----------------------------------
+
+nicht_80_28:
+                        ;----------------------------------
+                        ; 80*50: Font 8*8 (Font20: 9*10)
+                        cmp bx,50
+                        jne nicht_80_50
+
+                        mov ax,01112
+                        mov bl,0
+                        int 010
+                        jmp ende
+                        ;----------------------------------
+nicht_80_50:
+
+                        ; 8*50=400 14*28=392 16*25=400
+                        cmp ax,400
+                        jbe ohne_font20
+
+                        ;----------------------------------
+                        ; 504/16=31
+                        cmp bx,31
+                        jne nicht_80_31
+
+                        mov ax,01130
+                        mov bh,6        ; 8*16
+                        int 010
+                        mov ax,01110
+                        mov bx,16*0100+0
+                        mov cx,256
+                        mov dx,0
+                        int 010
+                        jmp ende
+                        ;----------------------------------
+nicht_80_31:
+                        ;----------------------------------
+                        ; 504/14=36
+                        cmp bx,36
+                        jne nicht_80_36
+
+                        mov ax,01130
+                        mov bh,2        ; 8*14
+                        int 010
+                        mov ax,01110
+                        mov bx,14*0100+0
+                        mov cx,256
+                        mov dx,0
+                        int 010
+                        jmp ende
+                        ;----------------------------------
+nicht_80_36:
+                        ;----------------------------------
+                        ; 504/8=63
+                        cmp bx,63
+                        jne nicht_80_63
+
+                        mov ax,01130
+                        mov bh,3        ; 8*8
+                        int 010
+                        mov ax,01110
+                        mov bx,8*0100+0
+                        mov cx,256
+                        mov dx,0
+                        int 010
+                        jmp ende
+                        ;----------------------------------
+
+nicht_80_63:
+fehler:
+ohne_font20:
+
+                        mov ax,04cff
+                        int 021
+ende:
+                        ; Bildschirm abwischen
+                        push 00040
+                        pop es
+                        mov cx,w es:[0004c]
+                        push 0b800
+                        pop es
+                        sub di,di
+                        shr cx,1
+                        mov ax,00720
+                        rep stosw
+
+                        mov ax,04c00
+                        int 021
+
+faktor:                 dw 10

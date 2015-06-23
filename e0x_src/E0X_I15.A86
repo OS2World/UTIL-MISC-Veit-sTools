@@ -1,0 +1,17 @@
+int_15_handler:
+                        pushf
+                          cmp ax,04f57
+                          jz i154f_f11_gefunden
+                          cmp ax,04f58
+                          jz i154f_f12_gefunden
+
+int_15_handler_orgaufruf:
+                        popf
+                        jmp d cs:[orgint15]
+
+i154f_f11_gefunden:
+                        mov b cs:[vor_rueck],-1
+                        jmp int_15_handler_orgaufruf
+i154f_f12_gefunden:
+                        mov b cs:[vor_rueck],+1
+                        jmp int_15_handler_orgaufruf

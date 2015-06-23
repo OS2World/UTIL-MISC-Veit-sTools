@@ -1,0 +1,2 @@
+ISO9660 level2: (level 3 would allow fragmented files) (memdisk expects only files with one point)
+floppy b: test

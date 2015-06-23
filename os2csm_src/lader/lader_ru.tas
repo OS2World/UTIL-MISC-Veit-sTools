@@ -1,0 +1,4 @@
+Title   produce os2csm.r or os2csm.r_m -- russian
+
+language_ru=1
+include lader.inc

@@ -1,0 +1,469 @@
+Title   patch OS2KRNL miniVMM creation code, free "2K Stack" on Thinkpad T42
+
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+
+; patch miniVDM int10/13 creation code for uncommon memory situaltions
+; Veit Kannegieser 2005.08.14 - code from memdisk.add source
+;
+;
+;  'DOS' memory:
+;
+;  XX KiB, usualy XX=640
+;
+; a) EBDA near 640 KiB
+;   0..XX
+;   XX..EBDA
+;   EBDA..EBDA+size-1
+;   other..640(?)
+;
+; -> determine if EBDA is near 640 KiB or somewhere else: >=512 KiB
+; -> size EBDA: ptr=nil--> 0 else read it
+
+                        .386p
+                        locals @@
+
+IFNDEF OS2
+IFNDEF DOS
+OS2                     equ 1
+ENDIF
+ENDIF
+
+
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+
+data                    Segment 'DATA' Use16 Public
+
+                        include toolkit\devhdr.inc
+                        include toolkit\devhlp.inc
+                        include def1.inc
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        dd -1
+                        dw 08180h               ; 15 char dev
+                                                ; 8/7 capabilities bit strip
+                        dw Offset strategy
+                        dw 0
+                        db 'PMVDMCC$'
+                        dw 4 dup (0)
+                        dd DEV_16MB
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+Device_Help             dd ?
+                        Public Device_Help
+
+option_quiet            db false
+option_verbose          db false
+option_wait             db false
+option_free_2k_stack    db false
+                        Public option_quiet,option_verbose,option_wait,option_free_2k_stack
+
+EBDA_seg                dw ?            ; in segments, for example 9F80 (638K)
+EBDA_size               dw ?            ; in segments, for example 0080 (  2K)
+                        Public EBDA_seg,EBDA_size
+
+Message_table           dw 1178 ; "%1"  ; message number
+                        dw 1            ; one paramter
+fillin_string_ofs       dw ?            ; first fill in item
+                        dw data
+                        Public Message_table, fillin_string_ofs
+
+messagestring           Macro ID,ZK
+                        &ID db &ZK,0
+                        Public ID
+                        EndM
+messagestring           message_cmderror                        'PMVDMCC: unknown parameter!'
+messagestring           message_moved_EBDA_freed_2k_stack       'PMVDMCC: released "2K STACK" and moved EBDA.'
+messagestring           message_no_stack                        'PMVDMCC: no "2K STACK" to free.'
+messagestring           message_stack_not_last                  'PMVDMCC: can not free "2K STACK"!'
+; position +49:                                                            1111111111222222222233333333334444444444
+;                                                                01234567890123456789012345678901234567890123456789
+messagestring           message_Patch_minivdm10                 'PMVDMCC: Patch of INT 10 MiniVDM was incomplete (0), request an update!',0
+messagestring           message_Patch_minivdm13                 'PMVDMCC: Patch of INT 13 MiniVDM was incomplete (0), request an update!',0
+messagestring           message_Patch_minivdm1013_success       'PMVDMCC: Successfuly patched INT 10/13 MiniVDM.',0
+messagestring           message_pause                           'SYS    : end of PMVDMCC output.'
+
+patch10_success         db 0
+patch13_success         db 0
+                        Public patch10_success,patch13_success
+
+top_free_DOS_memory_address dd 0                ; 0a0000h/09F800h/..
+top_free_DOS_memory_size    dd 0                ; 000000h/000800h/..
+                        Public top_free_DOS_memory_address,top_free_DOS_memory_size
+
+data                    Ends
+
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+
+code                    Segment 'CODE' Use16 Public
+                        assume cs:code
+                        assume ds:data
+
+                        include mac1.inc
+                        include rmem.inc
+                        include patchkrn.inc
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc                  strategy
+
+                        ; assume any command=init or basedevice init
+
+                        mov eax,es:RequestBlock[bx].Pointer_1
+                        mov Device_Help,eax
+
+                        call process_parameters
+
+                        cmp option_free_2k_stack,true
+                        if_e <call free_2k_stack>
+
+                        call get_memory_information
+
+                        call Apply_Int10_Int13_MiniVDM_Patch
+
+                        mov si,Offset message_pause
+                        cmp option_wait,true
+                        if_e <call Display_Message>
+
+                        ; not installed, done, no message
+                        mov es:RequestBlock[bx].Pointer_1,0
+                        mov es:RequestBlock[bx].Request_Packet_Status,08115h
+
+                        retf
+a_endp                  strategy
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc                  free_2k_stack
+                        push es
+                        pushad
+
+                          ; we can do nothing if the EBDA is not top of memory
+
+                          mov dx,00040h         ; read '636' KiB top of memory...
+                          mov si,00013h
+                          mov cx,2
+                          call read_real_mode_memory_address
+                          shl ax,6
+                          cmp ax,0a000h         ; has full 640 KiB?
+                          jae @@exit_no_stack
+
+                          mov bx,ax
+                         ;mov dx,00040h         ; read '9f00' EBDA segment
+                          mov si,0000eh
+                         ;mov cx,2
+                          call read_real_mode_memory_address
+                          mov EBDA_seg,ax
+                          test ax,ax
+                          jz @@exit_no_stack    ; could handle, but usualy Phoenix uses EBDA..
+                          cmp ax,bx
+                          jne @@exit_no_stack
+
+                          ; look if this is an machine that has this 'problem'
+                          mov dx,ax             ; EBDA:0 - size in KiB
+                          sub si,si
+                          mov cx,1
+                          call read_real_mode_memory_address
+                          and ax,0ffh
+                          shl ax,6
+                          mov EBDA_size,ax
+                          add ax,EBDA_seg
+
+                          cmp ax,0a000h
+                          jae @@exit_no_stack
+
+                          ; now ax=segment of '2K STACK',compare
+                          mov dx,ax
+                          sub si,si
+                          mov cx,4
+                          call read_real_mode_memory_address
+                          cmp eax,'S K2'
+                          jne @@exit_no_stack
+
+                          ; as the signature indicates, its size is 2 KiB.
+                          ; move memory from EBDA:0 to EBDA:0+2K,length=size of EBDA
+                          ; since source address<target address and they could overlap,
+                          ; this has to be an backward move operation.
+
+                          mov ax,EBDA_seg       ; AX:BX=physical address
+                          mov bx,ax
+                          shr ax,16-4
+                          shl bx,4
+                          mov cx,EBDA_size
+                          shl cx,4
+                          add cx,2*1024
+                          call map_phys_to_es_di
+                          jc @@exit_can_not_free
+
+                          mov cx,EBDA_size
+                          shl cx,4
+                          add di,cx
+
+                          ; test that the memory is not used. (place for eflags(7f8))
+                          cmp DWord Ptr es:[di+2*1024-8],0
+                          jne @@exit_can_not_free
+
+                          ; checks passed, move EBDA..
+
+                          shr cx,2              ; /4
+  @@move_EBDA:
+                          sub di,4
+                          mov eax,es:[di]
+                          mov es:[di+2*1024],eax
+                          loop @@move_EBDA
+
+                          ; fill memory that was begin of EBDA previously, now free
+
+                          sub eax,eax
+                          mov cx,2*1024/4
+                         ;mov di,di
+                          cld
+                          rep stosd
+
+                          ; the address of '2K STACK' is in write protected shadow RAM
+                          ; do not bother to try to change it (F000:6A52)
+
+                          ; we have moved the EBDA, update pointer
+                          ; we have freed 2 KiB of memory, increase top of memory..
+                          mov ax,00000h         ; 40:xxxx
+                          mov bx,00400h
+                          mov cx,00100h
+                          call map_phys_to_es_di
+
+                          add Word Ptr es:[di+0000eh],(2*1024/16)
+                          add Word Ptr es:[di+00013h],2
+
+                          mov si,Offset message_moved_EBDA_freed_2k_stack
+                          call Display_Message_verbose
+                          jmp @@exit
+  @@exit_no_stack:
+                          mov si,Offset message_no_stack
+                          call Display_Message_verbose
+                          jmp @@exit
+  @@exit_can_not_free:
+                          mov si,Offset message_stack_not_last
+                          call Display_Message_verbose
+                         ;jmp @@exit
+  @@exit:
+                        popad
+                        pop es
+                        ret
+a_endp                  free_2k_stack
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; ax:bx,cx -> es:di
+a_proc                  map_phys_to_es_di
+IFDEF OS2
+                        push dx
+                          mov dh,1
+                          mov dl,DevHlp_PhysToVirt
+                          call DeviceHelp
+                        pop dx
+ENDIF ; OS2
+IFDEF DOS
+                        mov di,bx
+                        and di,0000fh
+                        push ax
+                        push bx
+                          shl ax,16-4
+                          shr bx,4
+                          or  ax,bx
+                          mov es,ax
+                        pop bx
+                        pop ax
+                        clc
+ENDIF ; DOS
+                        ret
+a_endp                  map_phys_to_es_di
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc                  Display_Message_verbose
+                        cmp option_verbose,true
+                        je Display_Message
+                        ret
+a_endp                  Display_Message_verbose
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        ; data:si=string
+a_proc                  Display_Message
+                        cmp option_quiet,true
+                        je @@suppress_Message_Display
+
+                        pusha
+                          push ds
+
+                            push Seg data
+                            pop ds
+
+IFDEF OS2
+                            mov fillin_string_ofs,si
+                            mov si,Offset Message_table
+                            sub bx,bx
+                            mov dl,DevHlp_Save_Message
+                            call DeviceHelp
+ENDIF ; OS2
+IFDEF DOS
+  @@loop:
+                            mov ah,2
+                            mov dl,ds:[si]
+                            cmp dl,0
+                            je @@done
+                            int 021h
+                            inc si
+                            jmp @@loop
+  @@done:
+ENDIF ; DOS
+
+                          pop ds
+                        popa
+
+  @@suppress_Message_Display:
+                        ret
+a_endp                  Display_Message
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc                  DeviceHelp
+                        call [Device_Help]
+
+                      ; jnc exit_DeviceHelper
+                      ; i n t  3
+  @@exit:
+                        ret
+a_endp                  DeviceHelp
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc                  process_parameters
+                        push fs
+                        pushad
+
+                          lfs si,es:RequestBlock[bx].Pointer_2
+                          call find_skip_blank
+
+  @@skip_param:
+                          mov al,fs:[si]
+                          inc si
+
+                          cmp al,9
+                          je @@skip_param
+
+                          cmp al,' '
+                          je @@skip_param
+                          jb @@done_param
+
+                          cmp al,'-'
+                          je @@skip_param
+                          cmp al,'/'
+                          je @@skip_param
+
+                          and al,(not 020h)       ; upcase
+
+                          cmp al,'Q'
+                          jne @@not_param_q
+
+                          mov option_quiet,true
+                          jmp @@skip_param
+    @@not_param_q:
+                          cmp al,'V'
+                          jne @@not_param_v
+
+                          mov option_verbose,true
+                          jmp @@skip_param
+    @@not_param_v:
+                          cmp al,'W'
+                          jne @@not_param_w
+
+                          mov option_verbose,true
+                          mov option_wait,true
+                          jmp @@skip_param
+    @@not_param_w:
+                          cmp al,'F'
+                          jne @@not_param_f
+
+                          mov option_free_2k_stack,true
+                          jmp @@skip_param
+
+    @@not_param_f:
+                          mov si,Offset message_cmderror
+                          call Display_Message
+                         ;jmp @@exit
+    @@done_param:
+    @@exit:
+                        popad
+                        pop fs
+                        ret
+a_endp                  process_parameters
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc                  find_skip_blank
+                        push ax
+  @@find_skip_blank_loop:
+                          mov al,fs:[si]
+                          cmp al,9
+                          je @@skip_blank
+                          cmp al,' '
+                          je @@skip_blank
+                          jb @@find_skip_blank_exit
+                          inc si
+                          jmp @@find_skip_blank_loop
+  @@skip_blank:
+                          mov al,fs:[si]
+                          inc si
+                          cmp al,9
+                          je @@skip_blank
+                          cmp al,' '
+                          je @@skip_blank
+
+                          dec si
+  @@find_skip_blank_exit:
+                        pop ax
+                        ret
+a_endp                  find_skip_blank
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc                  get_memory_information
+                        pushad
+
+                          mov dx,00040h         ; read '638' KiB top of memory...
+                          mov si,00013h
+                          mov cx,2
+                          call read_real_mode_memory_address
+                          movzx eax,ax
+                          shl eax,10
+                          mov top_free_DOS_memory_address,eax
+                          mov edx,640*1024
+                          sub edx,eax
+                          mov top_free_DOS_memory_size,edx
+
+                        popad
+                        ret
+a_endp                  get_memory_information
+
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+IFDEF OS2
+entrypoint              equ <>
+ELSE ; DOS
+entrypoint              equ exe_entry
+
+a_proc                  exe_entry
+                        mov option_verbose,true
+                        call free_2k_stack
+                        mov ax,04c00h
+                        int 21h
+a_endp                  exe_entry
+ENDIF ; DOS
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+code                    Ends
+
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+
+                        End entrypoint
+

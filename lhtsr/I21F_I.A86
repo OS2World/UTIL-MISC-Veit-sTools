@@ -1,0 +1,62 @@
+even 010
+;***************************************************************************
+
+int_21_org:
+int_21_org_o:		dw ?
+int_21_org_s:		dw ?
+
+int_21_neu:
+			pushf
+			push ax,dx,ds
+			  mov dx,00040
+			  mov ds,dx
+			  cmp b [00049],3
+			  jnz kein_text
+			  
+			  mov dx,0b800
+			  mov ds,dx
+			  
+			  mov dh,0f2 ; grÅn auf weiss
+			  
+			  ; X___
+			  mov dl,ah
+			  shr dl,4
+			  add dl,'0'
+			  cmp dl,'9'
+			  if a add dl,'A'-'9'
+			  mov [0],dx
+
+			  ; _X__
+			  mov dl,ah
+			  and dl,7
+			  add dl,'0'
+			  cmp dl,'9'
+			  if a add dl,'A'-'9'
+			  mov [2],dx
+			  
+			  ; __X_
+			  mov dl,al
+			  shr dl,4
+			  add dl,'0'
+			  cmp dl,'9'
+			  if a add dl,'A'-'9'
+			  mov [4],dx
+
+			  ; ___X
+			  mov dl,al
+			  and dl,7
+			  add dl,'0'
+			  cmp dl,'9'
+			  if a add dl,'A'-'9'
+			  mov [6],dx
+			  
+kein_text:
+			pop ds,dx,ax
+			popf
+
+			jmp d cs:[int_21_org]
+			
+
+tsr_ende:
+
+;***************************************************************************

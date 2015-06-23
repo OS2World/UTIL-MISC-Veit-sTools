@@ -1,0 +1,254 @@
+; 11.03.1998 deencom neu
+
+bios_freier_platz               equ 0dc00
+
+                                mov ah,009
+                                mov dx,titel
+                                int 021
+
+                                mov cl,[00080]
+                                mov ch,0
+                                jcxz parameter_fertig
+                                mov si,81
+                                cld
+
+parameter_schleife:
+                                lodsb
+                                cmp al,'!' ; Anhalten des Rechners ?
+                                if z mov w [sprung_zu_neustart],09090
+                                loop parameter_schleife
+
+parameter_fertig:
+
+                                mov ax,0f000
+                                mov es,ax
+
+                                mov di,0e05b
+suche_code_schleife:
+                                cmp b es:[di],0e9
+                                jnz suche_code_nicht_e9
+                                add di,w es:[di+1]
+                                add di,3
+                                jmp suche_code_schleife
+suche_code_nicht_e9:
+                                cmp b es:[di],0eb
+                                jnz suche_code_nicht_eb
+                                mov al,b es:[di+1]
+                                add al,2
+                                mov ah,0
+                                add di,ax
+                                jmp suche_code_schleife
+
+suche_code_nicht_eb:
+                                cmp w es:[di],09090
+                                jz deinstallation
+
+                                mov dx,text_noch_rom
+                                push es:[di]
+                                  mov b es:[di],0cc
+                                  cmp b es:[di],0cc
+                                pop es:[di]
+                                if nz jmp ausschrift_ende
+
+                                push es:[bios_freier_platz]
+                                  mov b es:[bios_freier_platz],0cc
+                                  cmp b es:[bios_freier_platz],0cc
+                                pop es:[bios_freier_platz]
+                                jnz ausschrift_ende
+
+
+                                mov w [ruecksprung_stelle],di
+                                mov ax,w es:[di]
+                                mov w [merk_byte_0_1],ax
+                                mov al,es:[di+2]
+                                mov b [merk_byte_2],al
+
+
+                                mov dx,text_inkompatibles_bios
+                                cmp w es:[bios_freier_platz+0],0
+                                jnz ausschrift_ende
+                                cmp w es:[bios_freier_platz+2],0
+                                jnz ausschrift_ende
+
+
+                                push di
+                                  mov si,reboot_filter_basis
+                                  mov di,bios_freier_platz
+                                  mov cx,reboot_filter_ende-reboot_filter_basis
+                                  cld
+                                  rep movsb
+                                pop di
+
+                                mov ax,bios_freier_platz
+                                sub ax,di
+                                sub ax,3
+                                mov b es:[di],0e9
+                                mov w es:[di+1],ax
+
+                                mov dx,text_erfolgreich
+                                jmp ausschrift_ende
+
+
+deinstallation:
+                                ; Sprung restauriert
+                                mov si,di
+                                mov di,w es:[si+ruecksprung_stelle-reboot_filter_basis]
+                                mov ax,w es:[si+merk_byte_0_1-reboot_filter_basis]
+                                mov w es:[di],ax
+                                mov al,b es:[si+merk_byte_2-reboot_filter_basis]
+                                mov b es:[di+2],al
+
+                                mov di,si
+                                mov al,0
+                                cld
+                                mov cx,reboot_filter_ende-reboot_filter_basis
+                                rep stosb
+
+                                mov dx,text_deinstalliert
+
+ausschrift_ende:
+                                mov ah,009
+                                int 021
+
+                                mov ax,04c00
+                                int 021
+
+;şşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşş
+titel:                          db 'REBOOT-Men * Veit Kannegieser * 15.10.1997úú11.03.1998',00d,00a,'$'
+#if deutsch
+text_noch_rom:                  db 'Shadow-RAM bei F000:E05B ist noch schreibgeschtzt !',00d,00a,7,'$'
+text_inkompatibles_bios:        db 'inkompatibles BIOS (kein Platz frei) !',00d,00a,7,'$'
+text_erfolgreich:               db 'erfolgreich installiert.',00d,00a,'$'
+text_deinstalliert:             db 'entfernt.',00d,00a,'$'
+#else
+text_noch_rom:                  db 'Shadow-RAM at F000:E05B is still write-protected !',00d,00a,7,'$'
+text_inkompatibles_bios:        db 'incompatible BIOS (no free space) !',00d,00a,7,'$'
+text_erfolgreich:               db 'successful installed.',00d,00a,'$'
+text_deinstalliert:             db 'removed.',00d,00a,'$'
+#endif
+
+;şşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşş
+
+reboot_filter_basis:
+                                dw 09090
+                                sti
+                                ; "BE /REBOOT" (Norton) setzt [Strg]-[Alt]
+                                mov ax,00040
+                                mov ds,ax
+                                mov b [00017],0
+
+                                call $+3
+  pop_si_stelle:
+                                pop si
+                                sub si,pop_si_stelle
+
+                                mov ax,cs
+                                mov es,ax
+
+  schleife:
+
+                                mov ah,1
+                                int 016
+
+                                mov ax,02700
+                                int 02f
+                                cmp al,0ff
+                                jnz sprung_zu_neustart
+
+                                mov ax,02715
+                                int 02f
+
+                                mov bp,si
+                                add bp,text_reboot_menu
+                                call ausschrift
+
+                                mov dx,00203 ; Zeile 2+1 Spalte 3+1
+                                call setze_cursor
+
+                                mov ah,0
+                                int 016
+                                cmp al,'1'
+                                jnz nicht_boot
+
+  sprung_zu_neustart:
+                                jmp short reboot
+
+  ;----------------------------------------------------------------------
+
+                                mov bp,si
+                                add bp,text_reset_taster
+                                call ausschrift
+
+                                mov dx,00300 ; Zeile 3+1 Spalte 0+1
+                                call setze_cursor
+
+  endlos_schleife:
+                                hlt
+                                jmp endlos_schleife
+
+  ;----------------------------------------------------------------------
+
+  reboot:
+
+                                mov di,00000
+  ruecksprung_stelle equ $-2
+                                mov w cs:[di+0],00000
+  merk_byte_0_1 equ $-2
+                                mov b cs:[di+2],000
+  merk_byte_2 equ $-1
+                                jmp di
+
+  ;----------------------------------------------------------------------
+  nicht_boot:
+                                cmp al,'2'
+                                jnz schleife
+
+                                mov ax,04cff
+                                int 021
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;
+ausschrift:
+                                mov ax,01300
+                                mov bx,0004a ; Seite 0, Hintergrund 4,Vordergrund 10
+                                mov cx,text_reboot_menu_ende-text_reboot_menu
+                                ;mov cx,text_reset_taster_ende-text_reset_taster
+                                sub dx,dx
+                                int 010
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_cursor:
+                                mov ah,2
+                                mov bh,0
+                                int 010
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_reboot_menu:
+                                db 'ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿',00d,00a
+#if deutsch
+                                db '³ [1] PC neustarten     ³',00d,00a
+                                db '³ [2] Programm beenden  ³',00d,00a
+#else
+
+                                db '³ [1] boot PC           ³',00d,00a
+                                db '³ [2] terminate program ³',00d,00a
+#endif
+                                db 'ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ'
+text_reboot_menu_ende:
+
+
+text_reset_taster:
+                                db 'ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿',00d,00a
+#if deutsch
+                                db '³ jetzt hilft nur noch  ³',00d,00a
+                                db '³   die Reset-Taste     ³',00d,00a
+#else
+
+                                db '³     now only the      ³',00d,00a
+                                db '³  RESET-button helps   ³',00d,00a
+#endif
+                                db 'ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ'
+text_reset_taster_ende:
+
+reboot_filter_ende:
+;şşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşş

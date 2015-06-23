@@ -1,0 +1,22 @@
+;********************************************************************
+kopi_ins_xms_512_zaehler: dw ?
+;********************************************************************
+kopiere_ins_xms_zaehler_nullen:
+		        mov w [kopi_ins_xms_512_zaehler],0
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+			ret
+;********************************************************************
+kopiere_ins_xms_512:
+                        pusha
+                          mov ah,funktion_xms_move
+                          mov si,kopierer
+                          mov bl,0        ; Annahme: Kein Fehler
+                          call xmm_aufruf
+
+                          add w [ziel_o],0200
+                          adc w [ziel_s],0
+			  inc w [kopi_ins_xms_512_zaehler]
+                        popa
+                        ret
+;********************************************************************

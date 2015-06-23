@@ -1,0 +1,378 @@
+Title           Write PCI cfg: byte/word/dword
+; Veit Kannegieser 2002.08.03
+
+.386p
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+data16                  Segment 'DATA' public Use16
+                        entrypoint equ <>
+                        dd -1
+                        dw 08080h
+                        dw Offset strat
+                        dw -1
+                        db 'SPCIIRQ$'
+                        dw 4 dup (?)
+                        dd 0
+
+RequestBlock Struc
+ Length_of_Packet       db ?
+ Block_Device_Unit_Code db ?
+ Command_Code           db ?
+ Request_Packet_Status  dw ?
+ Reserved               dd ?
+ Queue_Linkage          dd ?
+
+ ; Command_Code=0
+ Data_1                 db ?
+ Pointer_1              dd ?
+ Pointer_2              dd ?
+ Data_2                 db ?
+RequestBlock EndS
+
+Name_OEMHLP_DD          db 'OEMHLP$ '
+
+AttachTable             Struc
+  reserved00            dw ?
+  reserved02            dw ?
+  reserved04            dw ?
+  IDC_IP_ring0          dw ?
+  IDC_CS_ring0          dw ?
+  IDC_DS_ring0          dw ?
+AttachTable             EndS
+
+Attach_OEMHLP_DD        AttachTable <>
+
+; from \pccard\src\csos2\cs2mendm.asm:
+
+sCallOEMHelpPkt db      12              ; packet length
+                db      0               ; packet unit
+                db      16              ; cmd
+                dw      0               ; status
+                db      0               ; flag
+                db      3 dup (0)
+                dd      0               ; packet dev link
+                db      80h             ; category
+                db      0bh             ; function
+                dd      para_OEMHLP_PCI_04
+                dd      data_OEMHLP_PCI_04
+
+para_OEMHLP_PCI_04 label byte
+  subfunction4  db 4
+  bus_number4   db ?
+  dev_func_num4 db ?
+  cfg_register4 db ?
+  regsize4      db ?
+  data4         dd ?
+
+data_OEMHLP_PCI_04 label byte
+  returncode4   db 099h
+
+
+
+Device_Help             dd ?
+                        public Device_Help
+
+Message_table           dw 1178 ; "%1"  ; message number
+                        dw 1            ; one paramter
+fillin_string_ofs       dw ?            ; first fill in item
+                        dw data16
+
+messagestring           Macro ID,ZK
+                        &ID db &ZK,0
+                        EndM
+
+
+IFDEF SNOOPER_INTERNAL_COMMANDLINE
+messagestring           Message_cmdline_error   , 'WPCICFGS.SNP internal configuration string error.'
+ELSE
+messagestring           Message_cmdline_error   , 'WPCICFG.SYS parameter error.'
+ENDIF
+
+messagestring           Message_attach_oemhlp	, 'Attach to OEMHLP$ driver failed.'
+messagestring           pci_error_81            , '81: unsupported function.'
+messagestring           pci_error_87            , '87: bad PCI register number.'
+messagestring           pci_error_unknown       , 'Unknown PCI error ##.'
+
+IFDEF SNOOPER_INTERNAL_COMMANDLINE
+internal_commandline	db 'Edit:-> '
+			;db '0 7 2 $20 4 $0000E401',0
+			db 'Bus Device Function Index Size Value',0
+ENDIF
+
+
+data16                  EndS
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+code16                  Segment 'CODE' public Use16
+                        assume cs:code16
+                        assume ds:data16
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+read_number             proc
+                        push edx
+                        push ecx
+                          sub edx,edx
+                          mov ecx,10
+                          mov ah,0
+  read_number_loop:
+                          mov al,fs:[si]
+                          cmp al,' '
+                          jbe read_number_exit
+
+                          inc si
+
+                          cmp al,'$'
+                          jne nicht_hex
+                          cmp ah,0
+                          jne read_number_error
+                          mov ecx,16
+                          jmp read_number_loop
+  nicht_hex:
+                          cmp al,'0'
+                          jb read_number_error
+                          cmp al,'9'
+                          ja not_read_number_decicmaldigit
+
+                          sub al,'0'
+                          jmp add_digit
+
+  not_read_number_decicmaldigit:
+                          or al,'a'-'A'
+                          cmp al,'a'
+                          jb read_number_error
+                          cmp al,'f'
+                          ja read_number_error
+                          sub al,('a'-10)
+  add_digit:
+                          cmp al,cl
+                          ja read_number_error
+
+                          push ax
+                            mov eax,ecx
+                            mul edx
+                            mov edx,eax
+                          pop ax
+                          movzx eax,al
+                          add edx,eax
+                          mov ah,1
+                          jmp read_number_loop
+  read_number_error:
+                          mov ah,0
+  read_number_exit:
+                          cmp ah,0
+                          clc
+                          jne read_number_ret
+                          stc
+  read_number_ret:
+                          mov eax,edx
+                        pop ecx
+                        pop edx
+                        ret
+read_number             endp
+                        public read_number
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+find_skip_blank         proc
+                        push ax
+  find_skip_blank_loop:
+                          mov al,fs:[si]
+                          cmp al,9
+                          je skip_blank
+                          cmp al,' '
+                          je skip_blank
+                          jb find_skip_blank_exit
+                          inc si
+                          jmp find_skip_blank_loop
+  skip_blank:
+                          mov al,fs:[si]
+                          inc si
+                          cmp al,9
+                          je skip_blank
+                          cmp al,' '
+                          je skip_blank
+
+                          dec si
+  find_skip_blank_exit:
+                        pop ax
+                        ret
+find_skip_blank         endp
+                        public find_skip_blank
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                        ; ds:si
+outputmessage           proc
+                        pusha
+
+                          mov fillin_string_ofs,si
+                          mov si,Offset Message_table
+                          sub bx,bx
+                          mov dl,03dh           ; Save_Message
+                          call Device_Help
+
+                        popa
+                        ret
+outputmessage           endp
+                        public outputmessage
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+strat                   proc
+                        nop                     ; << i n t 3
+                        pushad
+                        push es
+                        push fs
+
+                        mov eax,es:RequestBlock[bx].Pointer_1
+                        mov Device_Help,eax
+
+                        push es
+                        push bx
+
+IFDEF SNOOPER_INTERNAL_COMMANDLINE
+			push ds
+			pop fs
+			mov si,Offset internal_commandline
+ELSE
+			lfs si,es:RequestBlock[bx].Pointer_2
+ENDIF
+
+                        ; Bus 0..255
+                        call find_skip_blank
+  no_first_blank:
+                        call read_number
+                        jc parameter_error
+                        cmp eax,0ffh
+                        ja parameter_error
+                        mov bus_number4,al
+
+                        ; Device 0..31
+                        call find_skip_blank
+                        call read_number
+                        jc parameter_error
+                        cmp eax,01fh
+                        ja parameter_error
+
+                        shl al,3
+                        mov dev_func_num4,al
+
+                        ; function 0..7
+                        call find_skip_blank
+                        call read_number
+                        jc parameter_error
+                        cmp eax,007h
+                        ja parameter_error
+
+                        or dev_func_num4,al
+
+                        ; index 0..ff
+                        call find_skip_blank
+                        call read_number
+                        jc parameter_error
+                        cmp eax,0ffh
+                        ja parameter_error
+
+                        mov cfg_register4,al
+
+                        ; Size 1/2/4
+                        call find_skip_blank
+                        call read_number
+                        jc parameter_error
+                        cmp ax,4
+                        ja parameter_error
+                        cmp al,1
+                        jb parameter_error
+                        cmp al,3
+                        je parameter_error
+
+                        mov regsize4,al
+
+                        ; value
+                        call find_skip_blank
+                        call read_number
+                        jc parameter_error
+
+                        mov data4,eax
+                        jmp parameter_ok
+
+  parameter_error:
+                        mov si,Offset Message_cmdline_error
+                        jmp display_error
+
+  parameter_ok:
+                        mov bx,Offset Name_OEMHLP_DD
+                        mov di,Offset Attach_OEMHLP_DD
+                        mov dl,02ah ; AttachDD
+                        call [Device_Help]
+                        mov si,Offset Message_attach_oemhlp
+                        jc display_error
+
+                        push ds
+                        pop es
+                        mov bx,Offset sCallOEMHelpPkt
+                        call DWord Ptr [di].IDC_IP_ring0
+
+                        mov ah,returncode4
+
+                        cmp ah,0
+                        je no_error
+
+                        mov si,Offset pci_error_81
+                        cmp ah,081h
+                        je display_error
+
+                        mov si,Offset pci_error_87
+                        cmp ah,087h
+                        je display_error
+
+                        mov si,Offset pci_error_unknown
+                        push si
+  search_number_field:
+                          inc si
+                          cmp word ptr ds:[si],'##'
+                          jne search_number_field
+
+                          mov al,ah
+                          and al,00fh
+                          cmp al,10
+                          sbb al,69h
+                          das
+                          mov ds:[si+1],al
+
+                          shr ax,(8+4)
+                          cmp al,10
+                          sbb al,69h
+                          das
+                          mov ds:[si],al
+                        pop si
+  display_error:
+                        call outputmessage
+  no_error:
+
+                        pop bx
+                        pop es
+
+                        ; no code
+                        ; no data
+                        and dword ptr es:RequestBlock[bx].Pointer_1,0
+                        ; error+done+noncritical
+                        mov word ptr es:RequestBlock[bx].Request_Packet_Status,08115h
+
+                        pop fs
+                        pop es
+                        popad
+
+                        retf
+strat                   endp
+                        public strat
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+code16                  EndS
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+                        End entrypoint
+

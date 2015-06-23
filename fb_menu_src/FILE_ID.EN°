@@ -1,0 +1,10 @@
+
+* prevents reboot
+  if TaskMgr is loaded
+  
+* bypass Power On Self Test
+
+* still works if area F000-F7FF
+  is used by DOS with URAM
+  
+* recovery from jmp FFFF:0000

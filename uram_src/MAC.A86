@@ -1,0 +1,284 @@
+Title   Macro und Konstanten f걊 A86
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+pstr                            macro
+                                  dw (>a2->a1)
+  a1:
+                                  #rx1l
+                                    db #x
+                                  #er
+  a2:
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+null                            macro
+                                  #rx1l
+                                    sub #x,#x
+                                  #er
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+halt                            macro
+                                  mov al,#1
+                                  jmp halt_code
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ausschrift                      macro
+                                  mov dx,#1
+                                  call ausschrift_prozedur_ind
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ausschrift_a                    macro
+                                  mov dx,#1
+                                  call ausschrift_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ausschrift_xxxx_aehnliches_bios macro
+                                   mov dx,#1
+                                   call ausschrift_xxxx_aehnliches_bios_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+taste                           macro
+                                  call taste_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+#if debugversion
+debug                           macro
+                                  db 0cch       ; i n t 3
+                                #em
+#else
+#endif
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+kopiere_text_solange_nicht_x    macro
+                                  mov ah,#1
+                                  call kopiere_text_solange_nicht_ah
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+kopiere_text_solange_nicht_null macro
+                                  kopiere_text_solange_nicht_x 0
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+kopiere                         macro
+                                  cld
+                                  rep movsb
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+spracheintrag                   macro
+                                  text#1: dw textd#1
+                                          dw texte#1
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+bios_aufruf                     macro
+                                  push cs
+                                  push >r1
+                                  push w [retf_stelle]
+                                  push es
+                                  push #1
+                                  retf
+  r1:
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+xchg_ds_es                      macro
+                                  call xchg_ds_es_proc
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+installiere_tracer              macro
+                                  call installiere_tracer_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+entferne_tracer                 macro
+                                  call entferne_tracer_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+K16                             equ 16*1024
+K32                             equ 32*1024
+K64                             equ 64*1024
+unveraendert                    equ 0
+veraendert                      equ 1
+
+Bit0                            equ 01h
+Bit1                            equ 02h
+Bit2                            equ 04h
+Bit3                            equ 08h
+Bit4                            equ 010h
+Bit5                            equ 020h
+Bit6                            equ 040h
+Bit7                            equ 080h
+Bit8                            equ 0100h
+Bit9                            equ 0200h
+Bit00                           equ 01h
+Bit01                           equ 02h
+Bit02                           equ 04h
+Bit03                           equ 08h
+Bit04                           equ 010h
+Bit05                           equ 020h
+Bit06                           equ 040h
+Bit07                           equ 080h
+Bit08                           equ 0100h
+Bit09                           equ 0200h
+Bit10                           equ 0400h
+Bit11                           equ 0800h
+Bit12                           equ 01000h
+Bit13                           equ 02000h
+Bit14                           equ 04000h
+Bit15                           equ 08000h
+Bit16                           equ 010000h
+Bit17                           equ 020000h
+Bit18                           equ 040000h
+Bit19                           equ 080000h
+Bit20                           equ 0100000h
+Bit21                           equ 0200000h
+Bit22                           equ 0400000h
+Bit23                           equ 0800000h
+Bit24                           equ 01000000h
+Bit25                           equ 02000000h
+Bit26                           equ 04000000h
+Bit27                           equ 08000000h
+Bit28                           equ 010000000h
+Bit29                           equ 020000000h
+Bit30                           equ 040000000h
+Bit31                           equ 080000000h
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+out_dx_eax                      macro
+                                  db 066,0ef
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+mov_eax_080000000               macro
+                                  db 066,0b8
+                                  dd 080000000
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+jcxz_nop                        macro
+                                  db 0e3,000
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+rdmsr                           macro
+                                  db 00f,032
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+wrmsr                           macro
+                                  db 00f,030
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+push_eax                        macro
+                                  db 066
+                                  push ax
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+push_ecx                        macro
+                                  db 066
+                                  push cx
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+pop_eax                         macro
+                                  db 066
+                                  pop ax
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+pop_ecx                         macro
+                                  db 066
+                                  pop cx
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+mov_ecx_0C0010010               macro
+                                  db 066
+                                  mov cx,00010
+                                  dw 0c001
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+or_eax_00080000                 macro
+                                  db 066
+                                  or ax,00000
+                                  dw 00008
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+and_eax_fff7ffff                macro
+                                  db 066
+                                  and ax,0ffff
+                                  dw 0fff7
+                                #em
+and_eax_0E7E7E7E7               macro
+                                  db 066
+                                  and ax,0e7e7
+                                  dw 0e7e7
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+shl_ebx_16                      macro
+                                  db 066
+                                  shl bx,16
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+pushad                          macro
+                                  db 066
+                                  pusha
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+popad                           macro
+                                  db 066
+                                  popa
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+movzx_ecx_cx                    macro
+                                  db 066,00f,0b7,0c9
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+or_eax_ebx                      macro
+                                  db 066
+                                  or ax,bx
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+mov_edx_eax                     macro
+                                  db 066
+                                  mov dx,ax
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+test_eax_00040000               macro
+                                  db 066
+                                  test ax,00000
+                                  dw 00004
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+or_eax_00040000                 macro
+                                  db 066
+                                  or ax,00000
+                                  dw 00004
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ror_eax_8                       macro
+                                  db 066
+                                  ror ax,8
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ror_eax_16                      macro
+                                  db 066
+                                  ror ax,16
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+xchg_eax_edx                    macro
+                                  db 066
+                                  xchg ax,dx
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+ror_edx_8                       macro
+                                  db 066
+                                  ror dx,8
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+wbinvd                          macro
+                                  db 00f,009
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+mov_eax_ecx                     macro
+                                  db 066
+                                  mov cx,ax
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+btr_cs_si_ecx                   macro
+                                  db 02eh,066,00f,0b3,00c
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+bts_cs_si_ecx                   macro
+                                  db 02eh,066,00f,0ab,00c
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+movzx_ecx_cl                    macro
+                                  db 066,00f,0b6,0c9
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

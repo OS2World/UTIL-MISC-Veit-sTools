@@ -1,0 +1,19 @@
+LIBRARY RXUNLOCK
+DESCRIPTION "@#Veit Kannegieser:2005.07.07#@executable unlock, bldlevel, digest functions -- REXX"
+DATA MULTIPLE NONSHARED
+
+EXPORTS
+  RXUNLOCKLOADFUNCS = RxUnlockLoadFuncs
+  RXUNLOCKDROPFUNCS = RxUnlockDropFuncs
+  RXUNLOCKDEBUG     = RxUnlockDebug
+  RXUNLOCKFILES     = RxUnlockFiles
+  RXREPLACEMODULE   = RxReplaceModule
+  RXBLDLEVEL        = RxBldLevel
+  RXMD5             = RxMD5
+  RXCRC32           = RxCRC32
+  RXFILECOMPARE     = RxFileCompare
+  RXCPUID           = RxCpuId
+  RXSTEMSEARCH3     = RxStemSearch3
+  RXRANDOMIZE       = RxRandomize
+  RXRANDOM          = RxRandom
+  RXEXECUTABLETYPE  = RxExecutableType

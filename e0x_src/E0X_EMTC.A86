@@ -1,0 +1,204 @@
+logische_emtcopy_position:
+                        dd 0
+emtcopy_blockgroesse:   dw 080+020
+emtcopy_vorspann_ende:
+                        dw 0
+emtcopy_vorspann_beachtet:
+                        db 0
+;****************************************************************************
+schreibe_hd_copy_zeichen_emtcopy_filter:
+                        cmp b [emtcopy_vorspann_beachtet],1
+                        jz schreibe_hd_copy_zeichen_emtcopy_filter_weiter
+
+                        cmp di,[emtcopy_vorspann_ende]
+                        jnz schreibe_hd_copy_zeichen_emtcopy_filter_weiter
+
+                        mov di,hd_copy_entschluesselt
+                        mov b [emtcopy_vorspann_beachtet],1
+
+  schreibe_hd_copy_zeichen_emtcopy_filter_weiter:
+
+                        jmp schreibe_hd_copy_zeichen
+                        ; ret
+
+;****************************************************************************
+emtcopy_entschluesselung:
+                        mov b [emtcopy_vorspann_beachtet],0
+
+                        mov si,0
+                        mov di,hd_copy_entschluesselt
+
+                        mov dx,w [dskf_tabellenstart_l]
+                        mov cx,w [dskf_tabellenstart_h]
+                        add dx,00050
+                        adc cx,0
+                        add dx,w [logische_emtcopy_position+0]
+                        adc cx,w [logische_emtcopy_position+2]
+                        call seek
+                        call datei_einlesen_512
+
+                        mov cx,0 ; Schreiben
+                        mov dx,0 ; Lesen
+
+emtcopy_entschluesselung_schleife:
+                        call lies_hd_copy_zeichen
+                        inc dx
+                        cmp al,0f1
+                        jz emtcopy_entschluesselung_mehrfach
+
+                        call schreibe_hd_copy_zeichen_emtcopy_filter
+                        inc cx
+                        jmp short emtcopy_entschluesselung_weiter
+
+emtcopy_entschluesselung_mehrfach:
+                        call lies_hd_copy_zeichen
+                        inc dx
+                        mov bl,al ; Zeichen
+                        call lies_hd_copy_zeichen
+                        inc dx
+                        mov ah,0  ; Anzahl
+                        add cx,ax
+
+                        push cx
+                          mov cx,ax
+                          mov al,bl
+  emtcopy_entschluesselung_mehrfach_schleife:
+                          call schreibe_hd_copy_zeichen_emtcopy_filter
+                          loop emtcopy_entschluesselung_mehrfach_schleife
+                        pop cx
+
+emtcopy_entschluesselung_weiter:
+                        cmp cx,[emtcopy_blockgroesse]
+                        jb emtcopy_entschluesselung_schleife
+
+                        add w [logische_emtcopy_position+0],dx
+                        adc w [logische_emtcopy_position+2],0
+
+                        ret
+
+;****************************************************************************
+
+berechne_groesse_emtcopy:
+                        mov dx,0
+                        mov cx,0
+                        sub dx,9
+                        sbb cx,0
+                        call seek_ende
+
+                        mov cx,3
+                        call datei_einlesen_cx
+
+                        cmp b es:[1],001
+                        jnz berechne_groesse_emtcopy_mit_label
+                        cmp b es:[2],000
+                        jnz berechne_groesse_emtcopy_mit_label
+
+                        mov al,es:[0]
+                        inc al       ; 04f -> 050
+                        shl ax,1     ; 050 -> 0a0
+                        dec ax       ; 0a0 -> 09f
+
+                        jmp berechne_groesse_emtcopy_weiter
+
+berechne_groesse_emtcopy_mit_label:
+
+                        mov dx,0
+                        mov cx,0
+                        sub dx,(9+512)
+                        sbb cx,0
+                        call seek_ende
+
+                        mov cx,3
+                        call datei_einlesen_cx
+
+                        cmp b es:[1],001
+                        jnz berechne_groesse_emtcopy_fehler
+                        cmp b es:[2],000
+                        jnz berechne_groesse_emtcopy_fehler
+
+                        jmp short berechne_groesse_emtcopy_weiter
+
+berechne_groesse_emtcopy_fehler:
+
+                        mov ax,-1
+                        ret
+
+berechne_groesse_emtcopy_weiter:
+                        push es,si
+                          mov ax,cs
+                          mov es,ax
+                          call emtcopy_entschluesselung
+
+                          mov si,[hd_copy_entschluesselt+00006] ; Vorspann
+                          mov ax,[si+hd_copy_entschluesselt+00013]
+                          cmp ax,0
+                          if z mov ax,[si+hd_copy_entschluesselt+00020]
+                        pop si,es
+                        ret
+
+;****************************************************************************
+
+importiere_emtcopy:
+                        call kopiere_ins_xms_zaehler_nullen
+                        call sauberen_kopf_einrichten
+
+
+                        mov ax,[hd_copy_entschluesselt+00006] ; Vorspann
+                        mov si,ax
+                        add ax,hd_copy_entschluesselt
+                        mov w [emtcopy_vorspann_ende],ax
+
+                        mov ax,[hd_copy_entschluesselt+00004]
+                        add ax,si
+                        mov w [emtcopy_blockgroesse],ax       ; Datenl„nge
+
+
+
+                        mov ax,[si+hd_copy_entschluesselt+00013]
+                        cmp ax,0
+                        if z mov ax,[si+hd_copy_entschluesselt+00020]
+                        mov w [sektoren],ax
+                        mov bx,[si+hd_copy_entschluesselt+00018]
+                        mov b [sekt_spur],bl
+                        div bl
+                        mov bx,[si+hd_copy_entschluesselt+0001a]
+                        mov b [koepfe],bl
+                        div bl
+                        mov b [spuren],al
+
+
+                        sub ax,ax
+                        mov w [logische_emtcopy_position+0],ax
+                        mov w [logische_emtcopy_position+2],ax
+
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+
+                        mov w [quell_h],0
+                        mov w [quell_o],hd_copy_entschluesselt
+                        mov w [quell_s],cs
+                        mov w [ziel_h],[xms_handhabe]
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+
+
+                        mov w [logische_blitzcopy_position+0],0
+                        mov w [logische_blitzcopy_position+2],0
+
+                        mov cl,0
+emtcopy_spur_schleife:
+                        push cx
+			  ; 2 Seiten
+                          call emtcopy_entschluesselung
+			  call emtcopy_entschluesselung
+                        pop cx
+
+                        inc cl
+
+                        cmp cl,b [spuren]
+                        jnz emtcopy_spur_schleife
+
+                        ret
+;****************************************************************************

@@ -1,0 +1,28 @@
+; "BIOTEC"
+;            -Lesen+Schreiben            +Lesen-Schreiben
+; C000=FC2E  AND FE   OR 02        OR 01 AND FD
+; C400=FC2E  AND FB   OR 08        OR 04 AND F7
+; C800=FC2E  AND EF   OR 20        OR 10 AND DF
+; CC00=FC2E  AND BF   OR 80        OR 40 AND 7F
+;
+; F000=FC2F  AND FE   OR 02        OR 01 AND FD
+;
+;
+; FC2E.7=CC00 Schreiben
+;      6=CC00 Lesen
+;      5=C800 Schreiben
+;      4=C800 Lesen
+;      3=C400 Schreiben
+;      2=C400 Lesen
+;      1=C000 Schreiben
+;      0=C000 Lesen
+;
+; FC2F.7=
+;      6=
+;      5=
+;      4=
+;      3=
+;      2=
+;      1=F000 Schreiben
+;      0=F000 Lesen
+;

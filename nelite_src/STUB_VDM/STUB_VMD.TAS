@@ -1,0 +1,86 @@
+Title   another DOS32StartSession VDM stub
+
+; Veit Kannegieser 2002.11.24
+
+.386p
+
+code                    segment 'code' use16
+                        assume cs:code
+                        assume ds:code
+                        org 00100h
+
+entrypoint:
+                        mov ah,030h
+                        int 021h
+                        xchg al,ah
+                        cmp ax,20*0100h+10      ; OS/2 2.10+
+                        jb doserror
+
+                        sub edx,edx             ; zero
+                        cld
+
+                        push word ptr 0         ; session type
+; 00h OS/2 session manager determines type (default)
+; 01h OS/2 full-screen
+; 02h OS/2 window
+; 03h PM
+; 04h VDM full-screen
+; 07h VDM window
+                        push word ptr 1         ; inheritance
+                        push edx                ; env
+                        push edx                ; TermQ
+
+                        mov si,081h             ; args
+                        push ds
+                        push si
+                        movzx bx,byte ptr ds:[si-1]
+                        mov [si+bx],dl          ; - null terminated
+
+                        sub di,di
+                        mov es,word ptr ds:[di+02ch] ; program.exe
+  search_exe:
+                        cmp es:[di],dx
+                        je found_exe
+                        inc di
+                        jmp search_exe
+  found_exe:
+                        scasd ; add di,4
+                        push es
+                        push di
+
+                        push edx                ; title
+                        push edx                ; no trace, foreground
+                        push word ptr 1         ; child
+                        push word ptr 020h      ; STARTDATA size
+
+                        mov ah,064h             ; DOS32StartSession
+                        mov bx,025h
+                        mov cx,'cl'
+                        mov si,sp               ; @STARTDATA
+                        int 021h
+                        jc doserror
+
+	
+                        mov ah,04dh             ; exitcode - does not work ?
+                        int 021h
+                        jmp exit
+
+  doserror:
+                        mov ah,009h             ; display
+                        mov dx,offset text_doserror
+                        int 021h
+                        mov al,0ffh             ; Halt(255)
+
+  exit:
+                        mov ah,04ch
+                        int 021h
+
+text_doserror:        ; db 'This is an OS/2 executable module'
+                        db 'OS/2 program.'
+                      ; db 'OS/2 needed.'
+                        db 13,10,'$'
+
+code ends
+
+                        end entrypoint
+

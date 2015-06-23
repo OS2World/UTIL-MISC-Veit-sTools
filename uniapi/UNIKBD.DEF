@@ -1,0 +1,14 @@
+LIBRARY 'UNIKBD'
+
+DESCRIPTION 'unikbd.dll'
+
+EXPORTS
+  UniCreateKeyboard       @1
+  UniDestroyKeyboard      @2
+  UniQueryKeyboard        @3
+  UniResetShiftState      @4
+  UniUpdateShiftState     @5
+  UniTranslateKey         @6
+  UniTranslateDeadkey     @7
+  UniUntranslateKey       @8
+  UniInitKeyboard         @9

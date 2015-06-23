@@ -1,0 +1,40 @@
+;*****************************************************************************
+; PR SYS * Veit Kannegiese * 1999.12.07
+;*****************************************************************************
+org 0
+                        dw ende         -anfang
+                        dw ofs_ip       -anfang
+                        dw relo_anzahl  -anfang
+                        dw relo_start   -anfang
+                        
+anfang:
+;*****************************************************************************
+strat:
+                        push es
+                          pusha
+
+                            mov si,'**' ; Ofs(relo)
+  relo_start                equ $-2
+                            mov cx,'**' ; Anzahl
+  relo_anzahl               equ $-2
+                            cld
+                            mov dx,cs
+                            lodsw
+                            mov di,ax
+  relo_schleife:
+                            add w [di],dx
+                            lodsw
+                            add di,ax
+                            add di,4
+                            loop relo_schleife
+
+                          popa
+                        pop es
+                        ; jmp org_strat
+                        db 0e9,'**'
+  ofs_ip                equ $-2
+                        
+ende:
+;*****************************************************************************
+; dw relo,relo,..
+;*****************************************************************************

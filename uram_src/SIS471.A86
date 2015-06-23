@@ -1,0 +1,156 @@
+Title   SiS 471: ISA
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; Index: port[$22]
+; Daten: port[$23]
+;
+; 52.7 Lesen
+;    6 Schreibschutz
+;    5 E800
+;    4 E000
+;    3 D800
+;    2 D000
+;    1 C800
+;    0 C000
+;
+; 53.7
+;    6
+;    5 F000 Cache
+;    4 C000 Cache
+;    3
+;    2
+;    1
+;    0
+;
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_sis471                    macro
+                                  mov di,#1
+                                  mov dh,#2
+                                  call setze_sis471_prozedur
+                                #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_sis471_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_sis471_prozedur_ende
+
+                                call ausschrift_segment
+
+
+                                mov al,ah
+                                and ax,00201
+
+                                mov bx,000ff
+
+                                cmp ah,002              ; Schreiben
+                                if e sub bl,Bit6        ; Bit6=Schreibschutz
+
+                                cmp al,001              ; Lesen
+                                if e or bh,dh           ; +L
+
+                                mov cl,052
+
+                                ; Index cl
+                                ; and bl
+                                ; or bh
+                                call bios_aufruf__prozedur_registeraenderung
+setze_sis471_prozedur_ende:
+                                ret
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+variante_SIS471:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis471
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+011+1]
+                                add ax,di
+                                add ax,011+3
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+                                jmp sis471_gemeinsam
+
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+
+variante_SIS471_1995:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis471_1995
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+010+1]
+                                add ax,di
+                                add ax,010+3
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+
+sis471_gemeinsam:
+                                setze_sis471 'C0',Bit0+Bit7
+                                setze_sis471 'C8',Bit1+Bit7
+                                setze_sis471 'D0',Bit2+Bit7
+                                setze_sis471 'D8',Bit3+Bit7
+                                setze_sis471 'E0',Bit4+Bit7
+                                setze_sis471 'E8',Bit5+Bit7
+                                setze_sis471 'F0',     Bit7
+
+
+                                mov bh,Bit6
+                                mov bl,0ff-Bit6
+                                cmp b [globaler_schreibschutz],'1'
+                                if e call bios_aufruf__prozedur_registeraenderung
+
+                                jmp initialisieren
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+variante_sis471_ami:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis471_ami
+
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+19+1]
+                                add ax,di
+                                add ax,19+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+28+1]
+                                add ax,di
+                                add ax,28+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_sis471_ami
+
+                                jmp sis471_gemeinsam
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+chip_sis471:
+                                mov w [registeraenderung_emulation],aenderung_chip_sis471
+                                jmp sis471_gemeinsam
+
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+
+aenderung_chip_sis471:
+                                installiere_tracer
+
+                                mov al,cl
+                                out 022,al
+                                                        out 0e1,ax
+                                in al,023
+                                                        out 0e1,ax
+
+                                and al,bl
+                                or al,bh
+
+                                xchg cl,al
+                                out 022,al
+                                                        out 0e1,al
+                                xchg cl,al
+                                out 023,al
+                                                        out 0e1,al
+
+                                entferne_tracer
+
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

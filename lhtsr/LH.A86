@@ -1,0 +1,232 @@
+;*****************************************************************************
+#if englisch
+speicherfehler_text:    db 7,'error on memory allocation',00d,00a
+                        db '$'
+#else
+speicherfehler_text:    db 7,'Fehler bei Speicheranforderung',00d,00a
+                        db '$'
+#endif
+
+lhmin__org_umb          dw ?
+lhmin__org_strategie    dw ?
+lhmin__tsr_segment      dw ?
+
+lhmin__tsr_ende         equ [bp+00004]
+lhmin__tsr_segment100   equ [bp+00004]
+lhmin__int_nummer       equ [bp+00004]
+
+lhmin__mcb_text8        equ [bp+00006]
+
+lhmin__ip_erwartet      equ [bp+00008]
+
+tsr_start		equ 00110 ; .COM + Reserve
+
+;*****************************************************************************
+
+anfordern_speicher_prozedur:
+                        enter 0,0
+
+                        ; Speicher reduzieren
+                        mov ah,04a
+                        mov bx,4096 ; 64K .. mit Stack
+                        ; mov es,cs
+                        int 021
+
+                        ; sichern
+                        mov ax,05802
+                        int 021
+                        mov ah,0
+                        mov lhmin__org_umb,ax
+
+                        mov ax,05800
+                        int 021
+                        mov lhmin__org_strategie,ax
+
+                        ; setzen
+                        mov ax,05803
+#if nicht_umb
+                        mov bx,00000 ; -UMB ; <640K
+#else
+     			mov bx,00001 ; +UMB ; .. FFFF
+#endif
+			int 021
+
+                        mov ax,05801
+                        mov bx,00082 ; last fit + hoch
+                        int 021
+
+                        ; Speicher anfordern
+                        mov ah,048
+                        mov bx,lhmin__tsr_ende
+                        sub bx,tsr_start-0000f
+                        shr bx,4
+                        int 021            ; /16
+                        if c sub ax,ax
+                        mov lhmin__tsr_segment,ax
+
+                        ; restaurieren
+                        mov ax,05803
+                        mov bx,lhmin__org_umb
+                        int 021
+
+                        mov ax,05801
+                        mov bx,lhmin__org_strategie
+                        int 021
+
+                        mov ax,lhmin__tsr_segment
+                        cmp ax,0
+                        jz anfordern_speicher_fehler
+
+                        dec ax
+                        mov es,ax
+                        inc ax
+
+                        push ax,dx
+                          mov bx,ax         ; geh”rt sich selbst
+                                            ; OS/2 Mem zeigt nicht "--------"
+
+                          mov ax,'DR'
+                          int 021
+
+                          cmp ah,010
+                          if z mov bx,6     ; Novell DOS: UMB
+                                            ; Mem Zeigt Namen an
+
+                        pop dx,ax
+                        
+                        mov w es:[00001],bx
+
+                        mov si,lhmin__mcb_text8
+                        mov di,8
+                        cld
+                        movsw
+                        movsw
+                        movsw
+                        movsw
+
+                        mov es,ax
+
+                        mov si,tsr_start
+                        mov di,0
+                        mov cx,lhmin__tsr_ende
+                        sub cx,si
+                        inc cx           ; /2
+                        shr cx,1
+                        rep movsw
+                        
+                        sub ax,tsr_start/16
+                        mov es,ax
+
+                        leave
+
+                        ret 2*2
+
+anfordern_speicher_fehler:
+
+                        mov ah,009
+                        mov dx,speicherfehler_text
+                        int 021
+
+                        mov ax,04c08
+                        int 021
+                        
+;*****************************************************************************
+
+freigeben_speicher_prozedur:
+                        enter 0,0
+                        push ax,cx,si,di,es
+                          mov ax,lhmin__tsr_segment100
+                          add ax,tsr_start/16
+                          dec ax ; mcb
+                          mov es,ax
+                          mov si,lhmin__mcb_text8
+                          mov di,8
+                          mov cx,4
+                          cld
+                          rep cmpsw
+                          jnz kann_nicht_freigeben
+
+                          mov es:[1],cs ; geh”rt mir .. OS/2 kein Speicherfehler
+                          inc ax
+                          mov es,ax
+                          mov ax,049
+                          int 021
+
+kann_nicht_freigeben:
+                        pop es,di,si,cx,ax
+
+                        leave
+
+                        ret 2*2
+
+;*****************************************************************************
+
+int_vergleich_prozedur:
+                        enter 0,0
+
+                          push ax,bx,cx,si,di,es
+
+                            mov ah,035
+                            mov al,lhmin__int_nummer
+                            int 021
+                            
+                            mov dx,es
+
+                            cmp bx,lhmin__ip_erwartet
+                            jnz int_vergleich_prozedur_ungleich
+                            
+                            mov ax,es
+                            add ax,(tsr_start-010)/16 ; 1 MCB, 1 "PSP"
+                            mov es,ax
+                            mov si,lhmin__mcb_text8
+                            mov di,8
+                            mov cx,8/2
+                            cld
+                            rep cmpsw
+                            jz int_vergleich_prozedur_weiter
+
+int_vergleich_prozedur_ungleich:
+                            sub dx,dx
+
+int_vergleich_prozedur_weiter:
+                          pop es,di,si,cx,bx,ax
+
+                        leave
+
+                        ret 3*2
+                        
+
+
+
+;*****************************************************************************
+;
+; Ergebnis: ES=Segment hochgeladen
+;
+hochladen macro
+                        push #2 ; Programmname im MCB
+                        push #1 ; tsr_ende
+                        call anfordern_speicher_prozedur
+#em
+
+;*****************************************************************************
+;
+
+entfernen macro
+                        push #2 ; Programmname im MCB
+                        push #1 ; es:00100-010=MCB
+                        call freigeben_speicher_prozedur
+#em
+
+;*****************************************************************************
+;
+; Ergebnis: DX=TSR Segment
+;           DX=0 nicht gefunden
+;
+int_vergleich macro
+                        push #3 ; ip der erwarteten Behandlung
+                        push #2 ; Programmname im MCB
+                        push #1 ; Int-Nummer
+                        call int_vergleich_prozedur
+#em
+
+;*****************************************************************************

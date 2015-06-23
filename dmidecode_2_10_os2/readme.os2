@@ -1,0 +1,6 @@
+quick port of of dmidecode 2.10 [http://www.nongnu.org/dmidecode/]
+using snippets from Trevor Hemsleys dmios2.zip (1.2)
+
+compiled with OpenWatcom.
+
+Veit Kannegieser, 2009-02-10

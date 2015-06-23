@@ -1,0 +1,6 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_Messen_der_Bildwiederholrate_bitte_warten_  :^string;
+  textz_Entweder_sehr_guter_Wert_oder_Fehler_durch_Betriebssystem_oder_Geraete_  :^string;
+  textz_Sehr_schlechter_Wert_oder_Fehler_  :^string;

@@ -1,0 +1,12 @@
+OS/2 Config.sys Menu
+
+config.sys will be patched in memory
+when loaded by OS/2 kernel
+
+ * Quickkeys to change many 
+   options at once
+ * time limit
+ * also useable for boot disks
+ * detection of network/host adapter
+   chips and their driver names
+ * option to load debug OS2KRNL 

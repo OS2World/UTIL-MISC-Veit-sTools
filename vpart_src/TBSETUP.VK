@@ -1,0 +1,6 @@
+% GENVK
+ERSETZE.EXE      *       *       0040 ; ATTRIB
+VPARTEIN.EXE     *       *       0020 ; INT13/25/26
+VPARTDOS.EXE     *       *       0020 ; INT13/25/26
+VPARTD32.EXE     *       *       0020 ; INT13/25/26
+BOOTCD.COM       *       *       0001 ; DEENCOM

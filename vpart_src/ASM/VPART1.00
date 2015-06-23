@@ -1,0 +1,310 @@
+;************* VPART Verschieber / Lader
+
+null                    macro
+                          sub #1,#1
+                        #em
+
+
+#if spur0
+
+ladestelle              equ 07C00 ; 00000:07c00
+ladeversuche            equ 7
+
+#endif
+
+#if fat
+
+ladestelle              equ 00000 ; 00070:00000
+
+#endif
+
+ladestelle_di           equ di
+
+
+zeilenlaenge            equ 80
+ziel_seg                equ 08000
+ziel_off                equ 00100
+
+org 00000               ; aber 00000:07C00 !
+                        db 512 dup 'Û'
+
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+org 00000
+                        jmp short start
+                        nop
+
+                        db 'VPART***'
+
+vpart2sektoren:         db '.'
+vpart2_cx:              dw '..'
+vpart2_dx:              dw '..'
+versteckt:              db '0'   ; '0' / '1'
+
+
+#if spur0
+
+                        #if award_swap
+
+                          #if deutsch
+titel_leer1               equ 10-2
+titel_leer2               equ 10-2
+                          #elseif englisch
+titel_leer1               equ 10-2-1
+titel_leer2               equ 10-2
+                          #endif
+
+                        #elseif !award_swap
+
+                          #if deutsch
+titel_leer1               equ 10
+titel_leer2               equ 10
+                          #elseif englisch
+titel_leer1               equ 10-1
+titel_leer2               equ 10
+                          #endif
+
+                        #endif
+
+#elseif fat
+
+titel_leer1             equ 11
+titel_leer2             equ 11
+
+#endif
+
+
+titel:                  db 'É',1,zeilenlaenge-1-1,'Í»',
+                        db 'º',1,titel_leer1,' VPart ['
+#if spur0
+                        #if award_swap
+                          #if deutsch
+                          db 'Spur0(81)'
+                          #elseif englisch
+                          db 'Track0(81)'
+                          #endif
+                        #elseif !award_swap
+                          #if deutsch
+                          db 'Spur0'
+                          #elseif englisch
+                          db 'Track0'
+                          #endif
+                        #endif
+#endif
+
+#if fat
+                        db 'FAT'
+#endif
+                        db '] * Veit Kannegieser * 1994.02.28 - '
+include ..\datum.a86
+                        db 1,titel_leer2,' º',0
+
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+start:
+                        cli
+                        mov ax,ziel_seg
+                        mov ss,ax
+                        mov sp,ziel_off
+                        sti
+                        cld
+                        mov ds,cs
+
+                        mov ah,3
+                        null bh
+                        int 010
+
+                        mov ladestelle_di,ladestelle
+
+                        cmp dl,0
+                        je zeilen_anfang_ende
+
+                        mov si,ladestelle+text_00d00a
+                        call ausschrift_zk
+
+zeilen_anfang_ende:
+
+                        mov si,ladestelle+titel
+                        call ausschrift_zk
+
+                        ; DS=CS, ES=SS=ziel_seg
+                        push ss
+                        pop es
+
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+#if fat
+                        mov si,ladestelle+512
+                        mov cl,[ladestelle_di+vpart2sektoren]
+                        ; mov ch,0
+                        shl cx,(9-1) ; *512/2
+                        mov di,sp ;ziel_off
+                        cld
+                        rep movsw
+#endif
+
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+#if spur0
+
+                        #if award_swap
+
+                        ; undo drive swap $80/$81
+                        mov al,byte [004e5]     ; xxxxxxxxddccaabb
+award_bios_variable1    equ $-2
+                        shl ax,4                ; xxxxddccaabb0000
+                        rol al,2                ; xxxxddccbb0000aa
+                        shl ax,4                ; ddccbb0000aa0000
+                        shr al,4                ; ddccbb00000000aa
+                        or al,ah                ; ddccbb00ddccbbaa
+                        mov byte [004e5],al
+award_bios_variable2    equ $-2
+
+                        #endif
+
+                        mov si,ladeversuche
+  versuch:
+                        mov ah,002                              ; Lesen
+                        mov al,[ladestelle_di+vpart2sektoren]   ; Anzahl Sektoren
+                        mov cx,[ladestelle_di+vpart2_cx]        ; Sektor
+                        mov dx,[ladestelle_di+vpart2_dx]        ; Festplatte + Kopf
+                        mov bx,sp ;ziel_off                     ; nach ES:BX laden
+                        int 013
+                        jnc untersuchen
+
+                        ; einsparbar
+                        sub ax,ax                               ; Zurcksetzen
+                        int 013
+
+                        dec si
+                        jnz versuch
+
+
+                        mov si,ladestelle+festplattenlesefehler_text
+  fehler_stop:
+                        call ausschrift_zk_wichtig
+                        mov si,ladestelle+unterer_rand
+                        call ausschrift_zk
+                        jmp short $
+                        ;************ Endlosschleife
+
+untersuchen:
+                        null cx
+                        mov cl,[ladestelle_di+vpart2sektoren]
+                        mov si,ladestelle_di    ; selbst
+                        mov di,sp               ; ziel_off
+
+  untersuchen_schleife:
+                        pusha
+                          ;ch=0
+                          mov cl,10/2
+                          rep cmpsw
+                          jnz suche_im_naechsten_block
+
+                        ;--popa--
+  virus_gefunden:
+
+; OS/2 LVM.EXE (eCS Preview,FP14) hat hier (D7) die Kennung 'I13X'
+; LVM benutzt sie, um einen kompatiblen MBR-Code zu erkennen
+                        jmp short ueber_i13x
+                        #if (000d7-$)
+                        db 000d7-$ dup 'Û'
+                        #endif
+                        db 'I13X'
+ueber_i13x:
+                        mov si,ladestelle+virus_text
+                        jmp short fehler_stop
+
+suche_im_naechsten_block:
+                        popa
+                        add di,0200
+                        loop untersuchen_schleife
+
+                        cmp b es:[di-1],'Û'
+                        jne virus_gefunden
+
+#endif
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+sprung_zu_vpart2:
+                        mov si,ladestelle+unterer_rand
+                        call ausschrift_zk
+                        jmp ziel_seg:ziel_off  ; VPART 2
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift_zk_wichtig:
+                        cmp b [ladestelle+versteckt],'1'
+                        jne ausschrift_zk
+
+                        dec b [ladestelle+versteckt] ; '1'->'0'
+                        push si
+                          mov si,ladestelle+titel
+                          call ausschrift_zk
+                        pop si
+
+ausschrift_zk:
+                        cmp b [ladestelle+versteckt],'1'
+                        if e ret
+ausschrift_zk_schleife:
+                        mov cx,1
+                        lodsb
+                        cmp al,001
+                        jb ret
+                        jne ausschrift_zk_einfach
+
+                        lodsb
+                        mov cl,al
+                        lodsb
+  ausschrift_zk_einfach:
+                        mov ah,00e
+                        null bh
+                        int 010
+                        loop ausschrift_zk_einfach
+                        jmp short ausschrift_zk_schleife
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+#if spur0
+
+festplattenlesefehler_text:
+                        #if deutsch
+                        db 'º',1,11,' Festplattenlesefehler * System gestoppt * BIOS - Setup !',1,11,' º',0
+                        #else
+                        db 'º',1,11,' harddisk read error * system halted * run BIOS - setup !',1,11,' º',0
+                        #endif
+
+
+virus_text:
+                        #if deutsch
+                        db 'º',1,8,' VPart-Hauptmodul ist besch„digt ! Virus ? sauber starten (A:) !',1,7,' º',0
+                        #else
+                        db 'º',1,8,' The main module of VPart is damaged ! virus ? use clean disk ! ',1,7,' º',0
+                        #endif
+
+#endif
+
+unterer_rand:           db 'È',1,zeilenlaenge-1-1,'Í¼',0
+
+text_00d00a:            db 00d,00a,0
+
+
+;******************************************************************
+#if spur0
+                        ;org 01be
+                        #if (001be-$)
+                        db 001be-$ dup 'Û'
+                        db
+                        #endif
+                        db 16 dup 0
+                        db 16 dup 0
+                        db 16 dup 0
+                        db 16 dup 0
+                        db 055,0AA              ;Bootf„hig
+
+                        #if award_swap
+                        dw award_bios_variable1
+                        dw award_bios_variable2
+                        #endif
+#endif
+
+#if fat
+                        org 001fe
+                        db 'VK'
+#endif
+
+;******************************************************************

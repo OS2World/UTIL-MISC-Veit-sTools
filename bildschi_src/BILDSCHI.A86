@@ -1,0 +1,403 @@
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;VEIT KANNEGIESER,17.02.1995
+; 13.01.1997:           jmp -> jmp short
+;                       tab zu 640 K
+;                       int 3 entfernt
+;
+; 08.09,09.09.1997      Registeranzeige
+;                       mehr Farben
+;                       Hex-Anzeige
+;
+; 20.09.1997            386-Version
+;
+; 01.11.1997		korrekte Anzeige wenn ES<>SS
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+null                    macro
+                          sub #1,#1
+                        #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; #1=x,Spalte,1..80
+; #2=y,Zeile ,1..25
+position                macro
+                          mov di,(((#2-1)*80)+(#1-1))*2
+                        #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+erweitert               macro
+  #if p386
+                          db 066
+  #endif
+                        #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+zeichen_ausschrift      macro
+                          stosb
+                          inc di
+                        #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+basis                   equ 00100
+;basis                   equ 07c00
+
+
+org basis+00000
+
+                        jmp short start
+                        nop
+
+#if p386
+                        db 'SBILD386'
+#else
+                        db 'SBILD286'
+#endif
+
+                        db 'ÃÄÄÄÄÄÄÄÄÄÄ hier Bootsektordaten eintragen ! ÄÄÄÄÄÄÄ´'
+
+org basis+00040
+
+#if p386
+register_namen:         db 'AXBXCXDXSIDIBPSPIPCDES'
+#else
+register_namen:         db 'AXBXCXDXSIDIBPSPIPCSDSESSS'
+#endif
+
+register_anzahl_32      equ 4+2+1+1+1
+register_anzahl_16      equ 4
+
+
+start:
+                        erweitert
+                        push ax
+                        erweitert
+                        push bx
+                        erweitert
+                        push cx
+                        erweitert
+                        push dx
+                        erweitert
+                        push si
+                        erweitert
+                        push di
+                        erweitert
+                        push bp
+                        erweitert
+                        push sp
+#if p386
+                        db 066,0e8
+                        dd 0
+#else
+                        call relo_ip ; push relo_ip
+#endif
+
+relo_ip:
+                        push cs,ds,es,ss
+
+                        mov ax,00003
+                        int 010
+
+                        mov bp,sp
+#if p386
+                        add bp,44
+#else
+                        add bp,26
+#endif
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;
+;       286   386
+;       sp-   sp-
+;
+;  ss    26    44
+;  es    24    42
+;  ds    22    40
+;  cs    20    38
+; eip    18    36
+; esp    16    32
+; ebp    14    28
+; edi    12    24
+; esi    10    20
+; edx     8    16
+; ecx     6    12
+; ebx     4     8
+; eax     2     4
+;
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+
+
+
+#if p386
+                        ; ip...
+                        sub w [bp-36],(relo_ip-basis)
+
+                        ; sp
+                        mov w [bp-32],bp
+
+                        ; Basis
+                        mov bx,w [bp-36]
+
+#else
+                        sub w [bp-18],(relo_ip-basis)
+
+                        mov w [bp-16],bp
+
+                        mov bx,w [bp-18]
+#endif
+                        mov ax,cs
+                        mov ds,ax       ; DS:=CS
+                        mov ax,0b800
+                        mov es,ax       ; ES:=B800
+                        cld
+
+
+                        ; Farbmaske ...............................
+                        null di
+
+                        ; Zeile 1 und 23/24..25
+                        mov ax,' '+03f00
+                        mov cx,80*25
+                        rep stosw
+
+                        ; Zeile 2
+                        position 1,2
+                        mov al,'Ü'
+                        mov cx,80
+                        rep stosw
+
+                        ; Zeile 3..21/22
+                        mov ax,' '+01e00
+#if p386
+                        mov cx,19*80
+#else
+                        mov cx,20*80
+#endif
+                        rep stosw
+
+                        ; Zeile 22/23
+                        mov ax,'ß'+03f00
+                        mov cx,80
+                        rep stosw
+
+
+                        ; Korrektur in  Zeile 1,2 Spalte 7
+                        mov al,'Û'
+                        position 7,1
+                        stosb
+                        position 7,2
+                        stosb
+
+                        ; Registernamen und Inhalt in Zeile 24 und 25
+                        mov si,bx
+                        add si,register_namen-basis
+
+#if p386
+                        position 3,23
+
+                        mov cx,register_anzahl_32
+register_anzeige_schleife_32:
+                        mov al,'E'
+                        zeichen_ausschrift
+                        lodsb
+                        zeichen_ausschrift
+                        lodsb
+                        zeichen_ausschrift
+                        mov al,'='
+                        zeichen_ausschrift
+
+                        sub bp,4
+                        mov ax,[bp+2]
+                        call word_ausschrift
+                        mov ax,[bp+0]
+                        call word_ausschrift
+
+                        add di,4*2 ; 4 Zeichen frei
+
+                        loop register_anzeige_schleife_32
+
+                        ; ch=0
+                        mov cl,register_anzahl_16
+                        position 4,25
+register_anzeige_schleife_16:
+                        lodsb
+                        zeichen_ausschrift
+                        mov al,'S'
+                        zeichen_ausschrift
+                        mov al,'='
+                        zeichen_ausschrift
+
+                        sub bp,2
+                        mov ax,[bp+0]
+                        call word_ausschrift
+
+                        add di,9*2 ; 9 Zeichen frei
+
+                        loop register_anzeige_schleife_16
+
+                        add sp,register_anzahl_32*4+register_anzahl_16*2
+
+#else ;********************************************************************
+
+                        position 2,24
+                        mov cx,register_anzahl_16+register_anzahl_32
+register_anzeige_schleife:
+                        lodsb
+                        zeichen_ausschrift
+                        lodsb
+                        zeichen_ausschrift
+                        mov al,'='
+                        zeichen_ausschrift
+
+                        sub bp,2
+                        mov ax,[bp]
+                        call word_ausschrift
+
+                        add di,3*2 ; 3 Zeichen frei
+
+                        loop register_anzeige_schleife
+
+                        add sp,register_anzahl_32*2+register_anzahl_16*2
+
+#endif
+
+                        mov dx,ds
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+anzeige:
+                        mov ds,dx
+
+                        ; Zeile 1
+                        position 2,1
+                        mov ax,ds
+                        call word_ausschrift
+
+                        position 9,1
+                        null si                 ; DS:0
+                        mov cx,24
+hex_anzeige_in_zeile1:
+                        lodsb
+                        call byte_ausschrift
+                        inc di,2
+                        loop hex_anzeige_in_zeile1
+
+
+                        ; Zeile 3..22
+                        null si                 ; DS:0
+#if p386
+                        mov cx,19*80    ; 19 Zeilen
+#else
+                        mov cx,20*80    ; 20 Zeilen
+#endif
+                        position 1,3
+
+anzeigeschleife:
+                        lodsb
+                        zeichen_ausschrift
+                        loop anzeigeschleife
+
+                        mov ah,000
+                        int 016
+
+                        cmp al,'+'
+                        if z inc dx
+
+                        cmp al,'-'
+                        if z dec dx
+
+                        cmp al,009   ; Tab
+                        if z mov dx,0a000
+
+                        cmp al,'r'
+                        if z ret
+
+                        cmp al,27    ; Escape
+                        jnz nicht_reboot
+
+                        int 020
+                        int 019
+
+nicht_reboot:
+                        cmp al,000   ; Erweitert...
+                        jnz anzeige  ; weitermachen
+
+                        xchg al,ah
+                        cmp al,049 ; Bild auf
+                        if z sub dx,5*19
+
+                        cmp al,051 ; Bild ab
+                        if z add dx,5*19
+
+                        cmp al,048 ; Zeile auf
+                        if z sub dx,5
+
+                        cmp al,050 ; Zeile ab
+                        if z add dx,5
+
+                        cmp al,047 ; Pos1
+                        if z null dx
+
+                        cmp al,04F ; Ende
+                        jnz nicht_ende
+
+                        null ax
+                        mov ds,ax
+                        mov ax,[00413] ; Bios Speichergr”áe 40:13
+                        shl ax,6
+                        xchg ax,dx
+                        ; ax egal...
+
+nicht_ende:
+                        jmp anzeige  ; weitermachen
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;
+; Eingabe
+;   al=Wert
+;   di=Ziel
+;
+; Ausgabe
+;   di:=di+2*2
+
+byte_ausschrift:
+                        push ax
+                          aam 010                     ; ax=0000zzzz0000eeee
+                          add ax,'00'                 ; ax=0011zzzz0011eeee
+                          cmp al,'9'
+                          if a add al,'A'-'9'-1
+                          xchg al,ah
+                          cmp al,'9'
+                          if a add al,'A'-'9'-1
+                          stosb
+                          inc di
+                          xchg al,ah
+                          stosb
+                          inc di
+                        pop ax
+
+                        ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;
+; Eingabe
+;   ax=Wert
+;   di=Ziel
+;
+; Ausgabe
+;   di:=di+4*2
+
+word_ausschrift:
+                        xchg ah,al
+                        call byte_ausschrift
+                        xchg ah,al
+                        call byte_ausschrift
+                        ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        db 'V.K.'
+org basis+001be
+                        ;   0123456789012345
+                        db '1.Paritition--',00d,00a
+                        db '2.Paritition--',00d,00a
+                        db '3.Paritition--',00d,00a
+                        db '4.Paritition--',00d,00a
+                        db 055,0AA
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

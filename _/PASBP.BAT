@@ -1,0 +1,30 @@
+@ECHO OFF
+REM
+REM Pascal Quelltext %1.PAS -> %2%1.EXE mit Borland Pascal
+REM
+REM %1 Dateiname ohne .pas
+REM Zielverzeichnis ohne Pfadstrich
+REM
+REM C:\BP\BIN\TPC.EXE anpassen !
+REM
+REM vk: C:\BAT\TBSX.BAT
+REM     C:\SONST\SIEGEL.EXE
+REM
+IF [%TMP%]==[] GOTO FEHLER
+IF [%2]==[] GOTO FEHLER
+IF NOT EXIST %1.PAS GOTO FEHLER
+IF EXIST %2%1.EXE DEL %2%1.EXE
+IF EXIST %TMP%\%1.EXE DEL %TMP%\%1.EXE
+C:\BP\BIN\TPC.EXE -$G+ -$E- -$N- -$S- %1 -E%TMP% -O%TMP% %3 %4 %5 %6 %7 %8 %9
+IF NOT EXIST %TMP%\%1.EXE GOTO FEHLER
+C:\SONST\SIEGEL.EXE %TMP%\%1.EXE
+IF NOT [%TMP%\]==[%2] COPY %TMP%\%1.EXE %2%1.EXE
+IF NOT [%TMP%\]==[%2] DEL  %TMP%\%1.EXE
+CALL C:\BAT\TBSX.BAT %2%1.EXE /MONO
+GOTO ENDE
+
+:FEHLER
+ECHO %1,%2
+PAUSE
+
+:ENDE

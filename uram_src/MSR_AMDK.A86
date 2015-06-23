@@ -1,0 +1,77 @@
+include mac.a86
+
+mov cx,0268
+movzx_ecx_cx
+
+msr_schleife:
+
+mov ax,cx
+call ausschrift_word
+
+mov al,' '
+call ausschrift_zeichen
+
+rdmsr
+
+call ausschrift_edxeax
+
+mov al,13
+call ausschrift_zeichen
+mov al,10
+call ausschrift_zeichen
+inc cx
+cmp cx,026f+1
+jne msr_schleife
+
+int 020
+
+
+
+
+
+
+
+
+
+
+
+ausschrift_edxeax:              xchg_eax_edx
+                                call ausschrift_dword
+                                xchg_eax_edx
+                                ;call ausschrift_dword
+                                ;ret
+
+ausschrift_dword:               ror_eax_16
+                                call ausschrift_word
+                                ror_eax_16
+                                ;call ausschrift_word
+                                ;ret
+
+ausschrift_word:                xchg al,ah
+                                call ausschrift_byte
+                                xchg al,ah
+                                ;call ausschrift_byte
+                                ;ret
+
+ausschrift_byte:                ror al,4
+                                call ausschrift_4bit
+                                ror al,4
+                                ;call ausschrift_4bit
+                                ;rett
+
+ausschrift_4bit:                push ax
+                                  and al,00f
+                                  add al,'0'
+                                  cmp al,'9'
+                                  if a add al,'A'-'0'-10
+                                  call ausschrift_zeichen
+                                pop ax
+                                ret
+
+ausschrift_zeichen:
+                                push ax,dx
+                                  mov dl,al
+                                  mov ah,002
+                                  int 021
+                                pop dx,ax
+                                ret

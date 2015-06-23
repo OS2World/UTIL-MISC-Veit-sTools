@@ -1,0 +1,125 @@
+Title   ALI 154x
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; PCI
+;
+; 0004C.7 DC00
+;      .6 D800
+;      .5 D400
+;      .4 D000
+;      .3 CC00
+;      .2 C800
+;      .1 \ C000-C7FF Lesen
+;      .0 /
+;
+; 0004D.7
+;      .6
+;      .5
+;      .4
+;      .3 \
+;      .2 - \ E000, ???, Shadow Lesen
+;      .1 - /
+;      .0 /
+;
+; 0004E.7 DC00
+;      .6 D800
+;      .5 D400
+;      .4 D000
+;      .3 CC00
+;      .2 C800
+;      .1  \ C000-C7FF Schreiben
+;      .0  /
+;
+; 0004F.7
+;      .6
+;      .5
+;      .4
+;      .3\
+;      .2- \ E000, ??? , .. Schreiben
+;      .1- /
+;      .0/
+;
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_ali154x                   macro
+                                  mov di,#1 ; Segment
+                                  mov cx,#2 ; Index (Schreiben)
+                                  mov bh,#3 ; Bitmaske
+                                  call setze_ali154x_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_ali154x_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_ali154x_prozedur_weiter
+
+                                call ausschrift_segment
+
+                                mov bl,0ff
+                                xor bl,dh
+
+                                ; Schreiben ...
+                                push ax,bx
+                                  and ah,002
+                                  cmp ah,002
+                                  if ne mov bh,0
+                                  call bios_aufruf__prozedur_registerlesen
+                                  and al,bl
+                                  or al,bh
+                                  call bios_aufruf__prozedur_registerschreiben
+                                pop bx,ax
+
+                                ; Lesen
+                                inc cx,2
+                                and ah,001
+                                cmp ah,001
+                                if ne mov bh,0
+                                call bios_aufruf__prozedur_registerlesen
+                                and al,bl
+                                or al,bh
+                                call bios_aufruf__prozedur_registerschreiben
+
+setze_ali154x_prozedur_weiter:
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_ali_154x:
+                                ausschrift_xxxx_aehnliches_bios text_variante_ali_154x
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+3+1]
+                                add ax,di
+                                add ax,3+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+8+1]
+                                add ax,di
+                                add ax,8+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                setze_ali154x 'C0',0004C,Bit0
+                                setze_ali154x 'C4',0004C,Bit1
+                                setze_ali154x 'C8',0004C,Bit2
+                                setze_ali154x 'CC',0004C,Bit3
+
+                                setze_ali154x 'D0',0004C,Bit4
+                                setze_ali154x 'D4',0004C,Bit5
+                                setze_ali154x 'D8',0004C,Bit6
+                                setze_ali154x 'DC',0004C,Bit7
+
+                                setze_ali154x 'E0',0004D,Bit0
+                                setze_ali154x 'E4',0004D,Bit1
+                                setze_ali154x 'E8',0004D,Bit2
+                                setze_ali154x 'EC',0004D,Bit3
+
+                                setze_ali154x 'F0',0004D,Bit4
+                                setze_ali154x 'F4',0004D,Bit5
+                                setze_ali154x 'F8',0004D,Bit6
+                                setze_ali154x 'FC',0004D,Bit7
+
+                                jmp initialisieren
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

@@ -1,0 +1,126 @@
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+hole_zeit_dx_cx:
+                        push ds
+                          mov dx,segment_00040
+                          mov ds,dx
+                          mov cx,[006c]
+                          mov dx,[006e]
+                        pop ds
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+bildschirmschoner_aus:
+                        push cx,dx
+                          call hole_zeit_dx_cx
+                          add cx,bildschirm_schoner_cx_zeit
+                          adc dx,0
+                          mov schon_zeit_lo,cx
+                          mov schon_zeit_hi,dx
+                          cmp schoner_ist_ein_aus,'E'
+                          jnz bildschirmschoner_aus_fertig
+                          call apm_aufblenden
+                          aufblenden
+                          mov schoner_ist_ein_aus,'A'
+bildschirmschoner_aus_fertig:
+                        pop dx,cx
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+bildschirmschoner_ein:
+                        push cx,dx
+                          call hole_zeit_dx_cx
+
+                          cmp schon_zeit_lo,cx
+                          jnz bildschirmschoner_ein_fertig
+                          cmp schon_zeit_hi,dx
+                          jnz bildschirmschoner_ein_fertig
+
+                          add dx,1000 ; ewig ...
+                          mov schon_zeit_lo,cx
+                          mov schon_zeit_hi,dx
+                          cmp schoner_ist_ein_aus,'A'
+                          jnz bildschirmschoner_aus_fertig
+                          ausblenden
+                          call apm_ausblenden
+                          mov schoner_ist_ein_aus,'E'
+bildschirmschoner_ein_fertig:
+                        pop dx,cx
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+uhr_darstellung:
+                        mov ah,002
+                        int 01a
+
+                        mov al,ch
+                        sub ah,ah
+                        shl ax,4
+                        shr al,4
+                        add ax,'00'
+
+                        mov [uhr_stunde_zehner],ah
+                        mov [uhr_stunde_einer ],al
+
+
+                        mov al,cl
+                        sub ah,ah
+                        shl ax,4
+                        shr al,4
+                        add ax,'00'
+
+                        mov [uhr_minute_zehner],ah
+                        mov [uhr_minute_einer ],al
+
+                        cmp b [text_oder_grafikmodus],'T'
+                        jz uhr_darstellung_text
+
+                        ausschrift_grafik 0,480-16,uhrzeit,farbe_zeit_schrift,farbe_zeit_hintergrund
+                        ret
+
+uhr_darstellung_text:
+                        ausschrift_text   0,    24,uhrzeit,farbe_zeit_schrift,farbe_zeit_hintergrund
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+hole_taste_16_00:
+
+hole_taste_16_00_schleife:
+                        call hole_taste_16_01
+                        jz hole_taste_16_00_schleife
+
+                        null ah
+                        int 016
+
+                        ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+hole_taste_16_01:
+
+                        call bildschirmschoner_ein
+                        call uhr_darstellung
+                        call apmb_batterie
+
+                        mov ah,001
+                        int 016
+
+                        jz keine_taste
+
+                        pushf
+                        call bildschirmschoner_aus
+                        popf
+
+keine_taste:
+                        pushf
+                          push ax
+                            call apmb_idle
+
+                            mov ah,002
+                            int 016
+                            and al,00f
+                            jz keine_schift_taste
+
+                            call bildschirmschoner_aus
+
+keine_schift_taste:
+
+                          pop ax
+                        popf
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

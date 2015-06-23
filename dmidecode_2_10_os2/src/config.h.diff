@@ -1,0 +1,11 @@
+--- config.h.org	2007-07-02 14:56:44.000000000 +0000
++++ config.h	2009-02-10 01:11:42.000000000 +0000
+@@ -17,7 +17,7 @@
+ #endif
+ 
+ /* Use mmap or not */
+-#ifndef __BEOS__
++#if !defined(__BEOS__) && !defined(__OS2__)
+ #define USE_MMAP
+ #endif
+ 

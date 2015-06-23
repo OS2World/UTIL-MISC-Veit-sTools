@@ -1,0 +1,17 @@
+os2csm                  equ 10           ; 10 KB fÅr OS2CSM reservieren
+
+                        xchg al,al      ; Signatur
+                        jmp short nach_kopf
+
+                        db 00d
+                        db 'OS2CSM Speicherreservierung fÅr FAT-Diskette'
+                        db 26 ; ^z
+
+nach_kopf:
+                        call bildschirm_sicherung
+                        call speicher_reservierung
+                        ret
+
+                        include sicheres.a86
+
+

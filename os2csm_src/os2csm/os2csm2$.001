@@ -1,0 +1,23 @@
+(* automatically generated, do not edit.. *)
+procedure sprach_modul2; assembler; {&Frame-} {&Uses None} {$S-}
+  asm
+    db   7,'<SPRA2>'
+    db  16,'ENDEESFRITJPNLRU'
+    dw   2
+    db  14,'en\os2csmr.bin'
+    db  14,'de\os2csmr.bin'
+    db  14,'sp\os2csmr.bin'
+    db  14,'fr\os2csmr.bin'
+    db  14,'it\os2csmr.bin'
+    db  14,'jp\os2csmr.bin'
+    db  14,'nl\os2csmr.bin'
+    db  14,'ru\os2csmr.bin'
+    db  14,'en\os2csmm.bin'
+    db  14,'de\os2csmm.bin'
+    db  14,'sp\os2csmm.bin'
+    db  14,'fr\os2csmm.bin'
+    db  14,'it\os2csmm.bin'
+    db  14,'jp\os2csmm.bin'
+    db  14,'nl\os2csmm.bin'
+    db  14,'ru\os2csmm.bin'
+  end;

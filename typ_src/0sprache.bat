@@ -1,0 +1,5 @@
+@ECHO OFF
+rem CALL TBAVR /U
+IF     [%1]==[] FOR %%D IN ( AUSG BIOS CD DAT DATX DIEN EAS EIAU EIN EINF ENDE EXE   ) DO CALL SPRACHE\___.BAT %%D
+IF     [%1]==[] FOR %%D IN ( FORM HILF KOPF NETW OS PARA POLY SEKT SPRU TYP VAR VARX XEXE ) DO CALL SPRACHE\___.BAT %%D
+IF NOT [%1]==[] FOR %%D IN ( %1 %2 %3                                                ) DO CALL SPRACHE\___.BAT %%D

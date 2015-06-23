@@ -1,0 +1,55 @@
+16.02.1998 IBM PS/2 -> bios_her
+19.02.1998 International Computers Limited opti55?? ->uram/text/opti55x/bios_her
+           Toshiba -> bios_her
+20.02.1998 Toshiba Modell -> bios_her
+11.03.1998 country.a86 extern
+20.03.1998 SystemSoft
+           ALI-1487/89
+21.03.1998 UMC 88X
+           Chips & Technologies
+25.03.1998 Åberall Fehler behoben
+           ALI-154X,....
+26.03.1998 AMD-640 L2-Cache Schreibschutz
+09.04.1998 ASUSFLASH->ASUS_FLASH
+           Epson ActionNote 650
+15.04.1998 SIS496 Korrektur
+16.04.1998 SIS496 AMI
+           Int1-Tracer
+17.04.1998 SIS5571 AMI
+25.04.1998 MX83C30X
+27.04.1998 i82440FX AMI
+29.04..    URAM.COM + URAM.SYS -> URAM.COM
+01.05.1998 UMB.SYS
+27.05.1998 MX83C30X AMI
+03.06.1998 OPTI 55X Award,..
+24.06.1998 UMC 881/886
+07.07..    Intel 804x0 optimiert
+15.07..    öberarbeitung, /Q /W /C /G
+17.07.1998 *.BIN entfernt
+23.07.1998 VLSI LYNX, UMC 881/886 AWDFLASH
+2000.08.08 AMD K7
+2001.10.2x AMD K7,INT 06,0D
+2001.12.2. VIA 580 funktioniert jetzt
+           Intel 82430tx optimiert
+
+2002.10.09 Suche nach Chipsatz Åber PCI-Kennung (Virtual PC)
+
+2002.12.05 8086/122d: Intel 430FX (Triton) hinzugefÅgt (Virtual PC 4.3.2)
+
+2003.08.1x 386 Code mit TASM und A86 +O
+           CPU-Erkennung
+           Versuch L2 cache zu lîschen, flat
+           Suche nach ISA-DMA-chip (periphal.inc)
+           AMD-756 (ISA) fÅr AMD-K7 hinzugefÅgt
+           VIA 580.. +DMA wenn unterstÅtzt
+           Daten von UMBPCI eingearbeitet
+           SIS Cache bei 46 statt 44
+           Parameter G=M und G=R funktionieren zur Zeit nicht
+           ISA-DMA fÅr Intel Saturn, Mercury, Neptun, Triton aus UMBPCI
+           mehre Kennungen fÅr Intel 82430tx.inc aus UMBPCI
+           Intel 845, Intel 810
+           ali aladdin v,magik 1
+2003.08.15 sis 6x
+           phoenix awardbios
+           
+ 

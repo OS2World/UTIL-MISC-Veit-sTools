@@ -1,0 +1,139 @@
+; TYP_POEM.PAS INT 21 "DOS"
+; 1999.12.19 Veit Kannegieser
+
+;****************************************************************************
+; fr Bildschirmausgaben wird immer Seite 0 angenommen
+
+zwischen_zeichen:       db 0
+
+; -> al
+hole_zeichen_al         macro
+                          push dx
+                            mov dx,ax
+
+                            mov ah,0
+                            mov al,b cs:[zwischen_zeichen]
+                            cmp al,0
+                            jne >l1
+
+                            sub ax,ax
+                            int 016
+                            cmp al,0
+                            if ne mov ah,0 ; nur ein Zeichen
+  l1:
+                            mov b cs:[zwischen_zeichen],ah
+
+                            mov ah,dh
+                          pop dx
+                        #em
+
+
+; al=Zeichen
+ausschrift_zeichen_al   macro
+                          push ax,bx
+                            mov ah,00e
+                            mov bx,00007
+                            int 010
+                          pop bx,ax
+                        #em
+; dl=Zeichen
+ausschrift_zeichen_dl   macro
+                          push ax,bx
+                            mov ah,00e
+                            mov al,dl
+                            mov bx,00007
+                            int 010
+                          pop bx,ax
+                        #em
+;****************************************************************************
+
+int_21:
+                        ;--------------------------------------------
+                        cmp ah,001
+                        jne nicht_int_21_01
+
+                        hole_zeichen_al
+                        ausschrift_zeichen_al
+                        iret_flags
+                        ;--------------------------------------------
+  nicht_int_21_01:
+                        ;--------------------------------------------
+                        cmp ah,002
+                        jne nicht_int_21_02
+
+                        ausschrift_zeichen_dl
+                        iret_flags
+                        ;--------------------------------------------
+
+  nicht_int_21_02:
+                        ;--------------------------------------------
+                        cmp ah,006
+                        jne nicht_int_21_06
+
+                        cmp dl,0ff
+                        je int_21_06_eingabe
+
+                        ausschrift_zeichen_dl
+                        iret_flags
+
+  int_21_06_eingabe:
+                        mov al,b cs:[zwischen_zeichen]
+                        cmp al,0
+                        je kein_halb_zeichen
+
+                        ; -> ZF=0,AL
+                        iret_flags
+    kein_halb_zeichen:
+                        mov ah,1
+                        int 016
+                        cmp ax,0
+                        je wirklich_keine_taste
+
+                        hole_zeichen_al
+                        ; -> ZF=0,AL
+                        mov ah,006
+                        cmp ah,099
+                        iret_flags
+
+    wirklich_keine_taste:
+                        mov ax,00600
+                        cmp al,al
+                        ; ZF=1
+                        iret_flags
+                        ;--------------------------------------------
+  nicht_int_21_06:
+                        ;--------------------------------------------
+                        cmp ah,007
+                        je int_21_0708
+                        cmp ah,008
+                        jne nicht_int_21_0708
+  int_21_0708:
+                        hole_zeichen_al
+                        iret_flags
+                        ;--------------------------------------------
+  nicht_int_21_0708:
+                        ;--------------------------------------------
+                        cmp ah,009
+                        jne nicht_int_21_09
+
+                        push ax,bx,si
+                          cld
+                          mov si,dx
+  sl2109:
+                          lodsb
+                          cmp al,'$'
+                          je en2109
+
+                          mov ah,00e
+                          mov bx,00007
+                          int 010
+                          jmp sl2109
+
+  en2109:
+                        pop si,bx,ax
+                        iret_flags
+                        ;--------------------------------------------
+  nicht_int_21_09:
+
+                        iret_flags
+;****************************************************************************

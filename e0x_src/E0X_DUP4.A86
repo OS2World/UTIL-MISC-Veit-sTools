@@ -1,0 +1,119 @@
+diskdupe_4_spuren_tabelle:      db 40 ; 1/ 360
+                                db 80 ; 2/1200
+                                db 80 ; 3/ 720
+                                db 80 ; 4/1400
+
+diskdupe_4_sekt_tabelle:        db  9 ; 1/ 360
+                                db 15 ; 2/1200
+                                db  9 ; 3/ 720
+                                db 18 ; 4/1400
+
+diskdupe_4_sektoren_tabelle:    dw  360*1024/512
+                                dw 1200*1024/512
+                                dw  720*1024/512
+                                dw 1440*1024/512
+
+diskdupe_4_vorhanden:           db ?
+diskdupe_4_spur_oder_fuell:     db ?
+
+;***************************************************************************
+
+importiere_diskdupe_4:
+
+                        call kopiere_ins_xms_zaehler_nullen
+                        call sauberen_kopf_einrichten
+
+                        ; Kopierer ...
+                        mov w [quell_h],0
+                        mov w [quell_o],0
+                        mov w [quell_s],[lese_puffer_seg]
+                        mov w [ziel_h],[xms_handhabe]
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+
+
+                        mov b [koepfe],2
+                        mov di,es:[10]
+                        mov bl,cs:[diskdupe_4_spuren_tabelle-1+di]
+                        mov b [spuren],bl
+                        mov al,cs:[diskdupe_4_sekt_tabelle  -1+di]
+                        mov b [sekt_spur],al
+                        mul bl
+                        shl ax,1 ; *2
+                        mov w [sektoren],ax
+
+
+                        mov cl,[spuren]
+                        mov ch,0
+
+importiere_diskdupe_4_schleife_1:
+                        push cx
+
+                          mov al,[spuren]
+                          sub al,cl
+                          mov bl,6
+                          mul bl
+
+                          add ax,00064
+
+                          mov dx,[datei_start_l]
+                          mov cx,[datei_start_h]
+
+                          add dx,ax
+                          adc cx,0
+                          call seek
+
+                          mov cx,7
+                          call datei_einlesen_cx
+
+                          mov al,es:[0] ; Vorhanden ?
+                          mov bl,es:[1] ; fÅllzeichen
+
+                          mov [diskdupe_4_vorhanden      ],al
+                          mov [diskdupe_4_spur_oder_fuell],bl
+
+
+                          cmp al,1 ; vorhanden
+                          jnz diskdupe_4_vorbereitung_fuell
+
+                          mov al,bl
+                          mov ah,0
+                          mul b [sekt_spur]
+                          shl ax,1 ; 512/256
+
+                          mov dx,[datei_start_l]
+                          mov cx,[datei_start_h]
+                          add dh,al
+                          adc cl,ah
+                          adc ch,0
+                          call seek
+                          jmp short diskdupe_4_vorbereitung_fertig
+
+diskdupe_4_vorbereitung_fuell:
+                          mov al,bl
+                          mov ah,bl
+                          call fuelle_lese_puffer
+
+diskdupe_4_vorbereitung_fertig:
+
+                          mov cl,b [sekt_spur]
+                          mov ch,0
+
+  importiere_diskdupe_4_schleife_2:
+
+                          cmp b [diskdupe_4_vorhanden],1
+                          if z call datei_einlesen_512
+
+                          call kopiere_ins_xms_512
+
+                          loop importiere_diskdupe_4_schleife_2
+
+                        pop cx
+                        loop importiere_diskdupe_4_schleife_1
+
+
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+                        ret

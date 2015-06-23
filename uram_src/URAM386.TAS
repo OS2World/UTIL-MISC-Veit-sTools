@@ -1,0 +1,70 @@
+Title   Einbinden aller 386-Module, Tasm
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+Code                            Segment Para Public 'CODE'
+                                Assume CS:Code
+                                Assume DS:Code
+
+                                jumps
+
+                                include mac.inc
+
+Extrn  ausschrift_dword         :Near
+Extrn  ausschrift_prozedur      :Near
+Extrn  ausschrift_xxxx_aehnliches_bios_prozedur :Near
+Extrn  ausschrift_prozedur_ind  :Near
+Extrn  ausschrift_segment       :Near
+Extrn  ausschrift_word          :Near
+Extrn  ausschrift_byte          :Near
+Extrn  ausschrift_4bit          :Near
+Extrn  ausschrift_zeichen       :Near
+Extrn  berechne_wert_ax         :Near
+Extrn  initialisieren           :Near
+Extrn  doch_nicht_richtig       :Near
+
+Extrn  halt_code                :Near
+
+Extrn  installiere_tracer_prozedur :Near
+Extrn  entferne_tracer_prozedur :Near
+
+Extrn  text_variante_amdk7      :Near
+Extrn  text_variante_via580_awdflash :Near
+Extrn  text_failed_to_restore_a20:Near
+Extrn  text_anf_zeilenumbruch   :Near
+Extrn  zeilenumbruch            :Near
+Extrn  text_pci_version         :Near
+Extrn  text_wbinvd_test         :Near
+Extrn  text_wbinvd_v86          :Near
+Extrn  text_ok                  :Near
+Extrn  text_peripheral_controller_unbekannt :Near
+Extrn  text_mtrr_v86            :Near
+Extrn  text_variante_intel845_awardflash :Near
+Extrn  text_variante_sis650_awardflash :Near
+
+Extrn  globaler_schreibschutz   :Byte
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                                include xms.inc
+                                include a20.inc
+                                include cpu.inc
+                                include pci.inc
+                                include periphal.inc
+                                include amdk7.inc
+                                include via580.inc
+                                include 82430tx.inc
+                                include intel810.inc
+                                include intel845.inc
+                                include sis645.inc
+                                include ali_aldv.inc
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+programm_ende:
+Public programm_ende
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+Code                            EndS
+                                End
+
+

@@ -1,0 +1,90 @@
+user documentation            DLURLEA                     Veit Kannegieser
+ננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננ
+
+usage: DLURLEA.CMD
+
+It will search the %HOME%\Mozilla subdirs for downloads.rdf and
+attach an .URL/.SUBJECT EA to all files that still exist in
+the download directory containing the URL it was donwloaded from.
+
+Warning: This may include passwords or other sensitive informations.
+
+Cou can retrieve the stored URL using
+ - FileCommander/2 -- press F11 on the file
+ - WPS -- look at the first/second 'file' page in the file notebook
+ - CMD -- 'type -ea:FILENAME'
+ - my Typ(2) program
+
+Maybe you want to put an icon for the program near Mozilla.
+Since the download.rdf file is keept current, even when Mozilla
+runs, you can run this program as often as you wish.
+Since this program parses all lines and tries to look for
+the downloaded files, you may want to cleanup the file from
+time to time..
+
+Limitation: 
+ * has only unicode to codepage support for codepages 
+   437 and 850 -- ask if you need more.
+   
+ * may not find, or find only slowly your profile directory, 
+   set mozilla_home or edit the rexx code to change this.
+   (should be fine now, usingg OS2.INI values)
+   
+ * processin large downloads.rdf files may takes a long time,
+   also an download directory with many files/subdirectories
+   will cause slowdown. dlurlea may display "cleanup recommended"
+   messages. Use the Mozilla Download manager (Extra/ menu item)
+   and remove successfully downloaded files, ore simply delete
+   downloads.rdf in your profile directory.
+ 
+   
+   
+CBOOK.CMD   
+=========
+
+  Removes some tags, so that the Mozilla bookmarks.html is
+  more human readable. Removes duplicate lines if they are in the
+  same subfolder.
+  
+  Usage: 
+    1) use the Mozilla Bookmark option to recursivly sort the bookmarks.
+    2) exit Mozilla
+    3) use cbook.cmd (full path\)bookmarks.html
+    
+  If you intend to publish your bookmarks.html file, you need to do
+  some more changes: declare charset, convert &->&amp; complete
+  HTML markup...
+ 
+    
+WALLET.CMD
+========== 
+
+  Decodes login names/passwords from Mozilla profile directory.
+  It can only decode base64 fields, not password encrypted fields.
+  
+  Usage:
+    go to the ????????.slt Profile subdirectory and run wallet.cmd
+    or use wallet.cmd filename_with_full_path.
+    
+  The interestingg files are named like 53706525.s and 53710994.w.
+  Since walletc.cmd produces much output without any delay, you
+  likely will use "wallet.cmd | more" or "wallet.cmd > logfile.txt".
+    
+
+
+Changes
+=======
+
+ נ 2004.12.06
+ ‏ Using 'Use Arg Application' was not an good idea, since
+   only Object Rexx dialect seem to support this.
+ ‏ try to do more brute-force search when %home%\Mozilla does 
+   not contain downloads.rdf files 
+   (%mozilla_home%, %home%, %programs%).
+   
+ נ 2005.07.03
+ ‏ improved way to find downloads.rdf
+ ‏ improved user interface
+ ‏ added wallet.cmd form/password decoder
+ ‏ added cbook.cmd bookmark cleanup program
+ 

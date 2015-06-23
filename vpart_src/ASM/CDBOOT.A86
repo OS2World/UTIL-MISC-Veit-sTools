@@ -1,0 +1,480 @@
+;*****************************************************************************
+;* Einbrechen in das BIOS um Starten von CD zu ermîglichen
+;* Annahme: nur ein CD-Laufwerk
+;*****************************************************************************
+cd_start:
+                        push cs
+                        pop ds
+                        push cs
+                        pop es
+
+                        call bestimme_vorhandenes_bios
+                        cmp al,biostyp_Award
+                        if e jmp cd_start_Award
+
+                        cmp al,biostyp_SystemSoft
+                        je cd_start_SystemSoft
+
+
+                        ;--------------------------------------------
+                        ; "unbekannt"
+                        mov si,meldung_cd_nicht_unterstuetzt
+                        call ausschrift_farblos
+
+                        mov si,meldung_druecken_sie_eine_taste_zum_vpart_neustart
+                        call ausschrift_farblos
+
+                        sub ax,ax
+                        int 016
+
+                        jmp start
+                        ;--------------------------------------------
+
+
+                        ;--------------------------------------------
+                        ; Systemsoft (KAPOK 3100B)
+cd_start_SystemSoft:
+                        push 00040
+                        pop ds
+
+                        mov ds,[0000e]                  ; erweitertes BIOS Datensegment
+                        mov al,001
+                        xchg al,b [0010c]               ; Zusatz-BIOS einschalten
+                        push ax
+
+                          mov ax,09900
+                          sub dx,dx
+                          int 013
+                          jc cdboot_SystemSoft_fehler
+
+                          sub ax,ax
+                          mov ds,ax
+                          mov es,ax
+                          mov si,07c00
+cd88_suche:
+                          cmp b [si],088
+                          je cd88_gefunden
+                          add si,020
+                          cmp si,08400
+                          jne cd88_suche
+                          jmp cd_start_Lesefehler
+cd88_gefunden:
+                          ; b [si+0]=088 boot indicator
+                          ; b [si+1] boot media type 0=no 1=1200 2=1440 3=2880 4=hd
+                          ; w [si+2] 07c0 -> 0000:7c00
+                          ; b [si+4] ? Systemtyp
+                          ; w [si+6] Anzahl Sektoren
+                          ; d [si+8] Start des Abbildes
+                          sub dx,dx
+                          cmp b [si+1],4
+                          if e mov dl,080
+                          mov ax,[si+2]
+                          or ax,ax
+                          if z mov ax,007c0
+                          mov bx,ax
+                          and ax,0f000      ; 07c0 -> 0000:
+                          mov es,ax
+                          mov ds,ax
+                          shl bx,4          ; 07c0 -> 7c00
+                          mov al,[si+6]
+                          cmp al,0
+                          if e mov al,1
+                          mov ah,002
+                          mov cx,1
+                          int 013
+                          jc cd_start_Lesefehler
+
+                          sub si,si
+                          sub di,di
+                          push es
+                          push bx
+                          retf              ; jmp 00000:07c00
+cdboot_SystemSoft_fehler:
+
+                        pop ax
+                        mov b [0010c],al
+                        jmp short cd_start_Lesefehler
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Award
+cd_start_Award:
+                        mov si,meldung_einzelschritt_award
+                        call ausschrift_farblos
+
+                        push ds                         ; Int 01 einhÑngen
+                          push 0
+                          pop ds
+                          mov bx,int_01_behandlung
+                          mov cx,cs
+                          xchg [001*4+0],bx
+                          xchg [001*4+2],cx
+                        pop ds
+
+                        mov [orgint01+0],bx
+                        mov [orgint01+2],cx
+
+                        pushf                           ; +TF
+                        pop ax
+                        or ah,001
+                        push ax
+                        popf
+
+                        jmp 0f000:0e6f2                 ; int 019
+cd_start_Award_nach_int19_clc:
+                        clc
+                        jmp short cd_start_Award_nach_int19
+cd_start_Award_nach_int19_stc:
+                        stc
+cd_start_Award_nach_int19:
+                        pushf                           ; -TF
+                        pop ax
+                        and ah,0fe
+                        push ax
+                        popf
+
+                        push cs                         ; Int 01 aushÑngen
+                        pop ds
+                        mov bx,[orgint01+0]
+                        mov cx,[orgint01+2]
+                        push ds
+                          push 0
+                          pop ds
+                          mov [001*4+0],bx
+                          mov [001*4+2],cx
+                        pop ds
+
+                        jc cd_start_Lesefehler
+
+                        mov bx,07c00
+                        mov cx,00001
+                        sub si,si
+                        mov ds,si
+                        mov es,si
+                        jmp 00000:07c00
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Fehlermeldung und VPart von vorne anfangen
+cd_start_Lesefehler:
+                        push cs
+                        pop ds
+
+                        mov si,meldung_cd_lesefehler_oder_nicht_startbar
+                        call ausschrift_farblos
+
+                        mov si,meldung_druecken_sie_eine_taste_zum_vpart_neustart
+                        call ausschrift_farblos
+
+                        sub ax,ax
+                        int 016
+
+                        jmp start
+
+;*****************************************************************************
+
+meldung_einzelschritt_award:
+                        db meldung_einzelschritt_award_ende-($+1)
+                        db 13,'˛ '
+                        #if deutsch
+                        db 'Durchlaufen des Award-BIOS im Einzeilschrittmodus ...'
+                        #else
+                        db 'singlestepping Award-BIOS ...'
+                        #endif
+                        db 13,10
+meldung_einzelschritt_award_ende:
+
+
+meldung_cd_lesefehler_oder_nicht_startbar:
+                        db meldung_cd_lesefehler_oder_nicht_startbar_ende-($+1)
+                        #if deutsch
+                        db 13,10
+                        db 'Die CD-ROM ist nicht lesbar oder hat keine startbares Abbild.',13,10
+                        #else
+                        db 13,10
+                        db 'The CD-ROM is not readable or does not have a bootable image.',13,10
+                        #endif
+meldung_cd_lesefehler_oder_nicht_startbar_ende:
+
+
+meldung_druecken_sie_eine_taste_zum_vpart_neustart:
+                        db meldung_druecken_sie_eine_taste_zum_vpart_neustart_ende-($+1)
+                        #if deutsch
+                        db 'DrÅcken Sie eine Taste zu VPart zurÅckzukehren.',13,10
+                        #else
+                        db 'Press a key to return to VPart.',13,10
+                        #endif
+meldung_druecken_sie_eine_taste_zum_vpart_neustart_ende:
+
+
+meldung_cd_nicht_unterstuetzt:
+                        db meldung_cd_nicht_unterstuetzt_ende-($+1)
+                        #if deutsch
+                        db 13,10
+                        db 'UnterstÅtzung fÅr das Starten von CD ist fÅr diese System-BIOS noch nicht',13,10
+                        db 'implementiert.',13,10
+                        #else
+                        db 13,10
+                        db 'Support for booting from CD is not implemented for this SYSTEM-BIOS.',13,10
+                        #endif
+meldung_cd_nicht_unterstuetzt_ende:
+
+;*****************************************************************************
+orgint01                dd 0
+
+int01_si                equ w ss:[bp-6] ; push si
+int01_ds                equ w ss:[bp-4] ; push ds
+int01_ax                equ w ss:[bp-2] ; push ax
+int01_bp                equ w ss:[bp+0] ; push bp
+int01_ip                equ w ss:[bp+2] ; \
+int01_cs                equ w ss:[bp+4] ; | Int 01
+int01_flags             equ w ss:[bp+6] ; /
+int01_stack             equ w ss:[bp+8]
+
+int_01_behandlung:
+                        push bp
+                        mov bp,sp
+                          push ax,ds,si
+
+                            #if einzelschritt_flackern
+                            mov ax,0b800
+                            mov ds,ax
+                            mov si,79*2
+
+                            push w [si]
+                              mov w [si],01efe
+                            #endif
+
+                              lds si,ss:[bp+2]
+                              mov ax,[si]
+
+                              ;--------------------------------------
+                              ; Award (1)
+                              ; Suche
+                              ;   add si,start_tabelle    81 c6 fa 0c
+                              ;   mov dl, cs:[si]         2e 8a 14
+                              ;   call laden              e8 1d 00
+                              ;   jnb jmp_0000_7c00       0f 83 53 04
+                              ;   mov dl, cs:[si+1]       2e 8a 54 01
+                              ;   call laden              e8 12 00
+                              ;   jnb jmp_0000_7c00       0f 83 49 04
+                              ; ...
+                              ;cmp w [si],08a2e
+                              cmp ax,08a2e
+                              jne nicht_cd_wahl
+                              cmp w [si+2],0e814
+                              jne nicht_cd_wahl
+                              cmp w [si+5],00f00
+                              jne nicht_cd_wahl
+
+                              add int01_ip,3            ; "mov dl,cs:[si]" Åbergehen
+                              mov dl,080                ; CD-Laufwerk
+                              jmp int_01_behandlung_ende
+
+    nicht_cd_wahl:
+                              ;--------------------------------------
+
+                              ;--------------------------------------
+                              ; Award (1)
+                              ;cmp w [si],08a2e
+                              cmp ax,08a2e
+                              jne nicht_cd_fertig
+                              cmp w [si+2],00154
+                              jne nicht_cd_fertig
+                              cmp b [si+4],0e8
+                              jne nicht_cd_fertig
+                              cmp w [si+6],00f00
+                              jne nicht_cd_fertig
+
+                              ; RÅckkehr zu VPart
+                              mov int01_ip,cd_start_Award_nach_int19
+                              mov int01_cs,cs
+                              jmp int_01_behandlung_ende
+    nicht_cd_fertig:
+                              ;--------------------------------------
+
+                              ;--------------------------------------
+                              ; Award (2) : Umleiten auf das CD-Laufwerk
+                              ; mov di,1                      bf 01 00
+                              ; mov al,cs:[bootsel+0]         2e a0 9a 43
+                              ; and al,00f                    24 0f
+                              ; call laden_und_ausfuehren     e8 6c 00
+                              ; mov di,2                      bf 02 00
+                              ; mov al,cs:[bootsel+0]         2e a0 9a 43
+                              ; shr al,4                      c0 e8 04
+                              ; call laden_und_ausfuehren     e8 5f 00
+                              ; mov di,3                      bf 03 00
+                              ; mov al,cs:[bootsel+1]         2e a0 9b 43
+                              ; ...
+                              ; Index 0 Floppy       (EHM/K7-700)
+                              ;       1 LS/ZIP
+                              ;       2 HDD-0
+                              ;       3 SCSI
+                              ;       4 CDROM
+                              ;       5 HDD-1
+                              ;       6 HDD-2
+                              ;       7 HDD-3
+                              ;       8 LAN
+                              ;       9 Disable
+                              cmp di,1
+                              jne nicht_cd_wahl2
+                              ;cmp w [si],0a02e
+                              cmp ax,0a02e
+                              jne nicht_cd_wahl2
+                              cmp w [si+4],00f24
+                              jne nicht_cd_wahl2
+                              cmp b [si+6],0e8
+                              jne nicht_cd_wahl2
+                              cmp w [si+8],0bf00
+                              jne nicht_cd_wahl2
+
+                              add w int01_ip,4   ; "mov al,cs:[bootsel+0]"
+                              mov int01_ax,00004 ; CDROM
+                              jmp int_01_behandlung_ende
+    nicht_cd_wahl2:
+                              ;--------------------------------------
+
+
+                              ;--------------------------------------
+                              ; Award (2) : Abfangen wenn beim CD-Laden
+                              ; ein Fehler aufgetreten ist
+                              cmp di,2
+                              jne nicht_cd_fehler2
+                              ;cmp w [si],0a02e
+                              cmp ax,0a02e
+                              jne nicht_cd_fehler2
+                              cmp w [si+4],0e8c0
+                              jne nicht_cd_fehler2
+                              cmp w [si+6],0e804
+                              jne nicht_cd_fehler2
+                              cmp w [si+10],003bf
+                              jne nicht_cd_fehler2
+
+                              ; RÅckkehr zu VPart
+                              mov int01_ip,cd_start_Award_nach_int19_stc
+                              mov int01_cs,cs
+                              jmp int_01_behandlung_ende
+    nicht_cd_fehler2:
+                              ;--------------------------------------
+
+                              ;--------------------------------------
+                              ; Award (2) : Abfangen von jmp 0000:7c00
+                              cmp si,07c00
+                              jne nicht_jmp_0000_7c00
+                              cmp int01_cs,00000
+                              jne nicht_jmp_0000_7c00
+
+                              mov int01_ip,cd_start_Award_nach_int19_clc
+                              mov int01_cs,cs
+                              jmp int_01_behandlung_ende
+    nicht_jmp_0000_7c00:
+                              ;--------------------------------------
+
+                              ;--------------------------------------
+                              ; Abfangen von          ; 82430FX-PI-5XTP4C:F000:92f5
+                              ;
+                              ;  xchg sp,bp           ; 87 e5
+                              ;  mov [bp],ax          ; 89 46 00
+                              ;  xchg sp,bp           ; 87 e5
+                              ;
+                              ;cmp w [si],0e587
+                              cmp ax,0e587
+                              jne nicht_problem1
+                              cmp w [si+2],04689
+                              jne nicht_problem1
+
+                              ; umsetzen in "mov w ss:[sp],ax"
+                              mov ax,int01_ax
+                              mov int01_stack,ax
+                              add int01_ip,(2+3+2)
+                              jmp int_01_behandlung_ende
+
+    nicht_problem1:
+                              ;--------------------------------------
+
+                              ;--------------------------------------
+                              ; Award(3)
+                              ; xor dl,dl                       ; 32 d2
+                              ; call versuche_start             ; 8e 0e 00
+                              ; mov dl,1                        ; b2 01
+                              ; call versuche_start             ; 8e 09 00
+                              ; mov dl,2                        ; b2 02
+                              ; call versuche_start             ; e8 04 00
+                              ; jmp ...                         ; e9 b9 04
+                              ;
+                              ; versuche_start:
+                              ;   mov ax,0                      ; b8 00 00
+                              ;   mov ds,ax                     ; 8e d8
+                              ;   movzx ax,boot_variante        ; 0f b6 06 e9 04
+                              ;   mov si,ax                     ; 8b f0
+                              ;   shl si,1                      ; d1 e6
+                              ;   add si,ax                     ; 03 f0
+                              ;   add si,offset bootseq_tabelle ; 81 c6 80 47
+                              ;   xor dh,dh                     ; 32 f6
+                              ;   add si,dx                     ; 03 f2
+                              ;   mov dl,cs:[si]                ; 2e 8a 14
+                              ;   cmp dl,0ff                    ; 80 fa ff
+                              ;  Boot Sequence:
+                              ;   #   0        1        2
+                              ;   0   A        C        -
+                              ;   1   C        A        -
+                              ;   2   C        CDROM    A
+                              ;   3   CDROM    C        A
+                              ;   4   C        -        -
+                              ;cmp w [si],000b8
+                              cmp ax,000b8
+                              jne nicht_cd_wahl3
+                              cmp w [si+2],08e00
+                              jne nicht_cd_wahl3
+                              cmp w [si+4],00fd8
+                              jne nicht_cd_wahl3
+                              cmp b [si+6],0b6
+                              jne nicht_cd_wahl3
+                              cmp w [si+9],0f08b
+                              jne nicht_cd_wahl3
+                              cmp w [si+11],0e6d1
+                              jne nicht_cd_wahl3
+                              cmp w [si+13],0f003
+                              jne nicht_cd_wahl3
+
+                              ; Umgehen ...
+                              mov int01_ds,0
+                              mov dx,00080
+                              add int01_ip,(3+2+5+2+2+2+4+2+2+3)
+                              jmp short int_01_behandlung_ende
+    nicht_cd_wahl3:
+                              ;--------------------------------------
+
+                              ;--------------------------------------
+                              ; Award (3)
+                              ;cmp w [si],001b2
+                              cmp ax,001b2
+                              jne nicht_cd_fehler3
+                              cmp b [si+2],0e8
+                              jne nicht_cd_fehler3
+                              cmp w [si+4],0b200
+                              jne nicht_cd_fehler3
+                              cmp w [si+6],0e802
+                              jne nicht_cd_fehler3
+
+                              ; zurÅck zu VPart
+                              mov int01_ip,cd_start_Award_nach_int19_stc
+                              mov int01_cs,cs
+                              jmp short int_01_behandlung_ende
+    nicht_cd_fehler3:
+                              ;--------------------------------------
+
+
+    int_01_behandlung_ende:
+                            #if einzelschritt_flackern
+                              mov ax,0b800
+                              mov ds,ax
+                              mov si,79*2
+                            pop w [si]
+                            #endif
+
+                          pop si,ds,ax
+                        pop bp
+                        iret
+;*****************************************************************************
+

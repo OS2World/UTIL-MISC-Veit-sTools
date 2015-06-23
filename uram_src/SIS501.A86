@@ -1,0 +1,199 @@
+Title   SiS 501/503
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; 50XDS20.DOC
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; PCI
+;
+; 00048.7
+;      .6
+;      .5
+;      .4
+;      .3 E000-EFFF DMA
+;      .2 A000-BFFF DMA
+;      .1 8000-9FFF DMA
+;      .0 0000-7FFF DMA
+;
+; 00049.7 DC00-DFFF DMA
+;      .6 D800-DBFF DMA
+;      .5 D400-D7FF DMA
+;      .4 D000-D3FF DMA
+;      .3 CC00-CFFF DMA
+;      .2 C800-CBFF DMA
+;      .1 C400-C7FF DMA
+;      .0 C000-C3FF DMA
+;
+; 00053.7
+;      .6 F000 ??? Lesen ??? "When this bit is enabled, the F segment is shadowed by default."
+;      .5 Schreibschutz (global)
+;      .4
+;      .3 F000 Cache
+;      .2
+;      .1
+;      .0
+;
+; 00054.7 E000 Lesen
+;      .6 E400 Lesen
+;      .5 E800 Lesen
+;      .4 EC00 Lesen
+;      .3 E000 Cache
+;      .2 E400 Cache
+;      .1 E800 Cache
+;      .0 EC00 Cache
+;
+; 00055.7 D000 Lesen
+;      .6 D400 Lesen
+;      .5 D800 Lesen
+;      .4 DC00 Lesen
+;      .3 D000 Cache
+;      .2 D400 Cache
+;      .1 D800 Cache
+;      .0 DC00 Cache
+;
+; 00056.7 C000 Lesen
+;      .6 C400 Lesen
+;      .5 C800 Lesen
+;      .4 CC00 Lesen
+;      .3 C000 Cache
+;      .2 C400 Cache
+;      .1 C800 Cache
+;      .0 CC00 Cache
+;
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_sis501                    macro
+                                  mov di,#1 ; Segment
+                                  mov cx,#2 ; Index Lesen/Cache
+                                  ;mov bl,#3 ; Bit Lesen
+                                  ;mov bh,#4 ; Bit Cache
+                                  mov bx,#3+#4*0100
+                                  mov dx,#5 ; Index DMA
+                                  mov ah,#6 ; Bit DMA
+                                  call setze_sis501_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+sis501_index_dma:               dw ?
+sis501_maske_dma:               dw ?
+
+setze_sis501_prozedur:
+                                mov w [sis501_index_dma],dx
+                                mov al,0ff
+                                sub al,ah
+                                mov w [sis501_maske_dma],ax
+
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_sis501_prozedur_fertig
+
+                                call ausschrift_segment
+
+                                ; Maske Lesen (DX)
+                                mov dh,bl
+                                mov dl,0ff
+                                sub dl,dh
+                                test ah,001
+                                if z mov dh,0 ; Lesebit l봲chen
+
+                                ; Maske Cache (BX)
+                                mov bl,0ff
+                                sub bl,bh
+                                test ah,004
+                                if z mov bh,0 ; Cachebit l봲chen
+
+                                ; Masken zusammenf갾en
+                                and bl,dl
+                                or bh,dh
+
+                                push ax
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop ax
+
+                                ; Globales Schreibschutzbit l봲chen ?
+                                mov cx,00053
+                                mov bx,000ff-Bit5
+                                test ah,002 ; Schreiben ?
+                                push ax
+                                  if nz call bios_aufruf__prozedur_registeraenderung
+                                pop ax
+
+                                ; DMA ...
+                                mov cx,[sis501_index_dma]
+                                mov bx,[sis501_maske_dma]
+                                test ah,002
+                                if nz call bios_aufruf__prozedur_registeraenderung
+
+setze_sis501_prozedur_fertig:
+                                ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+variante_disable_shadowing_sis501_503:
+
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis501
+
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+9+1]
+                                add ax,di
+                                add ax,9+3
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+sis_501_503_gemeinsam:
+
+                                setze_sis501 'C0',00056,080,008,00049,Bit0
+                                setze_sis501 'C4',00056,040,004,00049,Bit1
+                                setze_sis501 'C8',00056,020,002,00049,Bit2
+                                setze_sis501 'CC',00056,010,001,00049,Bit3
+
+                                setze_sis501 'D0',00055,080,008,00049,Bit4
+                                setze_sis501 'D4',00055,040,004,00049,Bit5
+                                setze_sis501 'D8',00055,020,002,00049,Bit6
+                                setze_sis501 'DC',00055,010,001,00049,Bit7
+
+                                setze_sis501 'E0',00054,080,008,00048,Bit3
+                                setze_sis501 'E4',00054,040,004,00048,Bit3
+                                setze_sis501 'E8',00054,020,002,00048,Bit3
+                                setze_sis501 'EC',00054,010,001,00048,Bit3
+
+                                setze_sis501 'F0',00053,040,008,00048,0
+
+
+                                ; Globales Schreibschutzbit setzen ?
+                                mov cx,00053
+                                mov bh,Bit5
+                                mov bl,0ff
+                                cmp b [globaler_schreibschutz],'1'
+                                if e call bios_aufruf__prozedur_registeraenderung
+
+                                jmp initialisieren
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_sis_501_503_asus:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis501_asus
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+15+1]
+                                add ax,di
+                                add ax,15+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+20+1]
+                                add ax,di
+                                add ax,20+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung__al__and_bl__or_bh
+
+                                jmp sis_501_503_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_sis50x:
+                                mov w [registeraenderung_emulation],aenderung_standard_pci
+                                jmp sis_501_503_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+

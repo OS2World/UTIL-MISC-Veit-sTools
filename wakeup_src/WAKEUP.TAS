@@ -1,0 +1,507 @@
+Title   wake sleeping PCI devices
+
+; OS/2: add wakeup.snp to \os2\boot\snoop.lst
+; DOS:  add device=...wakeup.snp to config.sys
+
+; 2003.11.18 Veit Kannegieser
+
+.386p
+;.model small
+
+ifndef DOS
+ifndef OS2
+OS2 equ 1
+endif
+endif
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+ifdef OS2
+data16                  Segment 'DATA' public Use16
+else
+code16                  Segment 'CODE' public Use16
+                        assume cs:code16
+                        assume ds:code16
+endif
+
+ifdef OS2
+                        dd -1
+                        dw 08080h
+                        dw Offset wakeup
+                        dw -1
+                        db 'WAKEUP$$'
+                        dw 4 dup (?)
+                        dd 0
+else
+                        dd -1
+                        dw 08000h
+                        dw Offset prepare
+                        dw Offset wakeup
+                        db 'WAKEUP$$'
+endif
+
+RequestBlock Struc
+ Length_of_Packet       db ?
+ Block_Device_Unit_Code db ?
+ Command_Code           db ?
+ Request_Packet_Status  dw ?
+ Reserved               dd ?
+ Queue_Linkage          dd ?
+
+ ; Command_Code=0
+ Data_1                 db ?
+ Pointer_1              dd ?
+ Pointer_2              dd ?
+ Data_2                 db ?
+RequestBlock EndS
+
+ifdef OS2
+
+AttachTable             Struc
+  reserved00            dw ?
+  reserved02            dw ?
+  reserved04            dw ?
+  IDC_IP_ring0          dw ?
+  IDC_CS_ring0          dw ?
+  IDC_DS_ring0          dw ?
+AttachTable             EndS
+
+                        include OEMPCI.INC
+
+Name_OEMHLP_DD          db 'OEMHLP$ '
+Attach_OEMHLP_DD        AttachTable <>
+Device_Help             dd ?
+
+else
+
+request_pkt             dd ?
+
+ptr1616                 Struc
+  offs                  dw ?
+  sel                   dw ?
+ptr1616                 EndS
+
+endif
+
+last_bus                db ?
+
+ifdef OS2
+data16                  EndS
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+code16                  Segment 'CODE' public Use16
+                        assume cs:code16
+                        assume ds:data16
+endif ; OS2
+
+                        include mac1.inc
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ifdef OS2
+                        ; ss:ax=para ss:dx=data
+p_proc                  call_OEMHLP_IDC_PCI
+
+                        LOCAL @@PACKET:OEMHLP_IDC_Packet
+
+                        mov @@PACKET.idc_packet_length,12
+                        mov @@PACKET.idc_packet_unit,0
+                        mov @@PACKET.idc_command,16
+                        and @@PACKET.idc_status,0
+                        mov @@PACKET.idc_flag,0
+                        and @@PACKET.idc_packet_dev_link,0
+                        mov @@PACKET.idc_category,080h
+                        mov @@PACKET.idc_function,00bh
+                        mov @@PACKET.idc_para_ptr.offs,ax
+                        mov @@PACKET.idc_para_ptr.sel,ss
+                        mov @@PACKET.idc_data_ptr.offs,dx
+                        mov @@PACKET.idc_data_ptr.sel,ss
+
+                        xchg dx,bx
+
+                        mov ss:[bx].Return_Code,086h
+
+                        push ds
+                        push es
+                        push fs
+                        push gs
+                        pushad
+
+                          push ss
+                          pop es
+                          lea bx,@@PACKET
+                          push ds
+                          pop gs
+
+                          mov ds,[Attach_OEMHLP_DD].IDC_DS_ring0
+                          call DWord Ptr gs:[Attach_OEMHLP_DD].IDC_IP_ring0
+
+                        popad
+                        pop gs
+                        pop fs
+                        pop es
+                        pop ds
+
+                        mov ah,ss:[bx].Return_Code
+
+                        xchg bx,dx
+
+                        cmp @@PACKET.idc_status,0100h
+                        jz oem_idc_noerror
+
+                        mov ax,-1
+  oem_idc_noerror:
+                        cmp ah,0
+                        ret
+p_endp                  call_OEMHLP_IDC_PCI
+else
+a_proc                  call_int1a
+                        int 01ah
+                        cmp ah,0
+                        ret
+a_endp                  call_int1a
+endif
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+p_proc                  PCI_INSTALL_CHECK
+ifdef OS2
+                        LOCAL @@PARA:para_packet_80_0b_00
+                        LOCAL @@DATA:data_packet_80_0b_00
+
+                        mov @@PARA.Subfunction_Number_00,0
+
+                        push dx
+
+                        lea ax,@@PARA
+                        lea dx,@@DATA
+
+                        call call_OEMHLP_IDC_PCI
+
+                        pop dx
+
+                        pushf
+
+                        mov al,@@DATA.Hardware_Mechanism
+                        mov bh,@@DATA.Major_Version
+                        mov bl,@@DATA.Minor_Version
+                        mov cl,@@DATA.Last_Bus
+
+                        popf
+else
+                        mov ax,0b101h
+                        sub edx,edx
+                        call call_int1a
+                        if_c <mov ah,086h>
+                        cmp edx,' ICP'
+                        if_ne <mov ah,086h>
+endif
+                        ret
+p_endp                  PCI_INSTALL_CHECK
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+a_proc                  Read_PCI_Byte
+ifdef OS2
+                        mov al,1
+                        jmp Read_PCI_xxxxx
+else
+                        mov ax,0b108h
+                        jmp call_int1a
+endif
+a_endp                  Read_PCI_Byte
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  Read_PCI_Word
+ifdef OS2
+                        mov al,2
+                        jmp Read_PCI_xxxxx
+else
+                        mov ax,0b109h
+                        jmp call_int1a
+endif
+a_endp                  Read_PCI_Word
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  Read_PCI_DWord
+ifdef OS2
+                        mov al,4
+                        jmp Read_PCI_xxxxx
+else
+                        mov ax,0b10ah
+                        jmp call_int1a
+endif
+a_endp                  Read_PCI_DWord
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+ifdef OS2
+p_proc                  Read_PCI_xxxxx
+
+                        LOCAL @@PARA:para_packet_80_0b_03
+                        LOCAL @@DATA:data_packet_80_0b_03
+
+                        mov @@PARA.Subfunction_Number_03,3
+                        mov @@PARA.Bus_Number_03,bh
+                        mov @@PARA.DevFuncNum_03,bl
+                        mov @@PARA.Size_03,al
+                        mov ax,di
+                        mov @@PARA.ConfigurationReg_03,al
+
+                        push dx
+
+                        lea ax,@@PARA
+                        lea dx,@@DATA
+
+                        call call_OEMHLP_IDC_PCI
+
+                        pop dx
+
+                        pushf
+
+                        mov cl,Byte Ptr @@DATA.Data_03
+
+                        cmp @@PARA.Size_03,2
+                        jb exit_Read_PCI_xxxxx
+
+                        mov cx,Word Ptr @@DATA.Data_03
+
+                        je exit_Read_PCI_xxxxx
+
+                        mov ecx,DWord Ptr @@DATA.Data_03
+  exit_Read_PCI_xxxxx:
+                        popf
+
+
+                        ret
+p_endp                  Read_PCI_xxxxx
+endif ; OS2
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+a_proc                  Write_PCI_Byte
+ifdef OS2
+                        mov al,1
+                        jmp Write_PCI_xxxxx
+else
+                        mov ax,0b10bh
+                        jmp call_int1a
+endif
+a_endp                  Write_PCI_Byte
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  Write_PCI_Word
+ifdef OS2
+                        mov al,2
+                        jmp Write_PCI_xxxxx
+else
+                        mov ax,0b10ch
+                        jmp call_int1a
+endif
+a_endp                  Write_PCI_Word
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  Write_PCI_DWord
+ifdef OS2
+                        mov al,4
+                        jmp Write_PCI_xxxxx
+else
+                        mov ax,0b10dh
+                        jmp call_int1a
+endif
+a_endp                  Write_PCI_DWord
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+ifdef OS2
+p_proc                  Write_PCI_xxxxx
+
+                        LOCAL @@PARA:para_packet_80_0b_04
+                        LOCAL @@DATA:data_packet_80_0b_04
+
+                        mov @@PARA.Subfunction_Number_04,4
+                        mov @@PARA.Bus_Number_04,bh
+                        mov @@PARA.DevFuncNum_04,bl
+                        mov @@PARA.Size_04,al
+                        mov @@PARA.Data_04,ecx
+                        mov ax,di
+                        mov @@PARA.ConfigurationReg_04,al
+
+                        push dx
+
+                        lea ax,@@PARA
+                        lea dx,@@DATA
+
+                        call call_OEMHLP_IDC_PCI
+
+                        pop dx
+                        ret
+p_endp                  Write_PCI_xxxxx
+endif ; OS2
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+ifdef DOS
+a_proc                  prepare
+                        mov [request_pkt].offs,bx
+                        mov [request_pkt].sel ,es
+                        retf
+a_endp                  prepare
+endif ; DOS
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  wakeup
+                        push es
+                        push bx
+ifdef DOS
+                        les bx,request_pkt
+endif
+                        pushad
+                        push fs
+                        push gs
+
+ifdef OS2
+                          ; someone tries to device=\os2\boot\wakeup.snp?
+                          mov ax,cs
+                          test al,3
+                          ; prevent trap..
+                          jnz wakeup_exit
+
+                          mov eax,es:RequestBlock[bx].Pointer_1
+                          mov Device_Help,eax
+
+                          ; OEMHLP$ suchen
+                          mov bx,Offset Name_OEMHLP_DD
+                          mov di,Offset Attach_OEMHLP_DD
+                          mov dl,02ah ; AttachDD
+                          call [Device_Help]
+                          jc wakeup_exit
+endif
+                          ; PCI vorhanden?
+                          call PCI_INSTALL_CHECK
+                          cmp ah,0
+                          jne wakeup_exit
+
+                          mov last_bus,cl
+
+                          sub bx,bx
+  process_next:
+                          ; read ID - check if device present
+                          sub di,di             ; vendor/device ID
+                          call Read_PCI_DWord
+                          jnz process_next_device
+
+                          cmp ecx,-1
+                          je process_next_device
+                          test ecx,ecx
+                          jz process_next_device
+
+                          ; load header type
+                          mov di,00eh           ; header type
+                          call Read_PCI_Byte
+
+                          push cx
+
+                            ; look at header type
+                            and cl,07fh
+                            push cx
+
+                            ; for bridge (1/2) look at subordinate bus number
+                            cmp cl,1
+                            jb not_bridge
+                            cmp cl,2
+                            ja not_bridge
+
+                            mov di,01ah
+                            call Read_PCI_Byte
+                            ; update last known bus, if higher
+                            cmp last_bus,cl
+                            if_b <mov last_bus,cl>
+  not_bridge:
+                            pop cx
+
+                            mov dx,034h         ; 'other': ptr at [$34]
+                            cmp cl,0
+                            je have_cap_ptr_ptr
+
+                            mov dl,014h         ; cardbus: ptr at [$14]
+                            cmp cl,2
+                            jne function_processed ; other types (1) do not have cap ptr
+  have_cap_ptr_ptr:
+                            ; look if capabilities are present
+                            mov di,006h         ; status register
+                            call Read_PCI_Word
+                            test cx,00010h
+                            jz function_processed ; no.
+
+                            ; read pointer
+                            mov di,dx
+                            call Read_PCI_Byte
+                            movzx di,cl
+                            test di,di
+                            jz function_processed
+  loop_cap:
+                            ; read capabilities header
+                            call Read_PCI_Word
+
+                            push cx             ; save next pointer
+
+                              ; check identifier
+                              cmp cl,1          ; power management?
+                              jne next_cap
+
+                              add di,4          ; PM status register
+                              call Read_PCI_Word
+                              test cl,03        ; current power state 1..3?
+                              jz next_cap       ; no
+                              and cl,(not 3)    ; set to 0
+                              call Write_PCI_Word ; and store status
+  next_cap:
+                            pop cx              ; restore ch=next pointer
+
+                            shr cx,8            ; cx:=next pointer
+                            xchg di,cx
+                            cmp cx,di           ; old value<new value?
+                            jb loop_cap         ; also when new=0
+
+  function_processed:
+                          pop cx
+                          test bl,07h           ; multifunction?: function>0?
+                          jnz process_next_function
+                          test cl,080h          ; function=0: multifunctions?
+                          jnz process_next_function
+  process_next_device:
+                          or bl,07h
+  process_next_function:
+                          inc bx
+                          jz wakeup_exit
+                          cmp bh,[last_bus]
+                          jbe process_next
+  wakeup_exit:
+
+                        pop gs
+                        pop fs
+                        popad
+
+                        ; no code
+                        ; no data
+                        and dword ptr es:RequestBlock[bx].Pointer_1,0
+                        ; error+done+noncritical
+                        mov word ptr es:RequestBlock[bx].Request_Packet_Status,08115h
+
+                        pop bx
+                        pop es
+                        retf
+a_endp                  wakeup
+
+code16                  Ends
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+ifdef DOS
+entrypoint equ <> ; wakeup
+else
+entrypoint equ <>
+endif
+                        End entrypoint
+

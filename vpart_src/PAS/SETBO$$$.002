@@ -1,0 +1,21 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_bios_unbekannt  :^string;
+  textz_pruefsummenfehler_10_2d  :^string;
+  textz_pruefsummenfehler_40_5d  :^string;
+  textz__nicht_gefunden_  :^string;
+  textz_titel1c  :^string;
+  textz_titel1f  :^string;
+  textz_hilfe1  :^string;
+  textz_hilfe2  :^string;
+  textz_hilfe3  :^string;
+  textz_hilfe_vpart_cfg  :^string;
+  textz_Standardwert__  :^string;
+  textz___ungueltig  :^string;
+  textz___ist_mehrdeutig_  :^string;
+  textz___ist_unbekannt  :^string;
+  textz_kann_DOS_SYS_nicht_oeffnen  :^string;
+  textz_kann_VPART_CFG_nicht_oeffnen  :^string;
+  textz_kann_VPART_CFG_nicht_finden__welcher_laufwerksbuchstabe  :^string;
+  textz_Suche_VPART_CFG_  :^string;

@@ -1,0 +1,9 @@
+; int 3
+
+; int 006 .. zu einfach
+
+; "UD2"
+db 00f,00b
+
+mov ax,04c00 ; damit TBSETUP nicht mault ( 2 Byte -> CRC-Problem ? )
+int 021

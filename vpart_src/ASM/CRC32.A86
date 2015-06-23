@@ -1,0 +1,61 @@
+;********************************************************************
+; LVM erfordert OS/2 >=4.5, also 486, also kann ich hier 32-Bit nutzen
+
+erzeuge_crc32_tabelle:
+                        pushad
+                          mov di,crc32_tabelle
+                          cld
+                          sub_edx_edx
+
+  erzeuge_crc32_tabelle_sl2: ; jedes Zeichen
+                          mov_eax_edx
+                          mov cx,8
+
+  erzeuge_crc32_tabelle_sl1: ; alle 8 Bit
+                          shr_eax_1
+                          if c xor_eax_0EDB88320
+                          loop erzeuge_crc32_tabelle_sl1
+
+                          stosd
+                          inc dx
+                          cmp dx,0100h
+                          jne erzeuge_crc32_tabelle_sl2
+
+                          ; diese Funktion wird nur einmal ben”tigt
+                          mov b [erzeuge_crc32_tabelle],0c3 ; ret
+
+                        popad
+                        ret
+;********************************************************************
+; Eingabe: DS:SI  Quelle
+;          CX     L„nge>0
+; Ausgabe: ergebnis_crc32
+berechne_crc32:
+                        pushad
+
+                          call erzeuge_crc32_tabelle
+
+                          cld
+                          sub_ebx_ebx
+                          mov_eax_minus1
+                          sub_edi_edi
+                          mov di,crc32_tabelle
+
+  berechne_crc32_schleife:
+                          mov bl,al
+                          lodsb
+                          xor bl,al
+                          shr_eax_8
+                          ; xor eax,[edi+ebx*4]
+                          xor_eax__edi_plus_ebx_mal_4
+                          loop berechne_crc32_schleife
+
+                          mov di,ergebnis_crc32
+                          stosd
+
+                        popad
+                        ret
+
+ergebnis_crc32:         dd ?
+
+;********************************************************************

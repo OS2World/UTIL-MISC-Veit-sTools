@@ -1,0 +1,138 @@
+; SIS 5571,5591,..
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; 5591DS10
+
+maske_sis5591_lo                equ 0ff-Bit03-Bit02-Bit01
+
+umrechnung_zu_sis5591_lo:       ;  Lesen     Schreiben      Cache
+                                db 0        +0             +0           ; 0
+                                db Bit03    +0             +0           ; 1
+                                db 0        +Bit01         +0           ; 2
+                                db Bit03    +Bit01         +0           ; 3
+                                db 0        +0             +Bit02       ; 4
+                                db Bit03    +0             +Bit02       ; 5
+                                db 0        +Bit01         +Bit02       ; 6
+                                db Bit03    +Bit01         +Bit02       ; 7
+
+
+maske_sis5591_hi                equ 0ff-Bit07-Bit06-Bit05
+
+umrechnung_zu_sis5591_hi:       ;  Lesen     Schreiben      Cache
+                                db 0        +0             +0           ; 0
+                                db Bit07    +0             +0           ; 1
+                                db 0        +Bit05         +0           ; 2
+                                db Bit07    +Bit05         +0           ; 3
+                                db 0        +0             +Bit06       ; 4
+                                db Bit07    +0             +Bit06       ; 5
+                                db 0        +Bit05         +Bit06       ; 6
+                                db Bit07    +Bit05         +Bit06       ; 7
+
+
+maske_sis5591_f000              equ maske_sis5591_hi
+
+umrechnung_zu_sis5591_f000      equ umrechnung_zu_sis5591_hi ; ???
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_sis5571                   macro
+                                  mov di,#1 ; Text "C4"
+                                  mov cl,#2 ; Index
+                                  mov dl,#3 ; Verschiebung
+                                  call call_bios_sis5571
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+call_bios_sis5571:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz call_bios_sis5571_weiter
+
+                                call ausschrift_segment
+
+
+                                sub ch,ch
+
+                                ; ".CWR" -> "RCW."
+                                mov al,ah
+                                and ah,Bit1+Bit2 ; ".CW."
+                                and al,Bit0      ; "...R"
+                                shl al,3         ; "R..."
+                                or al,ah         ; "RCW."
+
+                                mov bh,al        ; OR-Teil
+                                mov bl,0ff-Bit3-Bit2-Bit1 ; AND-Teil
+
+                                ; Rotieren
+                                call rol_bl_bh__dl
+
+                                call bios_aufruf__prozedur_registeraenderung
+call_bios_sis5571_weiter:
+                                ret
+
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_sis5571_awdflash:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis5571_5598
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+9+1]
+                                add ax,di
+                                add ax,9+3
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+
+sis5571_einsprung_von_82430tx:
+
+sis5571_gemeinsam:
+
+                                ; A000 ???
+
+                                setze_sis5571 'C0',070,4
+                                setze_sis5571 'C4',070,0
+                                setze_sis5571 'C8',071,4
+                                setze_sis5571 'CC',071,0
+
+                                setze_sis5571 'D0',072,4
+                                setze_sis5571 'D4',072,0
+                                setze_sis5571 'D8',073,4
+                                setze_sis5571 'DC',073,0
+
+                                setze_sis5571 'E0',074,4
+                                setze_sis5571 'E4',074,0
+                                setze_sis5571 'E8',075,4
+                                setze_sis5571 'EC',075,0
+
+                                setze_sis5571 'F0',076,4
+
+                                jmp initialisieren
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_sis5571_ami:
+
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis5571_ami
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+9+1]
+                                add ax,di
+                                add ax,9+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+32+1]
+                                add ax,di
+                                add ax,32+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_sis5571_ami
+
+                                jmp sis5571_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_sis5591:
+                                mov w [registeraenderung_emulation],aenderung_standard_pci
+                                jmp sis5571_gemeinsam
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

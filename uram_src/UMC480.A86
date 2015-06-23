@@ -1,0 +1,109 @@
+Title   UMC 480
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_umc_480                   macro
+                                  mov di,#1 ; Segment
+                                  ;mov bh,#2 ; Index Lesen
+                                  ;mov bl,#3 ; Wert  Lesen
+                                  mov bx,#3+#2*0100
+                                  ;mov ch,#4 ; Index Schreibschutz
+                                  ;mov cl,#5 ; Wert  Schreibschutz
+                                  mov cx,#5+#4*0100
+                                  ;mov dh,#6 ; Index Cache
+                                  ;mov dl,#7 ; Wert  Cache
+                                  mov dx,#7+#6*0100
+                                  call setze_umc_480_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_umc_480_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_umc_480_prozedur_fertig
+
+                                call ausschrift_segment
+
+
+                                ; Lesen
+                                push ax
+                                  mov al,bh ; Index
+                                  mov bh,bl ; bh=and
+                                  not bh
+                                  and ah,1
+                                  cmp ah,1
+                                  if nz null bl ; bl=or
+                                  call setze_umc_480_prozedur_maske
+                                pop ax
+
+                                ; Schreiben
+                                push ax
+                                  mov al,ch ; Index
+                                  mov bh,cl ; bh=and
+                                  not bh
+                                  mov bl,cl ; bl=or
+                                  and ah,2
+                                  cmp ah,2
+                                  if z null bl
+                                  call setze_umc_480_prozedur_maske
+                                pop ax
+
+                                ; Cache
+                                push ax
+                                  mov al,dh ; Index
+                                  mov bh,dl ; bh=and
+                                  not bh
+                                  mov bl,dl ; bl=or
+                                  and ah,4
+                                  cmp ah,4
+                                  if nz null bl
+                                  call setze_umc_480_prozedur_maske
+                                pop ax
+
+setze_umc_480_prozedur_fertig:
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_umc_480_prozedur_maske:
+                                mov ah,al ; Index
+                                call bios_aufruf__prozedur_registerlesen
+                                and al,bh
+                                or  al,bl
+                                xchg al,ah
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_umc_480:
+                                ausschrift_xxxx_aehnliches_bios text_variante_umc480
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,w es:[di+26+1]
+                                add ax,di
+                                add ax,26+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,w es:[di+33+1]
+                                add ax,di
+                                add ax,33+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+
+                                setze_umc_480 'C0',09d,Bit0,09e,Bit0,09c,Bit0
+                                setze_umc_480 'C4',09d,Bit1,09e,Bit1,09c,Bit1
+                                setze_umc_480 'C8',09d,Bit2,09e,Bit2,09c,Bit2
+                                setze_umc_480 'CC',09d,Bit3,09e,Bit3,09c,Bit3
+
+                                setze_umc_480 'D0',09d,Bit4,09e,Bit4,09c,Bit4
+                                setze_umc_480 'D4',09d,Bit5,09e,Bit5,09c,Bit5
+                                setze_umc_480 'D8',09d,Bit6,09e,Bit6,09c,Bit6
+                                setze_umc_480 'DC',09d,Bit7,09e,Bit7,09c,Bit7
+
+                                setze_umc_480 'E0',09b,Bit4,09b,Bit3,09b,Bit5
+
+                                setze_umc_480 'F0',09b,Bit1,09b,Bit0,09b,Bit2
+
+                                jmp initialisieren
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

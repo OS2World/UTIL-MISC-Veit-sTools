@@ -1,0 +1,729 @@
+Title   Suchfolgen zur Bestimmung des Chiptypes (ISA,PCI)
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+suchfolge_retf:                 pstr 0cb
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_asus_82430TX_d000:    pstr 0be,000,0d0,0bf,000,"?",0b9,000,"?",0e8,"??",0b9,"??",0bb,"??",0e8
+suchfolge_asus_82430TX_d800:    pstr 0be,000,0d8,0bf,000,"?",0b9,000,"?",0e8,"??",0b9,"??",0bb,"??",0e8
+                                ; mov si,0d800
+                                ; mov di,02000      oder 01000 (kleineres/꼕teres BIOS )
+                                ; mov cx,02000 (dd) oder 04000 (dw)
+                                ; call kopiere_si_di_cx
+                                ; mov cx,0005d
+                                ;;  82430TX: CX=0005D
+                                ;;  ARIES:   CX=0C05D
+                                ; mov bx,002f8
+                                ; call chipset_maske_bx_or_and
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_SIS471_d800:          pstr 0be,000,0d8, 0bf,000,"?", 0b9,000,"?", 0e8,"??", 0b1,052, 0bb,03f,008 ,0e8
+                                ; mov si,0d800
+                                ; mov di,02000      oder 01000 (kleineres/꼕teres BIOS )
+                                ; mov cx,02000 (dd) oder 04000 (dw)
+                                ; call kopiere_si_di_cx
+                                ; mov cl,052
+                                ; mov bx,0083f ; -80 -40 +08
+                                ; call chipset_maske_bx_or_and
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                ; pushad
+                                ; mov bl,4
+                                ; mov si,0d800
+                                ; call shadow_si_bl컴컴컴�
+                                ; popad                  �
+                                ; ret                    V
+
+suchfolge_SIS496:               pstr 056, 0b8,000,020, 08e,0c0, 08e,0de, 033,0f6, 033,0ff, 0fc, 0b9,000,020, 0f3,066,0a5, 05e, 0e8,'??', 0b9,044,028, 0e8,'??', 00a,0c3, 0e8
+                                ; push si                  ; 32K kopieren
+                                ;   mov ax,02000
+                                ;   mov es,ax
+                                ;   mov ds,si
+                                ;   xor si,si
+                                ;   xor di,di
+                                ;   cld
+                                ;   mov cx,02000
+                                ;   rep movsd
+                                ; pop si
+                                ; call schreibschutz_aus
+                                ; mov cx,02844
+                                ; call lies_chipsatz_cx
+                                ; or al,bl                 ; Speicher bei bl dazu
+                                ; call schreibe_chipsatz_cx
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                ; mov si,0d800
+                                ; mov bh,8
+                                ; call shadow_bh 컴컴커
+                                ; ret                 V
+
+suchfolge_SIS471_1995:          pstr 0bf,000,'?', 0b9,000,'?', 060, 053, 0e8,'??', 05b, 0b1,'?', 0b3,'?', 0e8
+                                ; mov di,01000
+                                ; mov cx,08000
+                                ; pusha
+                                ;   push bx
+                                ;     call kopiere
+                                ;   pop bx
+                                ;   mov cl,052
+                                ;   mov bl,03f
+                                ;   call maske
+                                ; popa
+                                ; xchg si,di
+                                ; call kopiere
+                                ; mov cl,052
+                                ; mov bx,0c0ff
+                                ; call maske
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_umc498:               pstr 0b1,032, 0e8,'??', 024,0f3, 00c,004, 0e8,'??', 0b1,033, 0e8,'??', 024,0fd, 0e8,'??', 0c3
+                                ; mov cl,032
+                                ; call lies
+                                ; and al,0f3
+                                ; or al,004
+                                ; call schreibe
+                                ; mov cl,033
+                                ; call lies
+                                ; and al,0fd
+                                ; call schreibe
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_opti_82495:           pstr 0eb,005, 0b3,008, 0b8,000,0cc, 01e, 006, 08e,0d8, 08e,0c0, 0b8,026,026, 0e8,'??', 00c,040, 024,0df, 086,0c4, 0e8,'??', 0b9,000,020, 033,0f6, 033,0ff, 0f3,0a5
+                                ; jmp kopiere_rom
+                                ; mov bl,8
+                                ; mov ax,0cc00
+                                ; push ds
+                                ;   push es
+                                ;     mov ds,ax
+                                ;     mov es,ax
+                                ;     mov ax,02626
+                                ;     call lies
+                                ;     or al,040
+                                ;     and al,0df
+                                ;     xchg al,ah
+                                ;     call schreibe
+                                ;     mov cx,02000  ; 16K
+                                ;     xor si,si
+                                ;     xor di,di
+                                ;     rep movsw
+                                ;     ...
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_umc_491:              pstr 0eb,009, 0b3,003, 0b7,0fd, 0b8,000,0cc, 0b2,0ef, 01e, 006, 033,0f6, 033,0ff, 08e,0d8, 0b9,000,'?', 08e,0c1, 0b9,000,'?', 0f3,0a5, 0b8,0cd,0cd, 0e8
+                                ; jmp kopiere_rom
+                                ; mov bl,3
+                                ; mov bh,0fd
+                                ; mov ax,0cc00
+                                ; mov dl,0ef
+                                ;
+                                ; push ds
+                                ;   push es
+                                ;     xor si,si
+                                ;     xor di,di
+                                ;     mov ds,ax
+                                ;     mov cx,01000
+                                ;     mov es,cx
+                                ;     mov cx,02000
+                                ;     rep movsw
+                                ;     mov ax,0cdcd
+                                ;     call lies
+                                ;     or al,bl
+                                ;     xchg ah,al
+                                ;     call schreibe
+                                ;     ...
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                ; Bert Winkler
+suchfolge_umc_491_award:        pstr 0b1,0ce, 0e8,'??', 024,03f, 0e8,'??', 0be,000,0d0, 0bf,000,010, 0b9,000,020, 0e8,'??', 0b1,0ce, 0e8,'??', 00c,0c0, 0e8
+                                ; mov cl,0ce
+                                ; call lies
+                                ; and al,03f
+                                ; call schreibe
+                                ; mov si,0d000 ; D000 ! (D800 ist fehlerhaft)
+                                ; mov di,01000
+                                ; mov cx,02000
+                                ; call kopiere
+                                ; mov cl,0ce
+                                ; call lies
+                                ; or al,0c0
+                                ; call schreibe
+                                ; ...
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_umc_891_892_886:      pstr 051, 050, 053, 08b,0f0, 081,0e6,000,0ff, 0bf,000,010, 0e8,'??', 05b, 0b9,05d,000, 0e8,'??', 00a,0c3, 0e8,'??', 0b9,05c,000
+                                ; push cx
+                                ;   push ax
+                                ;     push bx
+                                ;       mov si,ax
+                                ;       and si,0ff00
+                                ;       mov di,01000
+                                ;       call kopiere
+                                ;    pop bx
+                                ;
+                                ;    mov cx,0005d
+                                ;    call lies_pci
+                                ;    or al,bl
+                                ;    call schreibe_pci
+                                ;
+                                ;    mov cx,0005c
+                                ;    call lies_pci
+                                ;    not bl             ; not schreibschutzbit
+                                ;    or al,bl
+                                ;    call schreibe_pci
+                                ;  pop di
+                                ;  ...
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                ; push es
+                                ; push ds
+                                ; mov bx,0d800
+                                ; mov dl,8
+                                ; call shadow_bx_dl 커
+                                ; pop ds             �
+                                ; pop es             �
+                                ; --------------     V
+                                ; mov ax,05252
+                                ; call lies
+                                ; or al,dl
+                                ; and al,03f
+                                ; xchg ah,al
+                                ; call schreibe
+                                ; mov ax,bx
+                                ; mov ds,ax
+                                ; mov es,ax
+                                ; mov cx,04000 ; 32K
+                                ; xor si,si
+                                ; xor di,di
+                                ; repz movsw ; "repz"
+                                ; mov ax,05252
+
+suchfolge_sis461:               pstr 0b8,052,052, 0e8,'??', 00a,0c2, 024,03f, 086,0e0, 0e8,'??', 08b,0c3, 08e,0d8, 08e,0c0, 0b9,000,040, 033,0f6, 033,0ff, 0f3,0a5, 0b8,052,052
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_ali_14xx:             pstr 060, 01e, 006, 0b9,04c,000, 0e8,'??', 00c,040, 0e8,'??', 0e8,'??', 0b8,000,0d8, 08e,0d8, 08e,0c0
+                                ; pusha
+                                ; push ds
+                                ; push es
+                                ; mov cx,0004c
+                                ; call lies
+                                ; or al,040
+                                ; call schreibe
+                                ; call rom_kopierzustand
+                                ; mov ax,0d800
+                                ; mov ds,ax
+                                ; mov es,ax
+                                ; ....
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_ali_1487_89:          pstr 0be,000,0d8, 0bf,000,010, 0b9,000,020, 0e8,'??', 0b1,013, 0e8,'??', 00c,040, 0e8,'??', 0e8,'??', 0bf,000,0d8
+                                ; mov si,0d800
+                                ; mov di,01000
+                                ; mov cx,02000
+                                ; call kopiere
+                                ; mov cl,013
+                                ; call lies_22_23
+                                ; or al,040
+                                ; call schreibe_22_23
+                                ; call schreibschutz_aus
+                                ; mov di,0d800
+                                ; mov si,01000
+                                ; mov cx,02000
+                                ; call kopiere
+                                ; jmp schreibschutz_ein
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_ali_154x:             pstr 0b9,04d,000, 0e8,'??', 00c,00f, 0e8,'??', 0b9,04f,000, 0e8,'??', 00c,00f, 0e8,'??', 0c3,  0b9,04f,000, 0e8,'??', 024,0f0, 0e8,'??', 0c3
+                                ; mov cx,0004d
+                                ; call lies_pci
+                                ; or al,00f
+                                ; call schreibe_pci
+                                ; mov cx,0004f
+                                ; call lies_pci
+                                ; or al,00f
+                                ; call schreibe_pci
+                                ; ret
+                                ;
+                                ; mov cx,0004f
+                                ; call lies_pci
+                                ; and al,0f0
+                                ; call schreibe_pci
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_opti596:              pstr 0b1,005, 0bb,0cf,020, 0e8,'??', 0b9,046,080, 0e8,'??', 024,0bb, 00c,004, 0e8,'??', 0b8,000,0d8, 0e8,'??', 0b1,005, 0bb,0cf,010, 0e8,'??', 0b9,046,080, 0e8,'??', 024,0bb, 00c,040, 0e8,'??', 0c3
+                                ; mov cl,005
+                                ; mov bx,020cf
+                                ; call maske
+                                ; mov cx,08046
+                                ; call lies
+                                ; and al,0bb
+                                ; or al,4
+                                ; call schreibe
+                                ; mov ax,0d800
+                                ; call kopiere
+                                ; mov cl,005
+                                ; mov bx,010cf
+                                ; call maske
+                                ; mov cx,08046
+                                ; call lies
+                                ; and al,0bb
+                                ; or al,040
+                                ; call schreibe
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_opti802:              pstr 0be,000,0d8, 0bf,000,'?', 0b9,000,'?', 0e8,'??', 0b1,022, 0e8,'??', 024,0ef, 0e8,'??', 0b1,023, 0e8,'??', 00c,004, 0e8,'??', 0bf,000,0d8
+                                ; mov si,0d800
+                                ; mov di,01000
+                                ; mov cx,02000
+                                ; call kopiere
+                                ; mov cl,022
+                                ; call lies
+                                ; and al,0ef
+                                ; call schreibe
+                                ; mov cl,023
+                                ; call lies
+                                ; or al,4
+                                ; call schreibe
+                                ; mov di,0d800
+                                ; mov si,01000
+                                ; mov cx,02000
+                                ; call kopiere
+                                ; mov cl,022
+                                ; call lies
+                                ; or al,010
+                                ; call schreibe
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_unichip:              pstr 08e,0d8, 08e,0c0, 0b9,000,020, 033,0f6, 033,0ff, 0b8,023,023, 0e8,'??', 022,0c7, 00a,0c3, 086,0c4, 0e8,'??', 0f3,0a5, 0b8,023,023, 0e8,'??', 022,0c6
+                                ; mov ds,ax
+                                ; mov es,ax
+                                ; mov cx,02000
+                                ; xor si,si
+                                ; xor di,di
+                                ; mov ax,02323
+                                ; call lies_chip
+                                ; and al,bh
+                                ; or al,bl
+                                ; xchg al,ah
+                                ; call schreibe_chip
+                                ; rep movsw
+                                ; mov ax,02323
+                                ; call lies_chip
+                                ; and al,dh
+                                ; or al,dl
+                                ; xchg al,ah
+                                ; call schreibe_chip
+                                ; pop ds
+                                ; pop es
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_opti_55x:             pstr 'SUCHFOLGE_OPTI_55X'
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_opti_55x_award:       pstr 0fc, 0f3,066,0a5, 059, 0e8,'??', 022,0c3, 0e8,'??', 0c3,  0be,000,0cc, 0b1,004, 0bb,07f,0c0, 0eb
+                                ; @1:
+                                ; ....
+                                ;   cld
+                                ;   rep movsd
+                                ; pop cx
+                                ; call lies_chip
+                                ; and al,bh
+                                ; call schreibe_chip
+                                ; ret
+                                ;
+                                ; mov si,0cc00
+                                ; mov cl,004
+                                ; mov bx,0c07f
+                                ; jmp short @1
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_opti_55x_award_2:     pstr 080,0ee,0c8, 0d0,0ee, 08a,0de, 032,0ff, 081,0c3,'??', 0b9,000,000, 02e,08a,04f,001, 0e8,'??', 02e,022,007, 0e8,'??', 0c3,  0cf,4, 03f,4, 0fc,5
+                                ; sub dh,0C8h ; c800
+                                ; shr dh,1
+                                ; mov bl,dh
+                                ; xor bh,bh
+                                ; add bx,tabelle
+                                ; mov cx,0
+                                ; mov cl,cs:[bx+1]
+                                ; call lies
+                                ; and al,cs:[bx]
+                                ; call schreibe
+                                ; retn
+                                ;
+                                ;tabelle:
+                                ;         db 0CF,004 ; c800
+                                ;         db 03F,004 ; cc00
+                                ;         db 0FC,005 ; d000
+                                ;         db 0F3,005 ; d400
+                                ;         db 0CF,005 ; d800
+                                ;         db 03F,005 ; dc00
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_opti_82c283:          pstr 0b0,011, 0e8,'??', 08b,0c2, 0e8,'??', 00a,0c3, 086,0c4, 0e8,'??', 006, 01e, 007,01f
+                                ; mov bx,00480
+                                ; mov ax,0ec00
+                                ; mov dx,01212
+                                ;
+                                ; push ds
+                                ; push es
+                                ; mov ds,ax
+                                ; mov ax,01000
+                                ; mov es,ax
+                                ; mov cx,02000
+                                ; xor si,si
+                                ; xor di,di
+                                ; rep movsw
+                                ; mov al,011
+                                ; call lies_2224
+                                ; mov ah,0bh
+                                ; not ah
+                                ; and al,ah
+                                ; mov ah,bh
+                                ; mov cl,4
+                                ; shl ah,cl
+                                ; or ah,8
+                                ; or al,ah
+                                ; mov ah,al
+                                ; mov al,011
+                                ; call schreibe_2224
+                                ; mov ax,dx
+                                ; call lies_2224
+                                ; or al,bl
+                                ; xchg al,ah
+                                ; call schreibe_2224
+                                ; push es
+                                ; push ds
+                                ; pop es
+                                ; pop ds
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_asi_ami:              pstr 09c, 066,052, 066,050, 0fa, 0ba,059,'?', 0e8,'??', 0c,020, 0e8,'??', 066,058, 066,05a, 09d, 0c3
+                                ; pushf
+                                ;   push edx
+                                ;     push eax
+                                ;       cli
+                                ;       mov dx,00059
+                                ;       call lies
+                                ;       or al,020
+                                ;       call schreibe
+                                ;     pop eax
+                                ;   pop edx
+                                ; popf
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_gw2000:               pstr 050, 052, 0ba,0f8,00c, 0b0,080, 0ee, 0ba,'??', 0ec, 00a,0c0, 074,006, 0ba,0fa,00c, 032,0c0, 0ee, 0ba,'??', 0ec, 024,0f3, 0ee, 0ba,059,'?', 0ec
+                                ; push ax
+                                ;   push dx
+                                ;     mov dx,00cf8
+                                ;     mov al,080
+                                ;     out dx,al
+                                ;     mov dx,0c008
+                                ;     in al,dx
+                                ;     or al,al
+                                ;     jz l1
+                                ;     mov dx,00cfa
+                                ;     xor al,al
+                                ;     out dx,al
+                                ; l1: mov dx,0c244
+                                ;     in al,dx
+                                ;     and al,0f3
+                                ;     out dx,al
+                                ;     mov dx,0c059 ; F000...
+                                ;     in al,dx
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_umc_480:              pstr 0b3,080, 0b8,000,0dc, 01e, 006, 033,0f6, 033,0ff, 08e,0d8, 0b9,000,'?', 08e,0c1, 0b9,000,020, 0f3,0a5, 0b8,09d,09d, 0e8,'??', 00a,0c3, 086,0e0, 0e8,'??', 0b8,09e,09e
+                                ; mov bl,080
+                                ; mov ax,0dc00
+                                ;
+                                ; push ds
+                                ;   push es
+                                ;     xor si,si
+                                ;     xor di,di
+                                ;     mov ds,ax
+                                ;     mov cx,01000
+                                ;     mov es,cx
+                                ;     mov cx,02000
+                                ;     rep movsw
+                                ;     mov ax,09d9d
+                                ;     call lies_22
+                                ;     or al,bl          ; Shadow-RAM ein
+                                ;     xchg ah,al
+                                ;     call schreibe_22
+                                ;     mov ax,09e9e
+                                ;     call lies_22
+                                ;     not bl
+                                ;     or al,bl          ; Schreibschutz aus
+                                ;     not bl
+                                ;     xchg ah,al
+                                ;     call schreibe_22
+                                ;     ...
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_mirko_ami_i430VX:     pstr 066,050, 066,052, 09c, 0fa, 00f,009, 0ba,059,'?', 0e8,'??', 024,0cf, 00c,010, 0e8
+                                ; f000:67e4
+                                ; push eax
+                                ;   push edx
+                                ;     pushf
+                                ;       cli
+                                ;       wbinvd
+                                ;       mov dx,00059
+                                ;       call call_lies_cf8
+                                ;       and al,0fc
+                                ;       or al,010
+                                ;       call call_schreibe_cf8
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_pci82430_batio:       pstr 050, 052, 0e8,'??', 0ba,059,'?', 0ec, 00c,020, 0ee, 0e8,'??', 05a, 058, 0c3
+                                ; push ax
+                                ;   push dx
+                                ;     call oeffne_pci
+                                ;     mov dx,0c059
+                                ;     in al,dx
+                                ;     or al,020
+                                ;     out dx,al
+                                ;     call schliesse_pci
+                                ;   pop dx
+                                ; pop ax
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_pci82430_alfredo:     pstr 050, 052, 0e8,'??', 0ba,059,'?', 0ec, 0a8,010, 0e8,'??', 05a, 058, 0c3
+                                ; push ax
+                                ;   push dx
+                                ;     call oeffne_pci
+                                ;     mov dx,0c059
+                                ;     in al,dx
+                                ;     test al,010
+                                ;     call schliesse_pci
+                                ;   pop dx
+                                ; pop ax
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_icl_opti55yy:         pstr 081,0fb,000,0c4, 00f,082,00b,000, 081,0fb,000,0c8, 00f,083,003,000, 0bb,000,0c0, 08a,0f0, 0e8,'??', 08a,0e0, 0e8,'??', 086,0f4, 0e8,'??', 0f6,0d2, 022,0c2, 0f6,0d2, 00f,0bc,0ca, 0d2,0e4, 00a,0c4, 08a,0e6, 0e8 ; '??'
+                                ; cmp bx,0c400
+                                ; jb nicht_dieser_bereich
+                                ; cmp bx,0c800
+                                ; ja nicht_dieser_bereich
+                                ; mov bx,0c000
+                                ;
+                                ; nicht_dieser_bereich:
+                                ;
+                                ; mov dh,al
+                                ; call berechne_index_fuer_bx
+                                ; mov ah,al
+                                ; call lies_22_24
+                                ; xhg dh,ah
+                                ; call berechne
+                                ; not dl
+                                ; and al,dl
+                                ; not dl
+                                ; bsf cx,dx
+                                ; shl ah,cl
+                                ; or al,ah
+                                ; mov ah,dh
+                                ; call schreibe_22_24
+                                ; ..
+suchfolge_chips_technologies_peacock:
+                                pstr 053, 0b3,0bf, 03d,000,0f0, 073,00e, 0b3,0df, 03d,000,0e8, 073,007, 0b3,0ef, 03d,000,0e0, 072,00a, 0b0,048, 0e8,'??', 022,0e3, 0e8
+                                ; push bx
+                                ;   mov bl,0bf
+                                ;   cmp ax,0f000
+                                ;   jnb @1
+                                ;   mov bl,0df
+                                ;   cmp ax,0e800
+                                ;   jnb @1
+                                ;   mov bl,0ef
+                                ;   cmp ax,0e000
+                                ;   jb @2
+                                ; @1:
+                                ;   mov al,048
+                                ;   call lies_chip_22_23
+                                ;   and ah,bl
+                                ;   call schreibe_chip_22_23
+                                ; @2:
+                                ; pop bx
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_chips_technologies_siemens:
+                                pstr 0b0,04c, 0e8,'??', 052, 0be,'??', 0bb,'??', 0f6,0c2,003, 074,044, 02e,08a,007, 0c1,0e0,008, 02e,0a3,'??', 02e,0c7,006,'??',000,030, 0e8,'??', 050, 0b0,048, 0e8
+                                ; ....
+                                ; mov al,04c
+                                ; call schreibe_22_23
+                                ; push dx
+                                ;   mov si,masken_tabelle
+                                ;   mov bx,segment_tabelle
+                                ;   test dl,3
+                                ;   jz @@1
+                                ;   mov al,cs:[bx]
+                                ;   shl ax,8
+                                ;   mov [quelle+2],ax
+                                ;   mov [ziel+2],03000
+                                ;   call kopiere_quelle_ziel
+                                ;   push ax
+                                ;     mov al,048
+                                ;     call lies_22_23
+                                ;     and al,cs:[bx+1]
+                                ;     mov ah,al
+                                ;     mov ah,048
+                                ;     call schreibe_22_23
+                                ;     mov ax,cs:[si]
+                                ;     call schreibe_22_23
+                                ;   pop ax
+                                ;   ...
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_asusflash:            pstr 'ASUS_FLASH'
+suchfolge_awardflash:           pstr 'AWDFLASH'
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_sis_501_503_asus:     pstr 0be,000,0d8, 0bf,000,020, 0b9,000,020, 0e8,'??', 0b9,055,000, 0e8,'??', 00c,020, 0e8,'??', 0e8,'??', 0bf,000,0d8
+                                ; mov si,0d800
+                                ; mov di,02000
+                                ; mov cx,02000
+                                ; call kopiere
+                                ; mov cx,00055
+                                ; call lies_pci
+                                ; or al,020
+                                ; call schreibe_pci
+                                ; call schreibschutz_aus
+                                ; mov di,0d800
+                                ; mov si,02000
+                                ; mov cx,02000
+                                ; call kopiere
+                                ; jmp schreibschutz_ein
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_epson_actionnote650:  pstr 0b8,007,002, 0bc,'??', 0e9,'??', '??', 025,0ff,0ef, 08b,0d0, 0b8,007,002, 0bc,'??', 0e9,'??', '??', 0b8,000,002, 0bc
+                                ; mov ax,00207
+                                ; mov sp,@sp1
+                                ; jmp lies_24_26
+                                ; @sp1: dw $+2
+                                ; and ax,0efff
+                                ; mov dx,ax
+                                ; mov ax,00207
+                                ; mov sp,@sp2
+                                ; jmp schreibe_24_26
+                                ; @sp2: dw $+2
+                                ; mov ax,00200
+                                ; mov sp,...
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_sis471_ami:           pstr 0b8,000,070, 08e,0db, 08e,0c0, 0b9,000,040, 033,0f6, 033,0ff, 0f3,0a5, 0b8,052,052, 0e8,'??', 00a,0c2, 024,0bf, 086,0e0, 0e8,'??', 0b8,000,070
+                                ; mov ax,07000
+                                ; mov ds,bx
+                                ; mov es,ax
+                                ; mov cx,04000 ; 32K
+                                ; xor si,si
+                                ; xor di,di
+                                ; rep movsw
+                                ; mov ax,05252
+                                ; call lies_22_23
+                                ; or al,dl
+                                ; and al,0bf ; -040
+                                ; xchg ah,al
+                                ; call schreibe_22_23
+                                ; mov ax,07000
+                                ; ..
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge1_sis496_ami:          pstr 051, 0e8,'??', 059, 068,000,0f0, 007, 033,0f6, 033, 0ff, 0f3,0a5, 0e8
+                                ; push cx
+                                ;   call f000_schreibschutz_aus ---------\
+                                ; pop cx                                 |
+                                ; push 0f000                             |
+                                ; pop es                                 |
+                                ; xor si,si                              |
+                                ; xor di,di                              |
+                                ; rep movsw                              |
+                                ; call f000_schreibschutz_ein            |
+                                ; ...                                    |
+                                ;                                        v
+suchfolge2_sis496_ami:          pstr 0b0,045, 0e8,'??', 080,0e4,0fe, 080,0cc,002, 0e8,'??', 0c3
+                                ; mov al,045
+                                ; call lies_pci
+                                ; and ah,0fe
+                                ; or ah,002
+                                ; call schreibe_pci
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_sis5571_ami:          pstr 09c, 066,052, 066,050, 0fa, 0ba,076,000, 0e8,'??', 00c,0a0, 0eb,010, 09c, 066,052, 066,050, 0fa, 0ba,076,000, 0e8,'??', 00c,080, 024,0df, 0e8
+                                ; pushf
+                                ; push edx
+                                ; push eax
+                                ; cli
+                                ; mov dx,00076
+                                ; call lies_pci
+                                ; or al,0a0
+                                ; jmp weiter
+                                ; ----
+                                ; pushf
+                                ; push edx
+                                ; push eax
+                                ; cli
+                                ; mov dx,00076
+                                ; call lies_pci
+                                ; or al,080
+                                ; and al,0df
+                                ; weiter:
+                                ; call schreibe_pci
+                                ; pop eax
+                                ; pop edx
+                                ; popf
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_mx83c30x:             pstr 0be,000,0d8, 0bf,000,'?', 0b9,000,'?', 0e8,'??', 0b1,03a, 0bb,03f,0c8, 0e8,'??', 0bf,000,0d8, 0be,000,'?', 0b9,000,'?', 0e8
+                                ; mov si,0d800
+                                ; mov di,01000
+                                ; mov cx,04000
+                                ; call kopiere
+                                ; mov cl,03a
+                                ; mov bx,0c83f
+                                ; call maske_22_23
+                                ; mov di,0d800
+                                ; mov si,01000
+                                ; mov cx,04000
+                                ; call kopiere
+                                ; jmp schreibschutz
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_mx83c30x_ami:         pstr 0b9,000,040, 0b8,000,030, 08e,0db, 08e,0c0, 033,0ff, 033,0f6, 0fc, 0f3,0a5, 08a,0c6, 08a,0e6, 0e8,'??', 00a,0c2, 086,0c4, 0e8,'??', 0b9
+                                ; mov cx,04000
+                                ; mov ax,03000
+                                ; mov ds,bx
+                                ; mov es,ax
+                                ; xor di,di
+                                ; xor si,si
+                                ; cld
+                                ; rep movsw
+                                ; mov al,dh
+                                ; mov ah,dh
+                                ; call lies_22_23
+                                ; or al,dl
+                                ; xchg al,ah
+                                ; call schreibe_22_23
+                                ; mov cx,04000
+                                ; mov ax,03000
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_i82440fx_ami:         pstr 0ba,04e,038, 0e8,'??', 00c,040, 0e8,'??',  0ba,05e,000, 033,0c0, 0e8,'??', 042, 0e8,'??'
+                                ; ...
+                                ; mov dx,0384e
+                                ; call lies_pci
+                                ; or al,040
+                                ; call schreibe_pci
+                                ;
+                                ; mov dx,0005e
+                                ; xor ax,ax
+                                ; call schreibe_pci
+                                ; inc dx
+                                ; call schreibe_pci
+                                ; ...
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_umc_881_886_award:    pstr 0e8,'??', 0bf,000,0d8, 0be,000,0d8, 0b9,000,020, 0e8,'??', 0b9,054,080, 0e8,'??', 00c,040, 0e8,'??', 0b9,050,090
+                                ;
+                                ; call lesen_aus__schreiben_ein
+                                ;
+                                ; mov di,0d800
+                                ; mov si,0d800
+                                ; mov cx,02000
+                                ; call kopiere
+                                ;
+                                ; mov cx,08054
+                                ; call lies_chip
+                                ; or al,040
+                                ; call schreibe_chip
+                                ;
+                                ; mov cx,09050
+                                ; call lies_chip
+                                ; or al,004
+                                ; call schreibe_chip
+                                ;
+                                ; call lesen_ein__schreiben_aus
+                                ;
+                                ; ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_amdk7:                pstr 010,000,001,0c0,00f,032
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                ; or eax,080000
+                                ; wrmsr
+                                ; mov ecx,ebx
+                                ; rdmsr
+                                ; and eax,not 018181818
+suchfolge_amdk7_via_amibios:    pstr 066,00d,000,000,008,000, 00f,030, 066,08b,0cb, 00f,032, 066,025,0e7,0e7,0e7,0e7
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_text_430TX:           pstr ' 430TX '
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

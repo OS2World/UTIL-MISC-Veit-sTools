@@ -1,0 +1,6 @@
+multiplikation
+Fehler? FAT="7999" aber nicht FAT32="ofg"
+Hilfetext zu jedem Feld = Hypertext-Readme
+os2csm: +xirmod > menlogik
+CPU_NAME2 wie URAM (>12 Zeichen) fr AMD/..
+Zeilen z„hlen?

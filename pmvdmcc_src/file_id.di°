@@ -1,0 +1,4 @@
+
+Patch MiniVDM creation code for
+uncommon memory situations,
+release 2 KiB stack on thinkpads

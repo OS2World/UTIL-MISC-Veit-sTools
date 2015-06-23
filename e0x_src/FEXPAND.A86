@@ -1,0 +1,93 @@
+			jmp start
+
+quelle:			;db 'C:\SONST\..\CFG\V.SYS',0
+			;db '..\test.bat',0
+			db 'C:123.tes',0
+
+ziel:			db 500 dup 0
+			db '$'
+
+wechsel:		dw ?
+			
+start:
+			mov si,quelle
+			mov di,ziel
+			
+			cld
+			
+			cmp b [si+1],':'
+			jz laufwerk_enthalten
+		
+			mov ah,019 ; get default drive
+			int 021
+			add al,'A'
+			stosb
+			mov al,':'
+			stosb
+			jmp laufwerkbestimmung_fertig
+
+			
+laufwerk_enthalten:
+			lodsw
+			stosw
+
+laufwerkbestimmung_fertig:
+
+			mov al,[si]
+			cmp al,'\'
+			jz schon_absolut
+			cmp al,'/'
+			jz schon_absolut
+
+			mov al,'\'
+			stosb
+			push si
+  			  mov ah,047
+			  mov dl,[ziel]
+			  sub dl,('A'-1)
+			  mov si,di
+			  int 021
+			pop si
+			
+			mov di,ziel
+ende_suche:
+			cmp b [di],0
+			jz ende_gefunden
+			inc di
+			jmp ende_suche
+
+
+
+ende_gefunden:
+	    		cld
+			mov al,'\'
+			cmp b es:[di-1],al
+			if nz stosb
+			
+schon_absolut:
+			cld
+kopiere_rest:
+			lodsb
+
+			cmp al,0
+			jz fertig
+
+			cmp al,'ø'
+			jz wechel_merker
+
+			stosb
+			jmp kopiere_rest
+
+			
+wechel_merker:
+			mov w [wechsel],di
+			jmp kopiere_rest
+
+fertig:
+			mov ah,009
+			mov dx,ziel
+			int 021
+			
+			mov ax,04c00
+			int 021
+

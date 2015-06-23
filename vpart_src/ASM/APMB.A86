@@ -1,0 +1,358 @@
+; netz->grau laden=hell kritsch=rot viel=grÅn mittel=orange
+;*****************************************************************************
+; APM-Batterie-Status und CPU-Bremse
+;*****************************************************************************
+apm_eingeschaltet:              db 0
+apm_batterie_unterstuetzt:      db 0
+apm_idle_unterstuetzt:          db 0
+
+apmb_einschalten:
+                                pusha
+                                  mov b [apm_eingeschaltet],0
+                                  mov b [apm_batterie_unterstuetzt],0
+                                  mov b [apm_idle_unterstuetzt],0
+
+                                  cmp b [benutze_apm],1
+                                  jne apmb_einschalten_ende
+
+                                  mov ax,05300
+                                  sub bx,bx
+                                  int 015
+                                  jc apmb_einschalten_ende
+                                  cmp bx,0504d
+                                  jne apmb_einschalten_ende
+
+                                  mov b [apm_batterie_unterstuetzt],1
+                                  mov b [apm_idle_unterstuetzt],1
+
+                                  ; CONNECT REAL-MODE INTERFACE
+                                  mov ax,05301
+                                  sub bx,bx
+                                  int 015
+                                  jc apmb_einschalten_ende
+
+                                  mov b [apm_eingeschaltet],1
+
+                                  ; APM 1.2
+                                  mov ax,0530e
+                                  sub bx,bx
+                                  mov cx,00102
+                                  int 015
+
+apmb_einschalten_ende:
+                                popa
+                                ret
+;*****************************************************************************
+apmb_ausschalten:
+                                pusha
+                                  cmp b [apm_eingeschaltet],1
+                                  jne apmb_ausschalten_ende
+
+                                  ; DISCONNECT INTERFACE
+                                  mov ax,05304
+                                  sub bx,bx
+                                  int 015
+
+                                  mov b [apm_eingeschaltet],0
+
+apmb_ausschalten_ende:
+                                  mov b [apm_batterie_unterstuetzt],0
+                                  mov b [apm_idle_unterstuetzt],0
+
+                                popa
+                                ret
+;*****************************************************************************
+apmb_idle:
+                                pusha
+                                  cmp b [apm_idle_unterstuetzt],1
+                                  jne apmb_idle_ende
+
+                                  mov ax,05305
+                                  stc
+                                  int 015
+                                  jnc apmb_idle_ende
+
+                                  mov b [apm_idle_unterstuetzt],0
+
+apmb_idle_ende:
+                                popa
+                                ret
+;*****************************************************************************
+
+text_netzversorgung_batterie:
+                                #if deutsch
+                                db 'Batterie '
+                                #else
+                                db 'battery  '
+                                #endif
+text_netzversorgung_netz:
+                                #if deutsch
+                                db 'Netz     '
+                                #else
+                                db 'AC       '
+                                #endif
+text_netzversorgung_backup:
+                                #if deutsch
+                                db 'Puffer   '
+                                #else
+                                db 'Backup   '
+                                #endif
+text_netzversorgung_unbekannt:
+                                #if deutsch
+                                db 'unbekannt'
+                                #else
+                                db 'unknown  '
+                                #endif
+
+text_batterie_laden:
+                                #if deutsch
+                                db 'Laden    '
+                                #else
+                                db 'charging '
+                                #endif
+
+text_batterie_zeiteinheit_minuten:
+                                #if deutsch
+                                db 'Minuten '
+                                #else
+                                db 'minutes '
+                                #endif
+text_batterie_zeiteinheit_sekunden:
+                                #if deutsch
+                                db 'Sekunden'
+                                #else
+                                db 'seconds '
+                                #endif
+text_batterie_zeiteinheit_sinnlos:
+                                db '        '
+;*****************************************************************************
+apm_stromversorung:             dw 08001
+
+apmb_batterie_fehler:
+                                  mov b [apm_batterie_unterstuetzt],0
+apmb_batterie_ende:
+                                popa
+                                ret
+apmb_batterie:
+                                pusha
+                                  cmp b [apm_batterie_unterstuetzt],1
+                                  jne apmb_batterie_ende
+
+                                  ; Zeit vergleichen
+                                  call hole_zeit_dx_cx
+                                  ; alle 256/4/18 s (3,5 s)
+                                  and cl,0c0
+                                  cmp w [letzte_batterie_abfragezeit+0],cx
+                                  jne apmb_batterie_faellig
+                                  cmp w [letzte_batterie_abfragezeit+2],dx
+                                  je apmb_batterie_ende
+  apmb_batterie_faellig:
+                                  ; Zeit merken
+                                  mov w [letzte_batterie_abfragezeit+0],cx
+                                  mov w [letzte_batterie_abfragezeit+2],dx
+
+                                  ; allgemeine Frage nach der Stromversorgung
+  apmb_batterie_nochmal:
+                                  mov ax,0530a
+                                  mov bx,w [apm_stromversorung]
+                                  mov cx,000ff  ; kein high/low/..; Akkuladestand unbekannt
+                                  mov dx,0ffff  ; Akkurestzeit unbekannt
+                                  int 015
+                                  jnc apmb_batterie_erfolg
+
+                                  cmp ah,009 ; unbekanntes GerÑt
+                                  jne apmb_batterie_fehler
+
+                                  ; schon APM 1.0 versucht ?
+                                  cmp w [apm_stromversorung],00001
+                                  je apmb_batterie_fehler
+                                  mov w [apm_stromversorung],00001
+                                  jmp apmb_batterie_nochmal
+
+  apmb_batterie_erfolg:
+                                  ;----------------------------------
+                                  ; dx=zeit
+                                  ; bh=netz
+                                  ; bl=zustand
+                                  ; cl=prozent
+
+                                  mov bp,cx
+                                  and bp,0ff
+                                  mov di,textfeld_batterie
+                                  cld
+                                  mov al,(textfeld_batterie_ende-textfeld_batterie-1)
+                                  stosb
+
+                                  ;----------------------------------
+                                  ; Versorgungsquelle
+                                  mov si,text_netzversorgung_batterie
+                                  cmp bh,0
+                                  je netzversorgung_entschieden
+                                  mov si,text_netzversorgung_netz
+                                  cmp bh,1
+                                  je netzversorgung_entschieden
+                                  mov si,text_netzversorgung_backup
+                                  cmp bh,2
+                                  je netzversorgung_entschieden
+                                  mov si,text_netzversorgung_unbekannt
+  netzversorgung_entschieden:
+                                  ; Batteriestatus
+                                  cmp bl,3
+                                  if e mov si,text_batterie_laden
+                                  test ch,8 ; 1 shl 3
+                                  if nz mov si,text_batterie_laden
+                                  mov cx,text_netzversorgung_netz-text_netzversorgung_batterie
+                                  rep movsb
+
+                                  mov al,' '
+                                  stosb
+                                  ;----------------------------------
+
+                                  ;----------------------------------
+                                  ; FÅllstansdbalken
+                                  mov cx,100/5 ; je 5%
+                                  mov al,'?'
+                                  cmp bp,100
+                                  jbe batterieprozent_gueltig
+                                  
+                                  mov al,' '
+                                  rep stosb
+                                  jmp short batterieprozent_weiter
+
+  batterieprozent_gueltig:
+  				  add bp,2 ; 2,5%: auf 5% runden
+                                  mov al,'€'
+  batterieprozent_schleife:
+                                  sub bp,5
+                                  jnl batterieprozent_noch_voll
+
+                                  mov al,'∞'
+  batterieprozent_noch_voll:
+                                  stosb
+                                  loop batterieprozent_schleife
+  batterieprozent_weiter:
+                                  mov al,' '
+                                  mov cx,1+5
+                                  rep stosb
+
+                                  pusha
+                                    std
+                                    dec di
+
+                                    mov bx,10
+                                    mov cx,5
+
+                                    and dx,07fff
+                                    cmp dx,07ffe
+                                    jnb batteriezeit_weiter
+
+ batteriezeit_bekannt:
+                                    mov ax,dx
+                                    cwd
+                                    div bx
+                                    xchg ax,dx
+                                    add al,'0'
+                                    stosb
+                                    or dx,dx
+                                    if nz loop batteriezeit_bekannt
+ batteriezeit_weiter:
+                                  popa
+                                  cld
+
+                                  mov al,' '
+                                  stosb
+                                  ;----------------------------------
+
+                                  ;----------------------------------
+                                  ; Batterierestzeit
+                                  mov si,text_batterie_zeiteinheit_minuten
+                                  test dh,080
+                                  if z mov si,text_batterie_zeiteinheit_sekunden
+                                  and dx,07fff
+                                  cmp dx,07ffe
+                                  if nb mov si,text_batterie_zeiteinheit_sinnlos
+
+                                  mov cx,text_batterie_zeiteinheit_sekunden-text_batterie_zeiteinheit_minuten
+                                  rep movsb
+                                  ;----------------------------------
+
+
+                                  cmp b [text_oder_grafikmodus],'T'
+                                  je batterie_darstellung_text
+
+                                  ausschrift_grafik 128,480-16,textfeld_batterie,farbe_zeit_schrift,farbe_zeit_hintergrund
+                                  jmp short batterie_darstellung_weiter
+batterie_darstellung_text:
+                                  ausschrift_text    17,    24,textfeld_batterie,farbe_zeit_schrift,farbe_zeit_hintergrund
+batterie_darstellung_weiter:
+                                  ;----------------------------------
+                                  jmp apmb_batterie_ende
+;*****************************************************************************
+apm_aufblenden:
+                        pusha
+                          ;mov cx,00000 ; ready
+                          mov bh,000
+
+apm_blenden_gemeinsam:
+                          cmp b [apm_eingeschaltet],1
+                          jne apm_blenden_ende
+
+                          ;mov ax,05307 ; set power state
+                          ;mov bx,001ff ; all display
+                          ;int 015
+
+                          mov ax,04f10
+                          mov bl,001
+                          int 010
+apm_blenden_ende:
+
+                        popa
+                        ret
+;*****************************************************************************
+apm_ausblenden:
+                        pusha
+
+                          ; HÑngt mit ati rage lt pro
+                          ;mov cx,00001 ; stand-by
+                          mov bh,001
+                          jmp short apm_blenden_gemeinsam
+
+;*****************************************************************************
+; scheint nicht richtig zu funktionieren
+;*****************************************************************************
+; cx=
+; (Table 00475)
+; Values for system state ID:
+;  0000h  ready (not supported for device ID 0001h)
+;  0001h  stand-by
+;  0002h  suspend
+;  0003h  off (not supported for device ID 0001h in APM v1.0)
+; ---APM v1.1---
+;  0004h  last request processing notification (only for device ID 0001h)
+;  0005h  last request rejected (only for device ID 0001h)
+;  0006h-001Fh reserved system states
+;  0020h-003Fh OEM-defined system states
+;  0040h-007Fh OEM-defined device states
+;  0080h-FFFFh reserved device states
+
+apm_aufruf:
+                        pusha
+
+                          cmp b cs:[dos_test],'D'
+                          je apm_aufruf_kein_apm
+
+                          mov ax,05307
+                          ;mov cx,cx ...
+                          mov bx,00001
+                          cli
+                          int 015
+                          sti
+
+                          sub ax,ax
+                          int 016
+apm_aufruf_kein_apm:
+                        popa
+                        ret
+
+;*****************************************************************************
+

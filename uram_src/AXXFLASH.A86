@@ -1,0 +1,236 @@
+Title   Tabelle f걊 Chip-Erkennung durch AWDFLASH-Funktionen
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_asusflash:
+                                ausschrift text_nichts_aber_asusflash
+
+                                ausschrift text_prozedur_enable_shadow_rom
+                                mov ax,es:[di+012] ; Annahme F000: ...
+                                mov w [axx_enable_shadow],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_disable_shadow_rom
+                                mov ax,es:[di+018] ; Annahme F000: ...
+                                mov w [axx_disable_shadow],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                jmp short untersuche_axx_flash
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_awardflash:
+                                ausschrift text_nichts_aber_awardflash
+
+                                ausschrift text_prozedur_enable_shadow_rom
+                                mov ax,es:[di+8+5*2+2] ;$14
+                                mov w [axx_enable_shadow],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_disable_shadow_rom
+                                mov ax,es:[di+8+5*2+0] ;$12
+                                mov w [axx_disable_shadow],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+untersuche_axx_flash:
+                                mov si,Offset tabelle_bekannte_axxflash_anfang
+  suche_bekannte_axxflash_schleife:
+                                mov dx,Word Ptr [si+0]
+                                mov di,Word Ptr [si+2]
+                                mov di,[di]
+                                xchg si,dx
+                                call vergleich
+                                xchg si,dx
+                                jc suche_bekannte_axxflash_naechster
+
+                                jmp Word Ptr [si+4]
+
+  suche_bekannte_axxflash_naechster:
+                                add si,2+2+2
+                                cmp si,Offset tabelle_bekannte_axxflash_ende
+                                jne suche_bekannte_axxflash_schleife
+                                jmp nichts_gefunden
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+tabelle_bekannte_axxflash_anfang:
+
+                                dw Offset suchfolge_enable_shadowing_sis5511_5513
+                                dw Offset axx_enable_shadow
+                                dw Offset variante_sys551x_awdflash
+
+                                dw Offset suchfolge_disable_shadowing_i440tx
+                                dw Offset axx_disable_shadow
+                                dw Offset variante_i440fx_awdflash
+
+                                dw Offset suchfolge_disable_shadowing_via580
+                                dw Offset axx_disable_shadow
+                                dw Offset variante_via580_awdflash
+
+                                dw Offset suchfolge_disable_shadowing_sis5571
+                                dw Offset axx_disable_shadow
+                                dw Offset variante_sis5571_awdflash
+
+                                dw Offset suchfolge_disable_shadowing_sis501_503
+                                dw Offset axx_disable_shadow
+                                dw Offset variante_disable_shadowing_sis501_503
+
+                                dw Offset suchfolge_disable_shadowing_vlsi_lynx
+                                dw Offset axx_disable_shadow
+                                dw Offset variante_disable_shadowing_vlsi_lynx
+
+                                dw Offset suchfolge_disable_shadowing_umc_881_886
+                                dw Offset axx_disable_shadow
+                                dw Offset variante_disable_shadownig_umc_881_886
+
+                                dw Offset suchfolge_disable_shadowing_canterwood
+                                dw Offset axx_disable_shadow
+                                dw Offset variante_intel845_awardflash
+
+                                dw Offset suchfolge_disable_shadowing_sis650
+                                dw Offset axx_disable_shadow
+                                dw Offset variante_sis650_awardflash
+
+tabelle_bekannte_axxflash_ende:
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+axx_disable_shadow:             dw ?
+axx_enable_shadow:              dw ?
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_enable_shadowing_sis5511_5513:
+                                pstr 066,060, 0b9,086,000, 0bb,01f,080, 0e8,'??', 049, 0b0,088, 0e8,'??', 049, 0e8,'??', 066,061, 0cb
+                                ; pushad
+                                ; mov cx,00086
+                                ; mov bx,0801f
+                                ; call maske
+                                ; dec cx
+                                ; mov al,088
+                                ; call schreibe
+                                ; dec cx
+                                ; call schreibe
+                                ; popad
+                                ; retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_disable_shadowing_i440tx:
+                                pstr 0b9,059,'?', 0e8,'??', 024,00f, 0e8,'??', 0b9,05e,'?', 032,0c0
+                                ; mov cx,00059 ; ... 0XX59
+                                ; call lies
+                                ; and al,00f
+                                ; call schreibe
+                                ; mov cx,0005e ; ... 0XX5E
+                                ; xor al,al
+                                ; call schreibe
+                                ; mov cx,0005f ; ... 0XX5F
+                                ; xor al,al
+                                ; call schreibe
+                                ; retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_disable_shadowing_via580:
+                                pstr 060, 0b9,052,'?', 0e8,'??', 02e,0a2,'??', 024,0cf, 0e8,'??', 0b9,063,'?', 0e8,'??', 02e,0a2
+                                ; pusha
+                                ;   mov cx,00052
+                                ;   call lies
+                                ;   mov b cs:[gesichert_1],al
+                                ;   and al,0cf
+                                ;   call schreibe
+                                ;   mov cx,00063
+                                ;   call lies
+                                ;   mov b cs:[gesichert_2],al
+                                ;   and al,00f
+                                ;   call schreibe
+                                ; popa
+                                ; retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_disable_shadowing_sis5571:
+                                pstr 066,060, 0fa, 0b9,076,'?', 0bb,01f,000, 0e8,'??', 049, 032,0c0, 0e8,'??', 049, 0e8,'??', 066,061, 0cb
+                                ; pushad
+                                ;   cli
+                                ;   mov cx,00076
+                                ;   mov bx,0001f
+                                ;   call maske
+                                ;   dec cx
+                                ;   xor al,al
+                                ;   call schreiben
+                                ;   dec cx
+                                ;   call schreiben
+                                ; popad
+                                ; retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_disable_shadowing_sis501_503:
+                                pstr 066,060, 0fa, 0b9,053,'?', 0bb,097,020, 0e8,'??', 0fe,0c1, 032,0c0, 0e8,'??', 066,061, 0cb
+                                ; pushad
+                                ;   cli
+                                ;   mov cx,00053
+                                ;   mov bx,02097
+                                ;   call maske
+                                ;   inc cl
+                                ;   xor al,al
+                                ;   call schreiben
+                                ; popad
+                                ; retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_disable_shadowing_vlsi_lynx:
+                                pstr 0b9,049,000, 0e8,'??', 02e,0a2,'??', 032,0c0, 0e8,'??',0b9,048,000, 0e8,'??', 02e,0a2,'??', 032,0c0, 0e8,'??', 0cb
+                                ; mov cx,00049
+                                ; call lies
+                                ; mov b cs:[_49_],al
+                                ; xor al,al
+                                ; call schreibe
+                                ; mov cx,00048
+                                ; call lies
+                                ; mov b cs:[_48_],al
+                                ; xor al,al
+                                ; call schreibe
+                                ; retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_disable_shadowing_umc_881_886:
+                                pstr 066,060, 0b9,054,080, 0e8,'??', 02e,0a2,'??', 032,0c0, 0e8,'??', 0b9,055,080, 0e8,'??', 02e,0a2,'??', 0b0,040, 0e8,'??', 066,061 , 0cb
+                                ; pushad
+                                ;   mov cx,08054
+                                ;   call lies
+                                ;   mov b cs:[_8054_],al
+                                ;   xor al,al
+                                ;   call schreibe
+                                ;   mov cx,08055
+                                ;   call lies
+                                ;   mov b cs:[_8055_],al
+                                ;   mov al,040
+                                ;   call schreibe
+                                ; popad
+                                ; retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; w4cg102.zip
+;   Phoenix - AwardBIOS v6.00PG  2003.07.30
+;   3-Canterwood-6A79BABAC-00
+;   AX4C-G R1.02 Jul.30.2003 AOpen Inc.
+;
+suchfolge_disable_shadowing_canterwood:
+                                pstr 0b9h,090h,000h, 0e8h,'??', 024h,00fh, 0e8h,'??', 0b9h,095h,000h, 032h,0c0h, 0e8h,'??', 0b9h,096h,000h, 032h,0c0h, 0e8h,'??', 0cbh
+                                ; mov cx,00090h
+                                ; call lies
+                                ; and al,00fh
+                                ; call schreibe
+                                ; mov cx,00095h
+                                ; xor al,al
+                                ; call schreibe
+                                ; mov cx,00096h
+                                ; xor al,al
+                                ; call schreibe
+                                ; retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; 650efcA1.BIN
+;   Phoenix-Award BIOS v6.00PG  2003.04.22
+;   3-SiS-650-6A6IXJ1CC-00
+;   V.650EFC A01 04-22-2003
+;
+suchfolge_disable_shadowing_sis650:
+                                pstr 066h,060h, 0fah, 0b9h,073h,000h, 0bbh,0e0h,000h, 0e8h,'??', 0b9h,071h,000h, 0e8h,'??', 066h,061h, 0cbh
+                                ; pushad
+                                ;   cli
+                                ;   mov cx,00073h
+                                ;   mov bx,000e0h
+                                ;   call pci_maske
+                                ;   mov cx,00071h
+                                ;   call pci_maske
+                                ; popad
+                                ; retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

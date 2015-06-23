@@ -1,0 +1,5 @@
+@ECHO OFF
+CALL CA A
+XDEL A:\TYP\*.* /N
+CALL CA Q
+TC TYP.VK\*.* A:\TYP\

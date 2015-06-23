@@ -1,0 +1,12 @@
+int_25_handler:
+			pushf
+			  cmp b cs:[os2_oder_xmm],'O'
+			  jnz keine_aenderung_int_25
+			  cmp al,b cs:[laufwerk]
+                          jnz keine_aenderung_int_25
+
+  			  mov al,b cs:[svdisk_laufwerk]
+
+  keine_aenderung_int_25:
+			popf
+			jmp d cs:[orgint25]

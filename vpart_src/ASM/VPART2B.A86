@@ -1,0 +1,119 @@
+                                fuelle_bis (anzahl_sekt*512+00100-18),'∞'
+#if deutsch
+                                db '€ Ende von VPart €'
+#else
+                                db '€  End of VPart  €'
+#endif
+
+;*******************************************************************
+
+                                fuelle_bis 07c00,'≤'
+
+                                db (512+512) dup 'S'
+
+                                db 2000 dup '\'
+                                even 2
+stack_ende:
+
+rgb0:                           db 64*3 dup '0'
+rgb1:                           db 64*3 dup '1'
+
+rom_16x8p:                      db fontlaenge dup 'P'
+rom_16x8n:                      db fontlaenge dup 'N'
+rom_16x8l:                      db fontlaenge dup 'L'
+rom_16x8v:                      db fontlaenge dup 'V'
+farbtext:                       db textbildschirm dup 'F'
+cursor_position:                dw 'CC'
+cursor_groesse:                 dw 'GG'
+itab_kopie:                     db 256 dup 'ITAB'
+itab_signatur:                  db 'IT','VK'
+cmos_tabelle:                   db 080 dup 'C'
+cmos_kopie:                     db 080 dup 'K'
+
+; apmb.a86
+textfeld_batterie:              pstr 'unbekannt/01234567890123456789/54321/Sekunden'
+textfeld_batterie_ende:
+
+letzte_batterie_abfragezeit:    db 'ZEIT'
+
+; fat_cfg.a86
+konfigurationssektor:           db 512 dup (01a)
+
+fat_cfg_sektor:                 dd ?    ; logische Sektornummer
+sektoren_je_block:              dw ?
+fat_cfg_speicherwert_org:       db ?    ; keine énderung ?
+
+; vpart2a.a86 *******************************************************
+
+ico_start_y_grafik:             dw ? ; 50
+rahmen_oben_grafik:             dw ? ; 30
+rahmen_unten_grafik:            dw ? ; 450
+ico_start_y_text:               dw ?
+rahmen_oben_text:               dw ?
+rahmen_unten_text:              dw ?
+
+lese_versuch:                   db ?
+dos_test:                       db 'D'
+bios_setup_gefunden:            db 'U' ; A=AWARD (F000:E81f,..)
+                                ; I=AMI
+                                ; U=Unbekannt
+
+setup_text:                     dw ? ; ami_setup_text oder award_setup_text
+
+; Reihenfolge wie bei vpart2a.a86: anf_Int13_CX bis off_undokumentiert_LW
+boot_cx:                        dw ?
+boot_dx:                        dw ?
+boot_hidden_lo:                 dw ?
+boot_hidden_hi:                 dw ?
+boot_undok_lw:                  db ?
+boot_patch:                     db ?
+
+; Festplattenschlafzeit
+port:                           dw ?
+fplaufwerk:                     db ?
+auszeit:                        db ?
+
+os2_laeuft:                     db ?
+
+; schoner.a86 *******************************************************
+
+schon_zeit_lo                   dw ?
+schon_zeit_hi                   dw ?
+
+; vga.a86 ***********************************************************
+
+; grafik_block
+gb_x                            dw ?
+gb_y                            dw ?
+gb_off                          dw ?
+
+; ausschrift_grafik
+aus_farbe                       dw ? ; db enthÑlt Wert
+schrift                         dw ?
+
+; linie_teilprozedur
+lit_x                           dw ?
+lit_y                           dw ?
+lit_grafik                      dw ? ; OFF der linie_???pnlv
+
+; versteck.a86 ******************************************************
+
+pt_sektor:                      db 512 dup ?
+pt_sektor_zustand:              db ? ; 0=leer 1=gefÅllt 2=geÑndert 3=1+Fehler
+pt_sektor_daten_cx:             dw ?
+pt_sektor_daten_dx:             dw ?
+pt_sektor_daten_lba:            dd ?
+pt_sektor_ist_lvmsektor:        db ? ; 0=nein sonst=ja
+
+disk_address_packet_pt:
+                                db 010 ; LÑnge
+                                db 0
+disk_address_packet_anzahl:     dw 1
+disk_address_packet_ziel:       dd ?
+disk_address_packet_blocknummer:dd ?
+                                dd 0 ; 64 bit
+
+; crc32.a86 *********************************************************
+crc32_tabelle:                  dd 256 dup ?
+
+; *******************************************************************

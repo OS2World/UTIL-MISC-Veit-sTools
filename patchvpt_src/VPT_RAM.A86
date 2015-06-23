@@ -1,0 +1,176 @@
+; Erzeugen einer Kopie der "Video Parameter Table" im RAM
+; Veit Kannegieser
+;
+; 11.03.1998 deencom neu
+
+
+; Installation
+
+                        jmp einrichten
+
+include vpt_rami.a86
+include ..\lhtsr\lh.a86
+include ..\lhtsr\prg.a86
+
+programm_name:		db 'VPTKopie'
+programm_resident_ende: dw tsr_ende
+
+programm_int            equ 010
+programm_int_neu        equ int_10_neu
+programm_int_org        equ int_10_org
+
+#if englisch
+
+installation_text:	db 'load copy of "Video Parameter Table"',00d,00a
+			db '$'
+deinstallation_text:	db 'remove copy of "Video Parameter Table"',00d,00a
+			db '$'
+doppelt_text:		db 'multiple copy of "Video Parameter Table" !',00d,00a
+			db '$'
+nichtaktiv_text:	db 'copy of "Video Parameter Table" not found active in memory !',00d,00a
+			db '$'
+#else
+
+installation_text:	db 'lade Kopie der "Video Parameter Table"',00d,00a
+			db '$'
+deinstallation_text:	db 'entferne Kopie der "Video Parameter Table"',00d,00a
+			db '$'
+doppelt_text:		db 'mehrfache Installation der Kopie der "Video Parameter Table" !',00d,00a
+			db '$'
+nichtaktiv_text:	db 'Kopie der "Video Parameter Table" nicht aktiv im Speicher gefunden !',00d,00a
+			db '$'
+
+#endif
+
+einrichten:
+			call kopieren
+
+                        einfaches_tsr
+
+			mov ax,04c00
+			int 021
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+installations_prozedur:
+                        push ds
+                          push ax
+
+                            ;***** Verschoben nach es:
+                            mov es:[Video_Parameter_Table_pointer+0],vpt_neu
+                            mov es:[Video_Parameter_Table_pointer+2],es
+
+			    ;***** Einh„ngen
+                            mov ax,00040
+                            mov ds,ax
+
+                            cli
+                            mov [000a8+0],Video_Save_Override_Pointer_Table
+                            mov [000a8+2],es
+                            sti
+
+                          pop ax
+                        pop ds
+			ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+deinstallations_prozedur:
+                        push ds
+                          push ax
+                            push bx
+                              mov ax,00040
+                              mov ds,ax
+                              mov ax,es:[org_0040_00a8+0]
+                              mov bx,es:[org_0040_00a8+2]
+                              mov [000a8+0],ax
+                              mov [000a8+2],bx
+                            pop bx
+                          pop ax
+                        pop ds
+			ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+kopieren:
+                        push ds
+			  ;***** kopieren von 0040:00A8^
+                          mov ax,00040
+                          mov ds,ax
+
+			  cld
+			  mov cx,groesse_Video_Save_Override_Pointer_Table/2
+			  lds si,[000a8]
+			  push si
+                            mov cs:[org_0040_00a8+0],si
+                            mov cs:[org_0040_00a8+2],ds
+                            mov di,Video_Save_Override_Pointer_Table
+                            rep movsw
+                          pop si
+
+                          ;***** Bestimmung der Tabellengroesse
+
+                          lds si,[si]
+                          mov dx,si
+			  add si,255*64 ; 255*Laenge eines Eintrages
+
+pruefe_vpt_eintrag:
+                          ; 40,80,100,128,132 Spalten ?
+                          cmp b [si],40
+                          jz akzeptiert1
+                          cmp b [si],80
+                          jz akzeptiert1
+                          cmp b [si],100
+                          jz akzeptiert1
+                          cmp b [si],128
+                          jz akzeptiert1
+                          cmp b [si],132
+                          jz akzeptiert1
+
+nicht_akzeptiert:
+                          sub si,64 ; Laenge eines Eintrages
+                          jmp pruefe_vpt_eintrag
+
+akzeptiert1:
+                          ; 25,28,30,37,43,44,48,50,60,80 Zeilen
+                          cmp b [si+1],25-1
+                          jz akzeptiert2
+                          cmp b [si+1],28-1
+                          jz akzeptiert2
+                          cmp b [si+1],30-1
+                          jz akzeptiert2
+                          cmp b [si+1],37-1
+                          jz akzeptiert2
+                          cmp b [si+1],43-1
+                          jz akzeptiert2
+                          cmp b [si+1],44-1
+                          jz akzeptiert2
+                          cmp b [si+1],48-1
+                          jz akzeptiert2
+                          cmp b [si+1],50-1
+                          jz akzeptiert2
+                          cmp b [si+1],60-1
+                          jz akzeptiert2
+                          cmp b [si+1],80-1
+                          jz akzeptiert2
+
+                          jmp nicht_akzeptiert
+
+akzeptiert2:
+                          add si,64 ; Laenge eines Eintrages
+
+                          mov cx,si
+                          sub cx,dx ; cx:=Tabellengr”áe in Byte
+
+                          mov bx,vpt_neu
+                          add bx,cx
+
+                          mov cs:[programm_resident_ende],bx ; TSR-L„nge berechnet
+
+                          shr cx,1  ; cx:=Tabellengr”áe in Word
+                          mov si,dx
+                          mov di,vpt_neu
+                          cld
+                          rep movsw
+
+                        pop ds
+
+			ret

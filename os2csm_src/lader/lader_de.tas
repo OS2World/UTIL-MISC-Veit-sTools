@@ -1,0 +1,5 @@
+Title   produce os2csm.d or os2csm.d_m -- german
+
+language_de=1
+;debug=1
+include lader.inc

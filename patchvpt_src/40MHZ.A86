@@ -1,0 +1,38 @@
+                        jmp einrichten
+
+include 40mhz_i.a86
+include ..\lhtsr\lh.a86
+include ..\lhtsr\prg.a86
+
+programm_name:		db '40*MHZ**'
+programm_resident_ende: dw tsr_ende
+
+programm_int            equ 010
+programm_int_neu        equ int_10_neu
+programm_int_org        equ int_10_org
+
+installation_text:	db 'lade TSR 40MHZ',00d,00a
+			db '$'
+deinstallation_text:	db 'entferne TSR 40MHZ',00d,00a
+			db '$'
+doppelt_text:		db 'mehrfache Installation von 40MHZ !',00d,00a
+			db '$'
+nichtaktiv_text:	db '40MHZ nicht aktiv im Speicher gefunden !',00d,00a
+			db '$'
+
+
+einrichten:
+                        einfaches_tsr
+
+			mov ax,04c00
+			int 021
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+installations_prozedur:
+			ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+deinstallations_prozedur:
+			ret

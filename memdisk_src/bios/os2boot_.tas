@@ -1,0 +1,225 @@
+Title   OS2LDR attachment eCS cd menu
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; for 1.4M floppy CD boot emulation
+; memory reservattion for OS2CSM
+;
+; 2003.07.15 port from A86 code to Tasm to include memboot menu code
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        .386p
+                        locals @@
+
+IFNDEF dos
+IFNDEF bios
+                        .err dos tsr or bios target
+ENDIF
+ENDIF
+
+                        include vga_attr.inc
+IFDEF language_de
+                        include lang_de.inc
+ENDIF
+IFDEF language_en
+                        include lang_en.inc
+ENDIF
+IFDEF language_es
+                        include lang_es.inc
+ENDIF
+IFDEF language_fr
+                        include lang_fr.inc
+ENDIF
+IFDEF language_it
+                        include lang_it.inc
+ENDIF
+IFDEF language_jp
+                        include lang_jp.inc
+ENDIF
+IFDEF language_nl
+                        include lang_nl.inc
+ENDIF
+IFDEF language_ru
+                        include lang_ru.inc
+ENDIF
+
+                        include datum.inc
+
+
+code                    segment 'code' use16
+                        assume cs:code
+                        assume ds:code
+IFDEF dos
+                        org 00100h
+ELSE
+                        org 00100h
+ENDIF
+
+os2csm_size             equ 10                  ; reserve 10 KB for OS2CSM
+os2boot_ac_code         equ 1
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+anfang_org:             xchg al,al              ; Signature (AC)
+                        jmp short nach_kopf
+
+                        db 13,'OS2LDR.AC * ',datum,26,0
+
+  nach_kopf:            jmp einrichten
+
+debugoption             db 0+debugoption_STEP*0
+boot_drive              db ?
+source_is_noemulation_mode_cd   db false
+boot_sector_rel         dd 0
+el_torito_abschalten    db 1
+show_ecs_cd_menu        db 1+8 ; eCS+license
+disk_a                  dd ?
+
+
+                        include mac.inc
+                        include typedef.inc
+                        include bs.inc
+                        include packfile.inc
+                        include speicher.inc
+                        include ausschri.inc
+                        include srscreen.inc
+                        include fat_dir.inc
+                        include fatfile.inc
+                        include sektor.inc
+                        include point.inc
+                        include inti.inc
+                        include intu.inc
+                        include menu.inc
+                        include frame.inc
+IFNDEF language_en
+                        include ..\..\os2csm\lader\tastatur.inc
+ENDIF ; -language_en
+                        include readme.inc
+                        include font.inc
+                        include memtest.inc
+                        include cache.inc
+                        include cd_menu.inc
+                        include crc32.inc
+                        include cdemterm.inc
+                        include cdread.inc
+
+IFDEF language_de
+                        include menu_de.inc
+ENDIF
+IFDEF language_en
+                        include menu_en.inc
+ENDIF
+IFDEF language_es
+                        include menu_es.inc
+ENDIF
+IFDEF language_fr
+                        include menu_fr.inc
+ENDIF
+IFDEF language_it
+                        include menu_it.inc
+ENDIF
+IFDEF language_jp
+                        include menu_jp.inc
+ENDIF
+IFDEF language_nl
+                        include menu_nl.inc
+ENDIF
+IFDEF language_ru
+                        include menu_ru.inc
+ENDIF
+
+
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc                  einrichten
+
+                        STEP 'A000'
+
+                        push ds
+                        pushad
+
+                        push cs
+                        pop ds
+
+                        mov boot_drive,dl
+
+                     ;--; high intensity
+                     ;--mov ax,01003h
+                     ;--mov bl,0                ; blink off
+                     ;--call int_10h
+                        mov si,Offset control_ClrScr07
+                        call ausschrift
+
+                        STEP 'A001'
+
+                        call init_memorymanager
+
+                        STEP 'A002'
+
+IFNDEF language_en
+                        call tastatur_umbelegung_einhaengen
+ENDIF ; -language_en
+
+                        call flush_keyboard
+
+                        call do_ecs_cd_menu
+
+IFNDEF language_en
+                        call tastatur_umbelegung_entfernen
+ENDIF ; -language_en
+
+                        STEP 'A003'
+
+                        ; reserve memory from BIOS
+                        push es
+                        push bios0040
+                        pop es
+                        sub Word Ptr es:[number_of_KB],os2csm_size
+
+                        STEP 'A004'
+
+
+                        mov ax,es:[number_of_KB]
+                        shl ax,6
+                        mov es,ax
+                        sub di,di
+                        push di
+                          mov eax,0cccccccch
+                          mov cx,(os2csm_size*1024)/4
+                          rep stosd
+                        pop di
+
+                        STEP 'A005'
+
+                        mov es:[di].mcb_kennung,'Z'
+                        mov es:[di].mcb_eigentuemer_mcb,8 ; "System"
+                        mov es:[di].mcb_anzahl_para,(os2csm_size*1024/16)-1
+                        mov al,[os2csm_mode_]
+                        ; translate cd_menu.inc 0/1 to OS2CSM 1/2
+                        inc al
+                        mov es:[di].mcb_reserviert_05,al
+                        mov Word Ptr es:[di].mcb_reserviert_06,0
+                       ;mov es:[di].mcb_reserviert_06,0
+                       ;mov es:[di].mcb_reserviert_07,0
+                        ; 'OS2C' 'SM  '
+                        mov DWord Ptr es:[di+0].mcb_name,'C2SO'
+                        mov DWord Ptr es:[di+4].mcb_name,'  MS'
+
+                        pop es
+
+                        STEP 'A006'
+
+                        popad
+                        pop ds
+                        STEP 'A007'
+                        ret
+a_endp                  einrichten
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        include puffer.inc
+
+code                    EndS
+
+end                     anfang_org
+

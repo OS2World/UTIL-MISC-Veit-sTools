@@ -1,0 +1,122 @@
+; TYP_POEM.PAS INTERRUPT-Verteiler
+; 1999.12.19 Veit Kannegieser
+
+;****************************************************************************
+int_iret        equ 0909090cf
+                ; iret
+                ; even 4
+
+jmpi            macro
+                  jmp #1
+                  even 4
+                #em
+
+iret_flags      macro
+                  jmp iret_flags_
+                #em
+;****************************************************************************
+org 0
+
+                ; 00 .. 0f
+                dd (00f-000+1) dup int_iret
+
+                ; 10
+  l_int_10:
+                dd int_iret
+
+                ; 11
+                dd int_iret
+
+                ; 12
+                dd int_iret ;##jmpi int_12
+
+                ; 13
+                jmpi iret_flags_
+
+                ; 14
+                jmpi int_15
+
+                ; 15
+                jmpi iret_flags_
+
+                ; 16
+                jmpi iret_flags_
+
+                ; 17
+                jmpi iret_flags_
+
+                ; 18
+                dd int_iret
+
+                ; 19
+                jmpi int_19
+
+                ; 1a .. 1f
+                dd (01f-01a+1) dup int_iret
+
+                ; 20
+                jmpi int_20
+
+                ; 21
+                jmpi int_21
+
+                ; 22 .. 24
+                dd (024-022+1) dup int_iret
+
+                ; 25
+                retf
+                even 4
+
+                ; 26
+                retf
+                even 4
+
+                ; 27 .. 28
+                dd (028-027+1) dup int_iret
+
+                ; 29
+                jmpi int_29
+
+                ; 2a .. 3f
+                dd (03f-02a+1) dup int_iret
+
+                ; 40 -> 13
+                jmpi iret_flags_
+
+                ; 41
+                dd int_iret
+
+                ; 42: System BIOS INT 10
+                jmpi l_int_10
+
+
+                ; 43 .. ff
+                dd (0ff-043+1) dup int_iret
+
+;****************************************************************************
+; f000:0400
+                iret
+; f000:0401
+                retf
+;****************************************************************************
+
+iret_flags_:
+                push bp
+                  mov bp,sp
+                  push ax
+                    lahf
+                    mov [bp+2+2+2],ah      ; bp+ip+cs -> flags
+                  pop ax
+                pop bp
+                iret
+
+;****************************************************************************
+
+                ;include poem_12.a86
+                include poem_15.a86
+                include poem_19.a86
+                include poem_20.a86
+                include poem_21.a86
+                include poem_29.a86
+
+;****************************************************************************

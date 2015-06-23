@@ -1,0 +1,187 @@
+; Sauber nach sauber.pas aber ohne Fehler !
+;
+			call titel
+			mov sp,stack_ende
+			call kuerze_programm
+			call sichere_strategie
+			call sichere_link_umb
+			call setze_strategie
+			call setze_link_umb
+
+hauptschleife:
+			call bestimme_groessten_freien_block
+			jc ende
+			
+			call anfordern_und_loeschen
+			jmp hauptschleife
+
+ende:
+			call restauriere_link_umb
+			call restauriere_strategie
+			mov ax,04c00
+			int 021
+; *****************************************************************************
+titel:
+			mov ah,009
+			mov dx,titel_text
+			int 021
+			ret
+; *****************************************************************************
+kuerze_programm:
+			; nicht 500K sondern ...
+			mov ah,04a
+			mov bx,stack_ende
+			shr bx,4
+			inc bx
+			mov es,cs
+			int 021
+			
+			; keine Umgebung ...
+			mov ax,[0002c]
+			cmp ax,0
+			if z ret
+			
+			mov es,ax
+			mov ah,049
+			int 021
+			
+			ret
+; *****************************************************************************
+sichere_strategie:
+			mov ax,05800
+			int 021
+			mov org_strategie,al
+			ret
+; *****************************************************************************
+sichere_link_umb:
+			mov ax,05802
+			int 021
+			mov org_umb_link,al
+			ret
+; *****************************************************************************
+setze_strategie:
+			mov ax,05801
+			mov bh,0
+			mov bl,081 ; Best Fit , UMB+
+			int 021
+			ret
+; *****************************************************************************
+setze_link_umb:
+			mov ax,05803
+			mov bh,0
+			mov bl,1
+			int 021
+			ret
+; *****************************************************************************
+bestimme_groessten_freien_block:
+			mov ah,048
+			mov bx,0ffff
+			int 021
+			mov maxblock,bx
+			cmp bx,1
+			ret
+; *****************************************************************************
+anfordern_und_loeschen:
+			mov ah,048
+			mov bx,maxblock
+			int 021
+			jnc loeschen
+
+			mov ah,048
+			dec bx
+			int 021
+
+loeschen:
+	                mov es,ax
+			mov dx,ax
+  			mov cx,bx
+
+                        call zahl_anfang
+
+loeschen_schleife:
+			cli
+			mov es:[00000],0f6f6
+			mov es:[00002],0f6f6
+			mov es:[00004],0f6f6
+			mov es:[00006],0f6f6
+			mov es:[00008],0f6f6
+			mov es:[0000a],0f6f6
+			mov es:[0000c],0f6f6
+			mov es:[0000e],0f6f6
+			inc dx
+			mov es,dx
+			loop loeschen_schleife
+			
+                        call zahl_ende
+
+			ret
+; *****************************************************************************
+restauriere_link_umb:
+			mov ax,05803
+			mov bh,0
+			mov bl,org_umb_link
+			int 021
+			ret
+; *****************************************************************************
+restauriere_strategie:
+			mov ax,05801
+			mov bh,0
+			mov bl,org_strategie
+			int 021
+			ret
+; *****************************************************************************
+schreibe_zahl:
+			push ax
+			  call viertel
+			  rol dx,4
+			  call viertel
+			  rol dx,4
+			  call viertel
+			  rol dx,4
+			  call viertel
+			  rol dx,4
+			pop ax
+			ret
+;------------------------------------------------
+viertel:
+			push dx
+			  mov ah,002
+			  shr dx,4+4+4
+			  mov si,dx
+			  mov dl,cs:[ziffern16+si]
+			  int 021
+			pop dx
+			ret
+
+; *****************************************************************************
+zahl_anfang:
+			call schreibe_zahl
+			push ax,dx
+			  mov ah,009
+			  mov dx,zahl_anfang_text
+			  int 021
+			pop dx,ax
+			ret
+; *****************************************************************************
+zahl_ende:
+			dec dx
+			call schreibe_zahl
+			inc dx
+			push ax,dx
+			  mov ah,009
+			  mov dx,zahl_ende_text
+			  int 021
+			pop dx,ax
+			ret
+; *****************************************************************************
+
+maxblock		dw ?
+org_strategie		db ?
+org_umb_link		db ?
+
+titel_text:             db 'SAUBER.COM * Veit Kannegieser * 03.07.1996',00d,00a,'$'
+ziffern16:		db '0123456789abcdef'
+zahl_anfang_text:	db '0 ... $'
+zahl_ende_text:		db 'f',00d,00a,'$'
+			db 400 dup ?
+stack_ende:

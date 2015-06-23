@@ -1,0 +1,572 @@
+Title   MEMBOOT.BIN loader floppy disk boot sector
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;
+; older versions used the original OS/2 (4.5x) boot sector:
+; + extended Int13 functions
+; - does not load fragmented files correctly
+; - <32 KB filesize
+; - displays "OS/2 !! SYS01475" etc error messages
+;
+; feautures of DR DOS (7) sector:
+; + loads fragmented files correctly
+; - loads singe sectors (slower)
+; - no extended Int13 functions
+; ? has code for non-512 byte sectors
+;
+;
+; implemented in this file (2003.08.29-2003.09.15)
+;
+; * support for fragmented files
+; * extended int13 functions, replacing 'I13X' at 3000:0
+; * up to 64 KB filesize
+; * tries to load more than one sector at once
+; * assumes 512 byte sectors
+; * assume 386 or better
+; * possible errors messages:
+;    - read error
+;    - file not found
+; * passes registers compatible to os2boot->os2ldr
+;
+; when adding more code makes it to big, then
+; - remove I13X code
+; - make shorter error messages
+; - alter stack setup (push cs/pop ss/mov sp,bp)
+; - substitute 'mov cx,ax' -> 'xchg cx,ax'
+;
+;
+; current code can compiled to be boot sector for
+;  * memboot.bin  - main use
+;  * os2ldr       - avoids use of sysinstx to real floppy, used by demo.cmd
+;  * ibmbio.com   - can ship some sector for dosdemo.cmd (DR DOS 7)
+;  * drbio.sys    - can ship some sector for dosdemo.cmd (Enhanced DR-DOS 7.01)
+;
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+load_offset             equ 07c00h ; 0000:7c00..0000:7dff   this code
+
+ifndef load_drbio_sys
+code_execute_segment    equ 00000h ; 0000:7c00..0000:7dff   this code, except for DRBIO.SYS
+ENDIF
+
+IFDEF load_memboot
+root_dir_segment        equ 01000h ;                        root directory
+target_segment          equ 01000h ; 1000:0000..1000:ffff   loader code (result)
+ENDIF
+
+IFDEF load_os2ldr
+root_dir_segment        equ 01000h ;                        root directory (result)
+pass_root_directory     equ 1
+target_segment          equ 02000h ; 1000:0000..1000:ffff   loader code (result)
+ENDIF
+
+IFDEF load_ibmbio_com
+root_dir_segment        equ 01000h ;                        root directory
+target_segment          equ 00070h ; 0070:0000..0070:6fff   loader code (result)
+ENDIF
+
+IFDEF load_drbio_sys
+root_dir_segment        equ 01000h ;                        root directory
+pass_bootsector_ds_bp   equ 1 ; ds:si=@bios paramter block usually
+target_segment          equ 00070h ; 0070:0000..0070:6fff   loader code (result)
+ENDIF
+
+IFDEF load_drbio_sys
+; $20000-$200-$7c00=$18200
+code_execute_segment    equ 01820h ; 1820:7c00..1820:7dff   this code, only for DRBIO.SYS (moved from 0000:7c00)
+ENDIF
+
+i13x_segment            equ 03000h ; 3000:0000..3000:0018   IBM I13X parameters
+fat_segment             equ 04000h ; 4000:0000..5000:ffff   FAT
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+IFDEF lang_neutral
+msg_sector_read_error   equ <'Sys 2025!   ',13,10,7,0>
+msg_not_bootable        equ <'Sys 2026!   ',13,10,7,0>
+ENDIF
+
+IFDEF lang_german
+msg_sector_read_error   equ <'Lesefehler! ',13,10,7,0>
+msg_not_bootable        equ <'Kein System!',13,10,7,0>
+ENDIF
+
+IFDEF lang_english
+msg_sector_read_error   equ <'Read error! ',13,10,7,0>
+msg_not_bootable        equ <'No system!  ',13,10,7,0>
+ENDIF
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        .386p
+code                    Segment 'CODE' byte public Use16
+                        Assume cs:code
+                        Assume ds:code
+                        Assume ss:code
+
+                        include ..\bios\mac.inc
+                        include ..\bios\typedef.inc
+                        include ..\bios\bs.inc
+                        include ..\bios\datum.inc
+
+halt                    Macro MSG
+                        mov si,Offset &MSG
+                        jmp error_halt
+                        EndM
+
+IFDEF load_drbio_sys
+push_0                  Macro
+                        push 0
+                        EndM
+ELSE
+push_0                  Macro
+                        push cs ; cs=0
+                        EndM
+ENDIF
+
+
+                        org load_offset ; 07c00h
+stack_end:
+base7c00:
+jmp_bootsector_code:
+                        jmp short bootsector_code
+                        nop
+IFDEF load_memboot
+                        db 'MEM 4.50'
+ENDIF
+
+IFDEF load_os2ldr
+                        db 'IBM 4.50'
+ENDIF
+
+IFDEF load_ibmbio_com
+                        db 'DRDOS7.0'
+ENDIF
+
+IFDEF load_drbio_sys
+                        db 'DRDOS7.0'
+ENDIF
+
+                        ; here is the bios parameter block area
+                        ; it come from old bootsector.
+
+                        org load_offset+Offset Bootsector.signature_byte
+                        db 029h
+
+                        org load_offset+Offset Bootsector.volume_label
+                        db datum
+
+
+                        org load_offset+0003eh
+IFDEF load_memboot
+loader_filename         db 'MEMBOOT ','BIN'
+ENDIF
+IFDEF load_os2boot
+loader_filename         db 'OS2BOOT ','   '
+enable_i13x_signaure    equ 1
+ENDIF
+IFDEF load_os2ldr
+loader_filename         db 'OS2LDR  ','   '
+enable_i13x_signaure    equ 1
+ENDIF
+IFDEF load_ibmbio_com
+loader_filename         db 'IBMBIO  ','COM'
+ENDIF
+IFDEF load_drbio_sys
+loader_filename         db 'DRBIO   ','SYS'
+ENDIF
+
+;                       ; use space of oem name
+;cluster_start          equ <DWord Ptr [bp+0].Bootsector.oemname>
+
+                        ; use space of following code (executed only once at begin)
+cluster_start           equ DWord Ptr [bp+Offset bootsector_code-Offset base7c00]
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+bootsector_code:
+                        mov bp,Offset base7c00
+
+IFDEF load_ibmbio_com
+                        ; need to copy INT 1E data to 0:7C00
+                        ; since IBMBIO.COM does excpect that
+                        ; (bug, see intlist 1E).
+
+                        ; not needed for Enhanced DR DOS
+
+                        lds si,cs:[01eh*4]
+                        mov di,bp
+                        push cs
+                        pop es
+                        mov cx,00bh             ; have space for 3+8 bytes: jump+OEM name
+                        cld
+                        rep movsb
+
+ENDIF ; load_ibmbio_com
+
+
+                        ; set stack to just before our code
+IFDEF load_drbio_sys
+                        push code_execute_segment
+ELSE
+                        push cs
+ENDIF
+                        pop ss
+                        mov sp,bp               ; Offset stack_end
+
+
+                        ; cs=ds=0
+                        push cs
+                        pop ds
+
+IFDEF load_drbio_sys
+                        ; for enhanced DR DOS, we have to move the boot sector from
+                        ; 0:7c00 to 1820:7c00 to allow larger (34 KiB..) DRBIO.SYS files
+                        ; to be loaded, else the loaded files would overlap our code.
+                        mov si,bp
+                        mov di,bp
+                        push ss
+                        pop es
+                        mov cx,512/2
+                        cld
+                        rep movsw
+
+                        push ss
+                        push Offset continue_relocated_code
+                        retf
+  continue_relocated_code:
+ENDIF
+
+                        mov [bp].Bootsector.physical_drive_number,dl
+
+                        ; Load FAT(1)
+                        movzx eax,[bp].Bootsector.reserved_sectors ; address of FAT1
+                        mov bx,fat_segment
+                        mov di,[bp].Bootsector.sectors_per_FAT
+                        push_0
+                        push di                         ; sectors per fat
+                          call load_sectors
+
+                        ; calculate root directory and data area
+                        pop eax        ; [bp].Bootsector.sectors_per_FAT
+                        mul [bp].Bootsector.number_of_FATs ; -> (dx:)ax
+                        add ax,[bp].Bootsector.reserved_sectors
+
+                        mov di,[bp].Bootsector.root_directory_size
+                        push di                         ; root_directory_size
+                          shr di,4                      ; 16 directory entries per sector
+
+                          add ax,di
+                          mov cluster_start,eax
+                          sub ax,di
+
+                          ; Load root directory
+                          ; ax=Address of root directory
+                          mov bx,root_dir_segment
+                          mov es,bx                     ; load target
+                          ; di=directory size in sectors
+                          call load_sectors
+
+                        ; Search entry of file to load
+                        pop cx ; [bp].Bootsector.root_directory_size
+                        mov si,Offset loader_filename   ; DS:SI searchstring
+                        sub di,di                       ; ES:DI root dir
+                        cld
+
+  search_loader_filename:
+                        pusha
+                          mov cx,8+3
+                          rep cmpsb
+                        popa
+                        je found_loader_filename
+
+                        add di,020h                     ; next dir entry
+                        loop search_loader_filename     ; search all entries
+                        halt <message_not_bootable>
+
+
+  found_loader_filename:
+                        ; Get start cluster number
+                        mov ax,Word Ptr es:[di+01ah]
+                        mov bx,target_segment
+
+                        push bx                         ; SEG: \ entrypoint
+                        push_0                          ; :OFS / of os2ldr/memboot
+
+  load_next_cluster:
+                        ; Load file cluster..
+                        push_0                          ; save start cluster high part=0
+                        push ax                         ; save start cluster
+                          sub di,di                     ; nothing
+  next_cluster_follows:
+                          inc di                        ; +1 cluster
+
+
+                          ; get next cluster number
+                          ; ax->dx, dx=0:EOF
+
+                          push ds
+                            mov dx,fat_segment
+                            mov si,ax                   ; si=n
+                            add si,ax                   ; si=2n
+                            if_c <mov dh,010h+(fat_segment/256)> ; +64KB (only 16bit)
+                            mov ds,dx
+
+                            ; detect FAT size 12/16:
+                            ;   FAT12: <= ($ff0*1.5)/512 = 11.95 <=12
+                            ;   FAT16: >= ($ff1*2  )/512 = 15.94 > 12
+                            mov cx,0fff1h
+                            cmp [bp].Bootsector.sectors_per_FAT,12
+
+                            ; 16 bit
+                            mov dx,ds:[si]
+
+                            ja done_fat_bits_16
+
+                            ; 12 bit
+
+                            add si,ax                   ; si=3n
+                            shr si,1                    ; si=1.5n CF=(n and 1)
+                            mov dx,ds:[si]              ; ....cccc cccccccc/cccccccc cccc....
+                            if_nc <shl dx,4>            ; cccccccc cccc0000/cccccccc cccc....
+                            shr dx,4                    ; 0000cccc cccccccc
+
+                            mov ch,00fh                 ; 0ff1h
+  done_fat_bits_16:
+                            ;  decide if eof for both 12 and 16 bit FAT
+                            cmp dx,cx                   ; dx>=EOF/bad/...
+                            if_ae <sub dx,dx>           ; yes
+                          pop ds
+
+
+                          inc ax                        ; current+1=next
+                          cmp ax,dx                     ; fragmented?
+                          je next_cluster_follows       ; no.
+
+                        pop eax                         ; get current start cluster
+
+                        push dx                         ; save next cluster
+
+                          ; convert cluster number to sector number
+                          dec ax
+                          dec ax
+
+                          ; assume cluster size is 2^n*sector size
+                          bsf cx,Word Ptr [bp].Bootsector.sectors_per_cluster
+                          shl eax,cl
+                          shl di,cl
+
+                          add eax,cluster_start         ; logical sector number from boot sector
+                          call load_sectors
+
+                        pop ax                          ; get next cluster number
+                        test ax,ax                      ; 0=EOF
+                        jne load_next_cluster
+
+                        ; clear boot mode flags (dh)
+                        cwd ; ax=0 -> dx=0
+
+                        ; pass boot drive number (dl)
+                        mov dl,[bp].Bootsector.physical_drive_number
+
+IFNDEF pass_bootsector_ds_bp
+                        ; pass @BPB (ds:si)
+                        lea si,[bp].Bootsector.bytes_per_sector
+ENDIF
+
+IFDEF pass_root_directory
+                        ; pass root directory (es:di)
+                        sub di,di
+ENDIF
+
+                        ; sector number of begin of data area
+                        mov bx,Word Ptr cluster_start
+
+IFDEF pass_bootsector_ds_bp
+                        ; DRBIO.SYS reads DWord ds:bp+1e to get the number of hidden
+                        ; sectors (offset of partition)
+                        push ss
+                        pop ds
+ENDIF
+
+                        ; execute OS loader/memboot
+                                                        ; target segment:
+                                                        ; :0000
+                        retf                            ; jump to loaded code
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+  loop_display_string:
+                        mov ah,0eh                      ; write char
+                        sub bx,bx
+                        int 010h
+error_halt:             ; cs:si=message
+                        cld
+                        lods Byte Ptr cs:[si]
+                        test al,al                      ; until end of string
+                        jnz loop_display_string
+  endless:
+                        sub ax,ax                       ; readkey
+                        int 016h
+                       ;jmp endless
+
+                        int 019h                        ; reboot
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc                  int_13
+                        mov dl,[bp].Bootsector.physical_drive_number
+                        int 013h
+                        ret
+a_endp                  int_13
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        ; eax=logical sector number
+                        ; bx=segment
+                        ; di=number of sectors
+                        ; ->bx:=bx+512/16*cx
+                        ; ->eax,ecx,si,di modified
+
+a_proc                  load_sectors
+                        push es
+
+                          ; Convert logical -> physical sector number
+                          add eax,[bp].Bootsector.hidden_sectors
+
+  load_sectors_loop:
+                          push di
+
+                          ; not more than 32 sectors (16KiB)
+                          ; this ensures, that we never cross a dma boundary when loading the FAT
+                          mov cx,020h
+
+                          cmp di,cx
+                          if_a <mov di,cx>
+
+                          push ds
+                          pushad
+
+                            push i13x_segment
+                            pop ds
+                            mov si,8
+
+                            mov Word Ptr [si].disk_address_packet.disk_address_packet_size,Size disk_address_packet
+                            mov DWord Ptr [si+0].disk_address_packet.starting_block_number,eax
+                            sub eax,eax
+                            mov DWord Ptr [si+4].disk_address_packet.starting_block_number,eax
+                            mov [si].disk_address_packet.number_of_blocks_to_transfer,di
+                            mov [si].disk_address_packet.transfer_buffer._OFF,ax
+                            mov [si].disk_address_packet.transfer_buffer._SEG,bx
+
+
+                            mov ah,041h
+                            mov bx,055aah
+                            call int_13
+                            ; IBM LVM does more checks: version>=2.1, and 42h supported (cx bit0)
+
+                            cmp bx,0aa55h
+                            stc
+                            jne no_i13x_bios
+
+                            mov ah,042h
+                            call int_13
+IFDEF enable_i13x_signaure
+                            jc no_i13x_bios
+
+                            mov eax,'X31I'
+  no_i13x_bios:
+                            mov [si-8],eax
+                            mov eax,[bp].Bootsector.hidden_sectors
+                            mov [si-8+4],eax
+ELSE
+  no_i13x_bios:
+ENDIF ; enable_i13x_signaure
+
+                          popad
+                          pop ds
+                          mov cx,di             ; sector count
+                          jnc sectors_read      ; 'extended read' successful
+
+
+                          ; old read method -------------------------
+
+                          ; save values (eax=sector,bx=segment,di=count)
+                          push eax
+
+                            ; Convert physical -> C/H/S
+                            push eax
+                            pop ax
+                            pop dx
+                            div [bp].Bootsector.sectors_per_track
+                            mov cx,dx
+                            mov si,cx
+                            inc cx              ; first sector cl: 1..63
+                          ;;idiv?? cwd
+                            sub dx,dx
+                            div [bp].Bootsector.number_of_heads
+                            mov dh,dl           ; head dh
+                            shl ah,6            ; 2 high bits of cylinder (9/8)
+                            xchg al,ah
+                            or cx,ax            ; cylinder: ch, upper part of cl
+
+
+                            mov es,bx
+
+                            ; calculate number of sectors:
+                            ; maximum of (remaining in this track,demand)
+                            mov ax,[bp].Bootsector.sectors_per_track
+                            ; si=first sector-1 (0..62)
+                            sub ax,si ; ax=remaining in this track
+                            cmp ax,di
+                            if_a <mov ax,di>
+
+                            mov si,5            ; 5 reties
+  load_sector_retry_loop:
+                            pusha
+                              mov ah,002h       ; load function
+                              sub bx,bx         ; -> es:0
+                              call int_13
+                              jnc load_block_successful
+
+                              mov ah,000h       ; reset function
+                              call int_13
+                            popa
+
+                            dec si              ; one try less
+                            jnz load_sector_retry_loop
+
+                            halt <message_sector_read_error>
+
+  load_block_successful:
+                            popa
+                            mov cx,ax           ; now read = successful
+                          pop eax ; eax=sector bx=segment di=count, cx=now read
+
+  sectors_read:
+                          pop di
+  process_now_read_loop:
+                          inc eax               ; sector number
+                          add bx,(512/16)       ; @buffer
+                          dec di                ; remaining to read
+                          jz load_sectors_done
+                          loop process_now_read_loop ; remaining already read
+                          jmp load_sectors_loop
+  load_sectors_done:
+                        pop es
+                        ret
+a_endp                  load_sectors
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+message_sector_read_error db msg_sector_read_error
+message_not_bootable    db msg_not_bootable
+
+                        org load_offset+01feh ; 07dfeh
+                        db 055h,0aah
+
+code                    EndS
+
+end                     jmp_bootsector_code
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

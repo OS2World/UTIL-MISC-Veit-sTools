@@ -1,0 +1,910 @@
+;**************************************************************************
+; AL->AL
+farbumrechnung:         push bx
+                          mov bx,farbtabelle
+                          xlat
+                        pop bx
+                        ret
+;**************************************************************************
+farb_wert               equ parameter1 ; b
+
+farbe macro
+                        push #1
+                        call farbe_prozedur
+#em
+
+farbe_prozedur:
+                        prozedur_anfang
+                          push ax
+                            push dx
+
+                              mov al,farb_wert
+                              call farbumrechnung
+
+                              mov ah,al
+                              mov al,002
+                              mov dx,003c4
+                              out dx,ax
+
+                            pop dx
+                          pop ax
+                        prozedur_ende 1
+
+;**************************************************************************
+
+x1                      equ parameter1 ; w
+y1                      equ parameter2 ; w
+x2                      equ parameter3 ; w
+y2                      equ parameter4 ; w
+farbefuellwert          equ parameter5 ; b
+
+balken_grafik macro
+                        push #5
+                        push #4
+                        push #3
+                        push #2
+                        push #1
+                        call balkenprozedur_grafik
+#em
+
+balken_text macro
+                        push #5
+                        push #4
+                        push #3
+                        push #2
+                        push #1
+                        call balkenprozedur_text
+#em
+
+; lokale Variablen
+
+zeile                   dw ?
+fuellbits               db ?
+
+; ################################### Grafikmodus
+
+balkenprozedur_grafik:
+                        prozedur_anfang
+                          push es
+                            pusha
+
+                              mov fuellbits,0ff
+                              mov al,farbefuellwert
+                              call farbumrechnung
+                              farbe ax ; al
+                              or al,al ; keine Farbebene ?
+                              if nz call balkenprozedur_grafik_teilprozedur
+
+                              mov fuellbits,000
+                              mov al,farbefuellwert
+                              call farbumrechnung
+                              xor al,00f ; Negieren
+                              farbe ax ; al
+                              or al,al ; keine Farbebene ?
+                              if nz call balkenprozedur_grafik_teilprozedur
+
+                            popa
+                          pop es
+                        prozedur_ende 5
+
+
+balkenprozedur_grafik_teilprozedur:
+
+
+                        cld
+                        mov ax,segment_0a000
+                        mov es,ax
+                        mov zeile,y1
+
+balken_schleife:
+
+                        mov ax,zeile
+
+                        ; 80=640/8 Punkte / Zeile
+                        shl ax,4                ; *16
+                        mov di,ax               ; *16
+                        shl ax,2                ; *64
+                        add di,ax               ; *80
+
+                        mov ax,x1
+                        shr ax,3                ; /8
+                        add di,ax
+
+                        mov cx,x2
+                        sub cx,x1
+                        shr cx,3                ; /8
+
+                        mov al,fuellbits
+                        mov ah,al
+
+                        cld
+                        shr cx,1
+                        rep stosw
+                        if c stosb
+
+                        mov ax,zeile
+                        cmp ax,y2
+                        jnl balken_ende
+
+                        inc zeile
+                        jmp short balken_schleife
+
+balken_ende:
+                        ret
+
+; ################################### Textmodus
+
+balkenprozedur_text:
+                        prozedur_anfang
+                          pusha
+                            push es
+
+                              cld
+                              mov ax,segment_0b800
+                              mov es,ax
+                              mov ax,y1
+                              mov bl,80        ; 80 Zeichen je Zeile
+                              mul bl
+                              add ax,x1
+                              shl ax,1         ; 2 Byte je Zeichen
+                              mov di,ax
+                              mov al,farbefuellwert
+                              call farbumrechnung
+                              mov ah,al
+                              shl ah,4         ; "Hintergrund"
+                              null al
+
+                              mov cx,x2        ; Anzahl Zeichen ...
+                              sub cx,x1
+                              inc cx
+                              mov dx,cx
+
+                              mov cx,y2        ; Anzahl Zeilen
+                              sub cx,y1
+                              inc cx
+
+balken_schreib_schleife_text:
+
+                              push cx
+
+                                mov cx,dx
+                                push di
+                                  rep stosw
+                                pop di
+                                add di,2*80
+
+                              pop cx
+                              loop balken_schreib_schleife_text
+
+                            pop es
+                          popa
+                        prozedur_ende 5
+
+; ################################### weiter
+
+;**************************************************************************
+
+grafik_block macro
+                        mov gb_x,#1
+                        mov gb_y,#2
+                        mov gb_off,#3
+                        call grafik_block_prozedur
+#em
+
+grafik_block_prozedur:
+
+                        push ds
+                          push es
+                            pusha
+
+                              cld
+                              mov ax,segment_0a000
+                              mov es,ax
+
+                              mov ax,w [gb_y]
+                              mov bx,00050              ; 80 = 640/8
+                              mul bx
+                              mov bx,w [gb_x]
+                              shr bx,3                  ; /8
+                              add ax,bx
+                              mov di,ax
+                              mov si,w [gb_off]
+                              movsb                     ; Zeile 0
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 1
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 2
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 3
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 4
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 5
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 6
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 7
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 8
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 9
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 10
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 11
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 12
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 13
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 14
+                              add di,0004f              ; 1+79
+                              movsb                     ; Zeile 15
+
+                            popa
+                          pop es
+                        pop ds
+                        ret
+
+;**************************************************************************
+
+aus_x                   equ parameter1 ; w
+aus_y                   equ parameter2 ; w
+aus_off                 equ parameter3 ; w                       ; DS:DX=TEXT+#0
+aus_vfarbe              equ parameter4 ; b                       ; Vordergrundfarbe
+aus_hfarbe              equ parameter5 ; b                       ; Hintergrundfarbe
+
+ausschrift_grafik macro
+                        push #5
+                        push #4
+                        push #3
+                        push #2
+                        push #1
+                        call ausschrift_vor_prozedur_grafik
+#em
+
+ausschrift_text macro
+                        push #5
+                        push #4
+                        push #3
+                        push #2
+                        push #1
+                        call ausschrift_prozedur_text
+#em
+
+;######## Grafikmodus
+
+ausschrift_vor_prozedur_grafik:
+                        prozedur_anfang
+                          pusha
+
+                            mov al,aus_vfarbe
+                            call farbumrechnung
+                            mov aus_vfarbe,al
+
+                            mov al,aus_hfarbe
+                            call farbumrechnung
+                            mov aus_hfarbe,al
+
+                            ; VF AND ( NOT HF )
+                            mov ah,aus_vfarbe
+                            mov al,aus_hfarbe
+                            xor al,00f
+                            and al,ah
+                            mov w [aus_farbe],ax ; al
+                            mov w [schrift],rom_16x8p
+                            call ausschrift_prozedur
+
+                            ; HF AND ( NOT VF )
+                            mov ah,aus_vfarbe
+                            mov al,aus_hfarbe
+                            xor ah,00f
+                            and al,ah
+                            mov w [aus_farbe],ax ; al
+                            mov w [schrift],rom_16x8n
+                            call ausschrift_prozedur
+
+                            ; VF AND HF
+                            mov ah,aus_vfarbe
+                            mov al,aus_hfarbe
+                            and al,ah
+                            mov w [aus_farbe],ax ; al
+                            mov w [schrift],rom_16x8v
+                            call ausschrift_prozedur
+
+                            ; ( NOT VF ) AND ( NOT HF )
+                            mov ah,aus_vfarbe
+                            mov al,aus_hfarbe
+                            xor ax,00f0f
+                            and al,ah
+                            mov w [aus_farbe],ax ; al
+                            mov w [schrift],rom_16x8l
+                            call ausschrift_prozedur
+                          popa
+                        prozedur_ende 5
+
+; ################################
+
+ausschrift_prozedur:
+                        push ds
+                          push es
+                            pusha
+
+                              farbe aus_farbe
+
+                              mov si,aus_off
+                              mov bx,aus_x
+                              mov dx,aus_y
+
+                              cld
+                              null ax
+                              lodsb
+                              mov cx,ax
+                              jcxz ausschrift_ende
+
+ausschrift_schleife:
+
+                              mov w [gb_x],bx
+                              mov w [gb_y],dx
+                              add bx,8 ; naechstes Mal
+
+                              lodsb
+                              null ah
+
+                              #if zeichenlaenge = 16
+                              shl ax,4
+                              #else
+                              push dx
+                                mov dx,zeichenlaenge
+                                mul dx
+                              pop dx
+                              #endif
+                              add ax,schrift
+                              mov w [gb_off],ax
+                              call grafik_block_prozedur
+                              loop ausschrift_schleife
+
+ausschrift_ende:
+
+                            popa
+                          pop es
+                        pop ds
+                        ret
+
+;######### Textmodus
+
+ausschrift_prozedur_text:
+                        prozedur_anfang
+                          pusha
+                            push es
+
+                              mov si,aus_off
+
+                              mov ax,aus_y
+                              mov bl,80
+                              mul bl
+                              add ax,aus_x
+                              shl ax,1
+                              mov di,ax
+
+                              mov ax,segment_0b800
+                              mov es,ax
+
+                              mov al,aus_hfarbe
+                              call farbumrechnung
+                              shl al,4
+                              mov ah,al
+                              mov al,aus_vfarbe
+                              call farbumrechnung
+                              or ah,al
+
+                              cld
+                              lodsb
+                              mov cl,al
+                              null ch
+                              jcxz ausschrift_prozedur_text_ende
+
+ausschrift_prozedur_text_schleife:
+                              lodsb
+                              stosw
+                              loop short ausschrift_prozedur_text_schleife
+
+ausschrift_prozedur_text_ende:
+
+                            pop es
+                          popa
+                        prozedur_ende 5
+
+;######### Weiter
+
+;**************************************************************************
+
+ico_x                   equ parameter1 ; dw
+ico_y                   equ parameter2 ; dw
+ico_off                 equ parameter3 ; dw
+
+ico_anzeigen macro
+                        push #3
+                        push #2
+                        push #1
+                        call ico_anzeigen_prozedur
+#em
+
+ico_einzelblock:
+                        push ds
+                          push es
+                            pusha
+
+                              farbe konstant1
+                              call grafik_block_prozedur
+                              add w [gb_off],16
+
+                              farbe konstant2
+
+                              call grafik_block_prozedur
+                              add w [gb_off],16
+
+                              farbe konstant4
+
+                              call grafik_block_prozedur
+                              add w [gb_off],16
+
+                              farbe konstant8
+
+                              call grafik_block_prozedur
+                              add w [gb_off],16
+
+                            popa
+                          pop es
+                        pop ds
+                        ret
+
+;#################################
+
+ico_anzeigen_prozedur:
+                        prozedur_anfang
+                          push ds
+                            push es
+                              pusha
+                                mov w [gb_off],ico_off
+                                mov w [gb_x],ico_x
+                                mov w [gb_y],ico_y
+                                call ico_einzelblock
+                                add w [gb_x],8
+                                call ico_einzelblock
+                                add w [gb_x],8
+                                call ico_einzelblock
+                                add w [gb_x],8
+                                call ico_einzelblock
+                                mov w [gb_x],ico_x
+                                add w [gb_y],16
+                                call ico_einzelblock
+                                add w [gb_x],8
+                                call ico_einzelblock
+                                add w [gb_x],8
+                                call ico_einzelblock
+                                add w [gb_x],8
+                                call ico_einzelblock
+
+                              popa
+                            pop es
+                          pop ds
+                        prozedur_ende 3
+
+;**************************************************************************
+blendwert               equ parameter1 ; db
+blend100                equ parameter2 ; db
+
+blenden macro
+                        push #2
+                        push #1
+                        call blenden_prozedur
+#em
+
+blenden_prozedur:
+                        prozedur_anfang
+                          pusha
+                            mov si,rgb0
+                            mov di,rgb1
+                            mov cx,64*3
+blenden_multi:
+                            lodsb
+                            mov bl,al
+                            mov ax,blendwert
+                            mul bl
+
+                            mov bx,blend100
+                            null dx
+                            div bx
+                            stosb
+                            loop blenden_multi
+
+                            mov ax,01012
+                            mov bx,0
+                            mov cx,64
+                            mov dx,rgb1
+                            int 010
+                          popa
+                        prozedur_ende 2
+
+;**************************************************************************
+blendpause:
+                        pusha
+                          mov ah,086
+                          null cx
+                          mov dx,3000
+                          cmp b [blendgeschwindigkeit],'3'
+                          if e mov dx,15000
+                          int 015
+                        popa
+                        ret
+;**************************************************************************
+
+rechteck_grafik macro
+                        push #6
+                        push #5
+                        push #4
+                        push #3
+                        push #2
+                        push #1
+                        call rechteck_prozedur_grafik
+#em
+
+rechteck_text macro
+                        push #6
+                        push #5
+                        push #4
+                        push #3
+                        push #2
+                        push #1
+                        call rechteck_prozedur_text
+#em
+
+re_x1                   equ parameter1
+re_y1                   equ parameter2
+re_x2                   equ parameter3
+re_y2                   equ parameter4
+re_vf                   equ parameter5
+re_hf                   equ parameter6
+
+; ########## Grafikmodus
+
+linie_teilprozedur:
+                        pusha
+
+                          ; VF AND ( NOT HF )
+                          mov ah,re_vf
+                          mov al,re_hf
+                          xor al,00f
+                          and al,ah
+                          farbe ax ; al
+                          mov si,w [lit_grafik]
+                          mov ax,w [lit_x]
+                          mov bx,w [lit_y]
+                          grafik_block ax,bx,si
+
+                          ; HF AND ( NOT VF )
+                          mov ah,re_vf
+                          mov al,re_hf
+                          xor ah,00f
+                          and al,ah
+                          farbe ax ; al
+                          mov si,w [lit_grafik]
+                          add si,16
+                          mov ax,w [lit_x]
+                          mov bx,w [lit_y]
+                          grafik_block ax,bx,si
+
+                          ; VF AND HF
+                          mov ah,re_vf
+                          mov al,re_hf
+                          and al,ah
+                          farbe ax ; al
+                          mov si,w [lit_grafik]
+                          add si,16+16
+                          mov ax,w [lit_x]
+                          mov bx,w [lit_y]
+                          grafik_block ax,bx,si
+
+                          ; ( NOT VF ) AND ( NOT HF )
+                          mov ah,re_vf
+                          mov al,re_hf
+                          xor ax,00f0f
+                          and al,ah
+                          farbe ax ; al
+                          mov si,w [lit_grafik]
+                          add si,16+16+16
+                          mov ax,w [lit_x]
+                          mov bx,w [lit_y]
+                          grafik_block ax,bx,si
+                        popa
+                        ret
+
+;#################################
+
+rechteck_prozedur_grafik:
+                        prozedur_anfang
+                          push ax
+                            mov al,re_vf
+                            call farbumrechnung
+                            mov re_vf,al
+
+                            mov al,re_hf
+                            call farbumrechnung
+                            mov re_hf,al
+
+
+                            mov w [lit_x],w [re_x1]
+                            mov w [lit_y],w [re_y1]
+                            mov w [lit_grafik],linie_links
+
+rechteck_links_schleife:
+
+                            call linie_teilprozedur
+                            add w [lit_y],16
+                            mov ax,w [lit_y]
+                            cmp ax,w [re_y2]
+                            jnge rechteck_links_schleife
+
+                            mov w [lit_x],w [re_x2]
+                            sub w [lit_x],8
+                            mov w [lit_y],w [re_y1]
+                            mov w [lit_grafik],linie_rechts
+rechteck_rechts_schleife:
+                            call linie_teilprozedur
+                            add w [lit_y],16
+                            mov ax,w [lit_y]
+                            cmp ax,w [re_y2]
+                            jnge rechteck_rechts_schleife
+
+                            balken_grafik w [re_x1],w [re_y1],w [re_x2],w [re_y1],w [re_vf]
+
+                            mov ax,w [re_y2]
+                            balken_grafik w [re_x1],ax,w [re_x2],ax,w [re_vf]
+
+                          pop ax
+                        prozedur_ende 6
+
+; ####### Textmodus
+
+rechteck_prozedur_text:
+                        prozedur_anfang
+                          pusha
+                            push es
+
+                              mov ax,segment_0b800
+                              mov es,ax
+                              cld
+
+                              mov cx,w [re_x2]
+                              sub cx,w [re_x1]
+
+                              mov ax,w [re_y1]
+                              mov bl,80               ; 80 Zeichen/Zeile
+                              mul bl
+                              add ax,w [re_x1]
+                              shl ax,1                ; 2 Byte/Zeichen
+                              mov di,ax
+                              mov si,di               ; merken fÅr linke Kante
+
+                              mov al,b [re_hf]        ; Farbberechnung
+                              call farbumrechnung
+                              shl al,4
+                              mov ah,al
+                              mov al,b [re_vf]
+                              call farbumrechnung
+                              or ah,al
+                              mov al,'ﬂ'
+
+                              mov dx,cx
+                              ; obere Kante
+                              rep stosw
+                              mov cx,dx
+
+                              push ax
+                                mov ax,w [re_y2]
+                                mov bl,80               ; 80 Z/Zeile
+                                mul bl
+                                add ax,w [re_x1]
+                                shl ax,1                ; 2 Byte/Zeichen
+                                mov di,ax
+                              pop ax
+                              mov al,'‹'
+
+                              mov bx,cx
+                              ; untere Kante
+                              rep stosw
+
+
+                              mov di,si
+                              mov al,'€'
+                              mov cx,w [re_y2]
+                              sub cx,w [re_y1]
+                              inc cx
+                              mov dx,cx
+
+rechteck_prozedur_text_linker_rand_schleife:
+                              mov es:[di],ax
+                              add di,80*2
+                              loop rechteck_prozedur_text_linker_rand_schleife
+
+
+                              mov di,si
+                              add di,bx         ; 2 Byte/Zeichen
+                              add di,bx
+                              mov cx,dx
+
+rechteck_prozedur_text_rechter_rand_schleife:
+                              mov es:[di],ax
+                              add di,80*2
+                              loop rechteck_prozedur_text_rechter_rand_schleife
+
+                            pop es
+                          popa
+                        prozedur_ende 6
+
+; ###### weiter
+
+;**************************************************************************
+
+duster macro
+                        blenden 0,rgb_stufen
+#em
+
+;**************************************************************************
+aufblenden macro
+                        call aufblenden_prozedur
+#em
+
+aufblenden_prozedur:
+                        push cx,bx
+                          null cx
+                          mov bx,1                              ; 3
+                          cmp b [blendgeschwindigkeit],'2'
+                          if e mov bx,2                         ; 2
+                          cmp b [blendgeschwindigkeit],'1'
+                          if e mov bx,(rgb_stufen/2)            ; 1
+
+  aufblenden_schleife:
+                          add cx,bx
+                          blenden cx,rgb_stufen
+                          call blendpause
+                          cmp cx,rgb_stufen
+                          jne aufblenden_schleife
+
+                        pop bx,cx
+                        ret
+;**************************************************************************
+
+ausblenden macro
+                        call ausblenden_prozedur
+#em
+
+ausblenden_prozedur:
+                        push cx,bx
+                          mov cx,rgb_stufen
+                          mov bx,1                              ; 3
+                          cmp b [blendgeschwindigkeit],'2'
+                          if e mov bx,2                         ; 2
+                          cmp b [blendgeschwindigkeit],'1'
+                          if e mov bx,(rgb_stufen/2)            ; 1
+
+  ausblenden_schleife:
+                          sub cx,bx
+                          blenden cx,rgb_stufen
+                          call blendpause
+                          cmp cx,0
+                          jne ausblenden_schleife
+
+                        pop bx,cx
+                        ret
+;**************************************************************************
+bildschirm_loeschen macro
+                        call bildschirm_loeschen_prozedur
+#em
+
+bildschirm_loeschen_prozedur:
+                        cmp b [text_oder_grafikmodus],'T'
+                        je bildschirm_loeschen_prozedur_text
+
+                        balken_grafik 0,0,639,479,konstant0
+                        ret
+
+bildschirm_loeschen_prozedur_text:
+                        balken_text 0,0,79,24,000
+                        ret
+;**************************************************************************
+; AL=003                80*25 Text
+; AL=012                640*480 Grafik (16)
+modus_setzen:
+                        pusha
+                          cmp al,003
+                          jne modus_setzen_bios
+
+                          ; schon 80*25 Textmodus ?
+                          push ds
+                            push 00040
+                            pop ds
+                            cmp byte [00049],al
+                          pop ds
+                          jne modus_setzen_bios
+
+                          ; sparsamer..
+                          ; "CLS"
+                          bildschirm_loeschen
+
+                          ; "GOTO 1,1"
+                          mov ah,002
+                          mov bh,0
+                          sub dx,dx
+                          int 010
+                          jmp short modus_setzen_weiter
+
+modus_setzen_bios:
+                          mov ah,000
+                          int 010
+
+
+modus_setzen_weiter:
+                          mov ah,001      ; Set Cursor Type
+                          mov cx,02000    ; unsichtbar
+                          int 010
+
+                          ; Blinken -> helle Hintergrundfarben
+                          mov ax,01003
+                          null bl
+                          int 010
+
+                        popa
+                        ret
+
+;**************************************************************************
+bildschirm_restaurieren:
+                        ausblenden
+
+                        mov al,003
+                        call modus_setzen
+
+                        duster
+
+                        push es
+                          ; Text+Farben  zurÅck
+                          mov ax,segment_0b800
+                          mov es,ax
+                          null di
+                          mov ds,cs
+                          mov si,farbtext
+                          mov cx,textbildschirm
+                          call kopi_prozedur
+                        pop es
+
+                        ; Cursor zurÅck
+                        mov ah,002
+                        null bh
+                        mov dx,w [cursor_position]
+                        int 010
+
+                        ; auch Grî·e
+                        mov ah,001
+                        mov cx,w [cursor_groesse]
+                        int 010
+
+                        aufblenden
+                        ret
+;**************************************************************************
+ausschrift_farblos:
+                        pusha
+                          cld
+                          null ax,ax
+                          lodsb
+                          mov cx,ax
+                          mov ah,00e
+                          mov bx,0007
+ausschrift_farblos_schleife:
+                          lodsb
+                          int 010
+                          loop ausschrift_farblos_schleife
+
+                        popa
+                        ret
+;*****************************************************************************

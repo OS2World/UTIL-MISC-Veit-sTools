@@ -1,0 +1,39 @@
+Name     DOS OS/2 Quelltext Beschreibung
+
+AC       +   -    +         AnhÑngen von Vorprogrammen an EXE/COM/BIN
+APM_UHR  +   *    +         Zeitkorrektur fÅr Stromsparrechner
+AUTODET  +   -    +         Erkennung, welches Programm in OS/2 DOS-Sitzung gestartet wird
+BILDSCHI *   -    +         Bootsektor mit Registeranzeige und Speicherbetrachter
+BLINKX   +   -    +         Blinken->helle Hintergrundfarben
+D1D2CRK  +   +    +         Erzeugt .CRK und .PAT-Dateien
+DAT_LOG  +   -    +         Dateimonitor
+DENYNONE +   -    +         mehrfachen Zugriff auf eine Datei (NC)
+DOG212A  +   *    +         DOG 2.12 modifiziert und Entpacker
+E0X      +   *    -         Diskettenemulator
+ENTPACK  +   -    -         EXE/COM Entpacker
+F4_35_CA +   *    +         CPU-Freigabe unter OS/2
+FONT20   ?   ?    ?         Schrift 16->20 Punkte im Textmodus
+HOLEN    +   -    +         Abbild des System-BIOS erzeugen
+IHPFSIOM +   -    +         Zugriff auf HPFS IOMEGA-ZIP-100 mit IHPFS
+IMG      +   +    +         Kopierprogramm Dateine <-> Laufwerke
+INT6     +   -    +         Programmabbruch wenn Prozessor fehlerhafte Befehle ausfÅht
+NORM_FAT +   -    +         Korrektur von FAT-VerzeichniseintrÑgen
+PATCHVPT +   *    +         Erhîhung der Bildwiederholrate
+PROTMENU -   +    +         MenÅprogramm CMD/PMShell/PMShell mit WPS
+R200FIX  +   -    +         Turbo/Borland Pascal Runtime error 200 [CRT]
+REB_MENU +   -    +         Verhinderung Neustart bei Åberschriebenem BIOS oder wenn andere Prozesse noch laufen
+SAUBER   +   -    +         Arbeitsspeicher sÑubern
+SCHNITT  +   +    +         Herauskopieren von Dateiteilen
+STIX     +   +    +         InstallShield Entpacker
+STOP_LH  +   -    +         Verhindert hochladen von Programmteilen
+TEXTREIN +   +    +         Steuerzeichen entfernen/Tab+Zeilenumbruch umwandeln
+TYP      +   +    -         Dateityperkennung/Archivlister/Compilersuche
+UNXLINK  +   +    +         XLINK 2.02 Entpacker
+URAM     +   -    +         Speicherverwalungswerkzeug Shadow-RAM
+VESAMAX  +   -    +         BeschrÑnkung der maximalen Bildschirmauflîsung
+VPART    +   -    -         Betriebsystemauswahl
+ZUFPASS  +   +    +         Pa·wortgenerator
+
+um in allen Programmen deutsche Sprache zu erzwingen fÅgen Sie
+SET COUNTRY=049 
+in Ihre AUTOEXEC.BAT ein.

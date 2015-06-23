@@ -1,0 +1,129 @@
+off_berechnung:
+                ; Eingabe: al=Anzahl Sektoren  1<=x<=Spur
+                ;          cx=[spur][sektor]
+                ;          dx=[kopf][laufwerk]
+                ; Ausgabe: cx=hi(ofs_XMS)
+                ;          dx=lo(ofs_XMS)
+                ;          bx=sektor_nr [0...]
+
+
+                ; Behandlung der 4 SonderfÑlle
+		push si
+                  mov si,extra_1_daten
+                  call bestimme_sonderfall_adresse
+                  jc bestimme_sonderfall_adresse_gefunden
+
+                  mov si,extra_2_daten
+                  call bestimme_sonderfall_adresse
+                  jc bestimme_sonderfall_adresse_gefunden
+
+                  mov si,extra_3_daten
+                  call bestimme_sonderfall_adresse
+                  jc bestimme_sonderfall_adresse_gefunden
+
+                  mov si,extra_4_daten
+                  call bestimme_sonderfall_adresse
+
+bestimme_sonderfall_adresse_gefunden:
+                pop si
+                if c ret
+
+                cmp al,0
+                jz bereichsueberschreitung
+
+                cmp al,cs:[sekt_spur]
+                ja bereichsueberschreitung
+
+                cmp dh,cs:[koepfe]         ; z.B.: Koepfe=2 -> 0..1
+                jae bereichsueberschreitung
+
+                cmp cl,0
+                jz bereichsueberschreitung ; Tiramitsu ...
+
+                cmp cl,cs:[sekt_spur]
+                ja bereichsueberschreitung
+
+                cmp ch,cs:[spuren]
+                ja bereichsueberschreitung
+
+                ; berechnung: kopf*sektoren+sektor+spur*sektoren*koepfe-1
+
+                ; spur*sektoren*koepfe
+                push ax
+                  push dx
+                    mov al,ch
+                    mul b [koepfe]
+                    push cx
+                    mov cl,[sekt_spur]
+                    mov ch,0
+                    mul cx
+                    pop cx
+                    mov bx,ax
+                  pop dx
+
+                  ; kopf*sektoren
+                  mov al,dh
+                  mov ah,0
+                  push cx
+                  mov cl,[sekt_spur]
+                  mov ch,0
+                  mul cx
+                  pop cx
+                  add bx,ax
+
+                  ; sektor
+                  mov ch,0
+                  add bx,cx
+
+                  dec bx
+                pop ax
+
+                cmp bx,cs:[sektoren]
+                jae bereichsueberschreitung
+
+                ;**512
+                mov cx,bx
+                mov dx,bx
+                shr cx,7
+                shl dx,9
+
+                ; Interesse fÅr Bootsektor und Nachbarn zÑhlen
+                cmp bx,25
+                ja off_berechnung_nicht_bootsektor
+
+                mov b cs:[plattenwechsel],platte_gewechselt_nein
+
+off_berechnung_nicht_bootsektor:
+
+                ret
+
+bereichsueberschreitung:
+
+                mov bl,kopierschutz_farbe
+                call faerben
+
+
+                breakpoint 'Kopierschutz'
+
+                mov bx,0ffff
+                mov cx,0ffff
+                mov dx,0ffff
+                ret
+
+;********************************************************************
+bestimme_sonderfall_adresse:
+                cmp cl,[si + extra_1_cl     - extra_1_daten]
+                jnz bestimme_sonderfall_adresse_nein
+                cmp ch,[si + extra_1_ch     - extra_1_daten]
+                jnz bestimme_sonderfall_adresse_nein
+                cmp dh,[si + extra_1_dh     - extra_1_daten]
+                jnz bestimme_sonderfall_adresse_nein
+                mov dx,[si + extra_1_xms_lo - extra_1_daten]
+                mov cx,[si + extra_1_xms_hi - extra_1_daten]
+                mov bx,0fffe
+                stc
+                ret
+bestimme_sonderfall_adresse_nein:
+                clc
+                ret
+;********************************************************************

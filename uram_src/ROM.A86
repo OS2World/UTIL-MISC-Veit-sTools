@@ -1,0 +1,121 @@
+Title   Speicherinitialisierung
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+rom_ende:                       dw 0
+; Eingabe ax=UMB-Segment
+;         cx=Testgr붳e
+; Ausgabe al=ver꼗dert/unver꼗dert
+;         ah=wert
+rom_test:                       push es,cx,di
+                                  ; immernoch ROM ? .. z.B. ax=C400 [rom_ende]=C800
+                                  cmp ax,w [rom_ende]
+                                  jb short rom_test_rom
+
+                                  ; A000-BFFF unver꼗dert
+                                  cmp ax,0c000
+                                  jb rom_test_unveraendert
+
+                                  ; ROM-Modul ?
+                                  mov es,ax
+                                  cmp w es:[0],055aa
+                                  jnz keine_rom_markierung_gefunden
+
+                                  ; *512
+                                  mov cl,b es:[2]
+                                  mov ch,0
+                                  shl cx,5  ; 2^5=32=512/16
+                                  add cx,ax
+                                  mov w [rom_ende],cx
+                                  jmp short rom_test_rom
+
+keine_rom_markierung_gefunden:
+                                  ; F000..FFFF ROM
+                                  cmp ax,0f000
+                                  jae rom_test_rom
+
+
+                                  null di
+                                  cld
+                                  mov al,0ff
+                                  repz scasb
+
+                                  cmp cx,0
+                                  jnz rom_test_rom
+
+rom_test_ram:
+                                  mov al,veraendert
+                                  mov ah,7 ; Lesen+Schreiben+Cache
+rom_test_ende:
+                                pop di,cx,es
+                                ret
+rom_test_rom:
+                                mov al,veraendert
+                                mov ah,5 ; Lesen+Cache
+                                jmp rom_test_ende
+rom_test_unveraendert:
+                                mov al,unveraendert
+                                jmp rom_test_ende
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+initialisieren:
+                                cmp [cpu_intel],1
+                                jne nicht_pentiumxx_mtrr
+                                cmp [mtrr_supported],1
+                                jne nicht_pentiumxx_mtrr
+
+                                call programmiere_amd_k7 ; stimmt!
+
+  nicht_pentiumxx_mtrr:
+                                ; neue Zeile, wenn nicht in Spalte 1
+                                mov ah,3
+                                mov bh,0
+                                int 010h
+                                cmp dl,0
+                                if ne ausschrift_a zeilenumbruch
+
+                                call cache_leeren
+
+                                cmp b [speicher_soll_initalisiert_werden],'1'
+                                jne ende
+
+                                mov bx,umb_tabelle
+                                mov dx,0a000-00400
+                                cld
+initialisieren_schleife:
+                                cmp dx,010000-00400
+                                je ende
+
+                                mov ax,[bx]
+                                add bx,2
+                                add dx,00400
+                                cmp al,unveraendert
+                                je initialisieren_schleife
+
+                                and ah,2 ; Schreiben ?
+                                cmp ah,2
+                                jne initialisieren_schleife
+
+                                mov es,dx
+                                mov w es:[0],'12'
+                                cmp w es:[0],'12'
+                                jne initialisieren_fehler
+
+                                mov w es:[0],'34'
+                                cmp w es:[0],'34'
+                                jne initialisieren_fehler
+
+                                mov cx,K16/2
+                                null di
+
+                                null ax
+                                rep stosw
+
+
+                                jmp initialisieren_schleife
+
+ende:
+
+                                halt 0
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+initialisieren_fehler:
+                                ausschrift text_initialisieren_fehler
+                                halt 1
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

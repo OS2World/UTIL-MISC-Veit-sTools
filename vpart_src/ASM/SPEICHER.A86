@@ -1,0 +1,62 @@
+;*****************************************************************************
+; Ergebnis von INT 12 vergleichen
+;*****************************************************************************
+
+pruefe_haupspeichergroesse:
+                        int 012                 ;Virentest
+                        cmp ax,hauptspeicher
+                        ;je ret
+                        if e ret
+
+
+                        mov bl,10               ; 640 / 10 =64 + 0/10
+                        div bl                  ; al=64 ah=0
+                        mov si,bios_sp_e
+                        add [si],ah             ; Einer (0)
+                        dec si
+                        null ah
+                        div bl                  ; al=6  ah=4
+                        add [si],ah             ; Zehner (4)
+                        dec si
+                        add [si],al             ; Hunderter (6)
+
+                        cmp b [text_oder_grafikmodus],'T'
+                        je virus_warnung_text
+
+                        balken_grafik 192,200,640-192,480-200,farbe_hintergrund
+                        rechteck_grafik 192,200,640-192,480-200,farbe_rahmen,farbe_hintergrund
+
+                        ausschrift_grafik 192,200,virus_titel,farbe_titel_schrift,farbe_titel_hintergrund
+                        ausschrift_grafik 208,220,virus_warnung1,farbe_passprompt,farbe_hintergrund
+                        ausschrift_grafik 208,238,virus_warnung2,farbe_passprompt,farbe_hintergrund
+                        ausschrift_grafik 208,256,virus_warnung3,farbe_passprompt,farbe_hintergrund
+                        jmp short virus_warnung_weiter
+
+virus_warnung_text:
+
+                        balken_text   24+1,9+1,79-24-1,24-9-1,farbe_hintergrund
+                        rechteck_text 24  ,9  ,79-24  ,24-9  ,farbe_rahmen,farbe_hintergrund
+
+                        ausschrift_text 24  , 9,virus_titel,farbe_titel_schrift,farbe_titel_hintergrund
+                        ausschrift_text 24+2,11,virus_warnung1,farbe_passprompt,farbe_hintergrund
+                        ausschrift_text 24+2,12,virus_warnung2,farbe_passprompt,farbe_hintergrund
+                        ausschrift_text 24+2,13,virus_warnung3,farbe_passprompt,farbe_hintergrund
+
+virus_warnung_weiter:
+
+                        aufblenden
+                        ; diesmal nur Zeit einstellen
+                        mov schoner_ist_ein_aus,'A'
+                        call bildschirmschoner_aus
+
+speicher_bestaetigung:
+                        call hole_taste_16_00
+                        cmp al,27 ; ESC
+                        jne speicher_bestaetigung
+
+                        ausblenden
+                        bildschirm_loeschen
+
+                        ret
+
+;*****************************************************************************

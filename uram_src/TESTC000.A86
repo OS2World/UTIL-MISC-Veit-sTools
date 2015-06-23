@@ -1,0 +1,26 @@
+                        push 0c000
+                        pop es
+
+                        push es:[00000]
+                          mov es:[00000],01234
+                          mov cx,es:[00000]
+                          mov es:[00000],04321
+                          mov bx,es:[00000]
+                        pop es:[00000]
+
+                        mov dx,text_rom
+                        cmp cx,01234
+                        jnz rom
+                        cmp bx,04321
+                        jnz rom
+                        mov dx,text_ram
+
+rom:
+                        mov ah,009
+                        int 021
+                        mov ax,04c00
+                        int 021
+
+text_ram:               db 'C000 is not writeprotected',00d,00a,'$'
+text_rom:               db 'C000 is writeprotected',00d,00a,'$'
+

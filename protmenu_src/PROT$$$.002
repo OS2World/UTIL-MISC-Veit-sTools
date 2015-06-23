@@ -1,0 +1,8 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_beim_Ausfuehren_von_  :^string;
+  textz_CMD_nicht_im_Verzeichnis_  :^string;
+  textz_gefunden_  :^string;
+  textz_SET_COMSPEC_fehlt_in_der_CONFIG_SYS  :^string;
+  textz_fehlt  :^string;

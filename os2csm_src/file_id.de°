@@ -1,0 +1,14 @@
+OS/2 Config.sys Men
+
+die Config.sys wird beim Laden durch
+den OS/2 Kern nach Wnschen des
+Anwenders im Speicher ver„ndert.
+
+ * Schnelltasten
+ * Zeitgrenze
+ * auch fr Startdisketten benutzbar
+ * Vorschlag von Treibernamen fr
+   Netzwerkkarten und Hostadapter
+ * Kann auf Wunsch debug-Version von 
+   OS2KRNL statt der normalen Version
+   laden

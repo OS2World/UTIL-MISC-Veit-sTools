@@ -1,0 +1,136 @@
+Title   Intel 824xx/SIS 551x/SIS 5598 Verteiler
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+variante_82430TX:
+                                push di
+                                  mov si,suchfolge_asus_82430TX_d000
+                                  call suche
+                                  jnc variante_82430TX_bestaetigung
+
+                                pop di
+
+                                ausschrift text_fehler_d800d000
+                                halt 1
+
+
+variante_82430TX_bestaetigung:
+                                pop bx
+
+                                mov cx,es:[di+13] ; Index ( CX=C05D,005D,..)
+                                mov w [index_basis],cx
+
+                                sub cx,es:[bx+13] ; Index fr D000<->D800
+
+                                cmp cx,0
+                                if z jmp variante_sis486
+
+                                cmp cx,-1
+                                jz variante_82430TX_bestaetigung_2
+
+                                ausschrift text_indexregisterfehler
+                                halt 1
+
+variante_82430TX_bestaetigung_2:
+
+                                cmp b [index_basis],05c ; XX5c bei D000
+                                jz bearbeite_82430tx
+
+                                cmp b [index_basis],082 ; XX82 bei D000
+                                if z jmp bearbeite_sis551x
+
+                                cmp b [index_basis],072 ; XX72 bei D000
+                                if z jmp bearbeite_sis5598
+
+
+;--------------->>>>>>>>>>>>>
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+012+1]
+                                add ax,di
+                                add ax,012+3 ; 12 + call
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_variante_82430tx_unbekannt
+                                halt 1
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+bearbeite_82430tx:
+                                ausschrift_xxxx_aehnliches_bios text_variante_82430tx
+chip_i824x0_mercury:
+chip_i824x0_saturn:
+chip_i824x0:
+                                jmp intel_824x0_gemeinsam
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+variante_i440fx_awdflash:
+                                ausschrift_xxxx_aehnliches_bios text_variante_i440fx_awdflash
+                                jmp intel_824x0_gemeinsam
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+variante_asi_ami:
+                                ausschrift_xxxx_aehnliches_bios text_variante_asi_ami
+                                jmp intel_824x0_gemeinsam
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+variante_gw2000:
+                                ausschrift_xxxx_aehnliches_bios text_variante_gw2000
+                                jmp intel_824x0_gemeinsam
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+variante_pci82430_batio:
+                                ausschrift_xxxx_aehnliches_bios text_variante_pci82430_batio
+                                jmp intel_824x0_gemeinsam
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+variante_pci82430_alfredo:
+                                ausschrift_xxxx_aehnliches_bios text_variante_pci82430_alfredo
+                                jmp intel_824x0_gemeinsam
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+variante_mirko_ami_i430VX:
+                                ausschrift_xxxx_aehnliches_bios text_variante_mirko_ami_i430VX
+                                jmp intel_824x0_gemeinsam
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+variante_i82440fx_ami:
+                                ausschrift_xxxx_aehnliches_bios text_variante_i82440fx_ami
+                                jmp intel_824x0_gemeinsam
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                                ; ±±± SIS 551x ±±±
+bearbeite_sis551x:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis551x
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+012+1]
+                                add ax,di
+                                add ax,012+3 ; 12 + call
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                sub w [index_basis],0082 ; XX82 Bei D000
+
+                                ausschrift text_register_index
+                                mov ax,w [index_basis]
+                                add ax,00080
+                                call ausschrift_word
+                                ausschrift text_bis
+                                mov ax,w [index_basis]
+                                add ax,00086
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                jmp sis551x_einsprung_von_82430tx
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                                ; ±±± SIS 5598 ±±±
+bearbeite_sis5598:
+                                ausschrift_xxxx_aehnliches_bios text_variante_sis5571_5598
+
+                                ausschrift text_prozedur_registeraenderung
+                                mov ax,es:[di+012+1]
+                                add ax,di
+                                add ax,012+3 ; 12 + call
+                                mov w [prozedur_registeraenderung],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                jmp sis5571_einsprung_von_82430tx
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

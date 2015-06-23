@@ -1,0 +1,58 @@
+org 0
+                dd -1
+                dw 08000
+                dw strat
+                dw inter
+                db 'PCCOFF$$'
+
+pkt:            dd ?
+
+strat:
+                mov cs:[pkt+0],bx
+                mov cs:[pkt+2],es
+                retf
+
+inter:
+                pusha
+                  push es
+
+                    mov dx,03e0
+                    mov al,000
+                    call ausschalten
+                    mov al,040
+                    call ausschalten
+                    mov al,080
+                    call ausschalten
+                    mov al,0c0
+                    call ausschalten
+
+                    les bx,cs:[pkt]
+                    sub ax,ax
+                    mov w es:[bx+0000e+0],ax ; \ 0 byte
+                    mov w es:[bx+0000e+2],ax ; /
+                    mov ah,080
+                    mov w es:[bx+00003  ],ax ; fehlerfrei aber nicht laden
+
+                  pop es
+                popa
+                retf
+
+ausschalten:
+                or al,002
+                out dx,al
+                inc dx
+                  xchg al,ah
+                    in al,dx
+                  xchg al,ah
+                dec dx
+
+                and ah,0ff-010
+
+                out dx,al
+                inc dx
+                  xchg al,ah
+                    out dx,al
+                  xchg al,ah
+                dec dx
+                ret
+

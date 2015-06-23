@@ -1,0 +1,197 @@
+                        .386
+
+Extrn                   VioSetMode:Far
+Extrn                   DosGetInfoSeg:Far
+
+
+code16                  Segment 'CODE' Use16
+                        Assume cs:code16
+
+ LINFOSEG struc
+
+   lis_pidCurrent      dw  ? ;current process id
+   lis_pidParent       dw  ? ;process id of parent
+   lis_prtyCurrent     dw  ? ;priority of current thread
+   lis_tidCurrent      dw  ? ;thread ID of current thread
+   lis_sgCurrent       dw  ? ;session
+   lis_rfProcStatus    db  ? ;process status
+   lis_dummy1          db  ? ;
+   lis_fForeground     dw  ? ;current process has keyboard focus
+   lis_typeProcess     db  ? ;process type
+   lis_dummy2          db  ? ;
+   lis_selEnvironment  dw  ? ;environment selector
+   lis_offCmdLine      dw  ? ;command line offset
+   lis_cbDataSegment   dw  ? ;length of data segment
+   lis_cbStack         dw  ? ;stack size
+   lis_cbHeap          dw  ? ;heap size
+   lis_hmod            dw  ? ;module handle of the application
+   lis_selDS           dw  ? ;data segment handle of the application
+
+ LINFOSEG ends
+
+
+VioModeInfo             Struc
+  cb                    dw ?    ; Size of this structure
+  fbType                db ?    ; 8-bit mask identifying the mode
+  Color                 db ?    ; Colors available. Power of 2 (1=2,2=4,4=16)
+  Col                   dw ?    ; Number of text character columns
+  Row                   dw ?    ; Number of text character rows
+  HRes                  dw ?    ; Display width in pixels
+  VRes                  dw ?    ; Display height in pixels
+VioModeInfo             EndS
+
+
+my_VioSetMode           Proc Far
+                        ARG     @@VioHandle:WORD, @@Mode:DWORD
+                        LOCAL   @@vmi:VioModeInfo, @@GlobalSeg:Word, @@LocalSeg:Word
+
+                      ; int 3
+
+                        enter (Type @@vmi)+(Type @@GlobalSeg)+(Type @@LocalSeg),0
+                        push ds
+                        push si
+                        push dx
+
+                        ; are we running fullscreen mode?
+
+                        lea ax,[@@GlobalSeg]
+                        push ss
+                        push ax
+                        lea ax,[@@LocalSeg]
+                        push ss
+                        push ax
+                        call DosGetInfoSeg
+
+                        mov al,1                ; assume my_VioSetMode failed
+
+                        mov ds,[@@LocalSeg]
+                        cmp ds:[0].lis_typeProcess,0 ; fullscreen session
+                        jne can_not_handle
+
+                        ; check for default Vio Handle
+                        cmp @@VioHandle,0
+                        jne can_not_handle
+
+                        lds si,[@@Mode]
+
+                        ; less than 3 byte (len+type) can not be useful
+                        cmp ds:[si].cb,(Offset Color-Offset cb)
+                        jb can_not_handle
+
+                        ; contruct own vmi
+                        mov @@vmi.cb,Type VioModeInfo
+
+                        ; copy fbType
+                        mov al,ds:[si].fbType
+                        ; graphics mode?
+                        test al,2
+                        jnz can_not_handle
+
+                        ; hack for TShell: request: fbType=0 (mono,text,default palette,vga)
+                        cmp al,0
+                        jne not_type_0_cb3
+                        cmp ds:[si].cb,(Offset Color-Offset cb)
+                        jne not_type_0_cb3
+                        ;; gives problem with hexxagon:
+                        ;mov al,1+4 ; (color,text,mono-palette,vga)
+                        ; simply set color text mode
+                        mov al,1 ; (color,text,default palette,vga)
+  not_type_0_cb3:
+                        mov @@vmi.fbType,al
+
+                        ; copy Color
+                        mov al,4 ; 16
+                        cmp ds:[si].cb,(Offset Col-Offset cb)
+                        jb no_color_field
+                        mov al,ds:[si].Color
+  no_color_field:
+                        mov @@vmi.Color,al
+
+                        ; copy Col/Row
+                        mov ax,80
+                        mov dx,25
+                        cmp ds:[si].cb,(Offset HRes-Offset cb)
+                        jb no_Col_Row_field
+                        mov ax,ds:[si].Col
+                        mov dx,ds:[si].Row
+  no_Col_Row_field:
+                        mov @@vmi.Col,ax
+                        mov @@vmi.Row,dx
+
+                        ; "calculate" VRes/HRes (ignore request..)
+                       ;mov ax,ax ; Col
+                        imul ax,ax,9
+                        mov @@vmi.HRes,ax ; 80*9=720
+
+                        ; try VRes~~500 (Font 9x20)
+                        mov ax,504
+                        call try_VRes_trunc
+                        ; 504/25=20 remainder 4 (500)
+                        ; 504/28=18 remainder 0 (504)
+                        ; 504/31=16 remainder 8 (496 - will likely only work when forced here)
+                        ; 504/36=14 remainder 0 (504)
+                        ; 504/50=10 remainder 4 (500)
+                        ; 504/63= 8 remainder 0 (504)
+                        jz can_not_handle               ; have already handled
+
+                        ; second try: VRes~~480 (Font 9x19)
+                        mov ax,480
+                        call try_VRes_trunc
+                        ; 480/25=19 remainder 5 (475)
+                        ; 480/28=17 remainder 4 (476 - no font)
+                        ; 480/30=16 remainder 0 (480)
+                        ; 480/33=14 remainder 0 (462 - unlikely works)
+                        ; 480/48=10 remainder 0 (480)
+                        ; 480/60= 8 remainder 0 (480)
+                        jz can_not_handle               ; have already handled
+
+                        ; last try: VRes=480 - Assume that Scitech has 80x60 mode
+                        ; and will agree that 475~~480
+                        mov ax,480
+                        call try_VRes
+  can_not_handle:
+                        pop dx
+                        pop si
+                        pop ds
+                        leave
+
+                        test ax,ax
+                        jz handled
+
+                        ; use original handler do the work with unchanged parameters..
+                        jmp VioSetMode
+
+  handled:
+                        ; done, return success
+                        retf 4+2
+;--------------------------------------------------------------------
+
+try_VRes_trunc:         ; VRes=ax
+                        cwd                     ; 0:504
+                        div @@vmi.Row           ; 0:504/25=4:20
+                        mul @@vmi.Row           ; 25*20*500
+
+try_VRes:               ; VRes=ax
+                        mov @@vmi.VRes,ax ; 500 or 504 | 475 or 480
+
+                        ; try VioSetMode(@@vmi,@@VioHandle)
+
+                        push ss
+                        lea ax,[@@vmi]
+                        push ax
+                        push [@@VioHandle]              ; usually 0
+                        call VioSetMode
+                        test ax,ax
+
+                        retn
+;--------------------------------------------------------------------
+
+my_VioSetMode           EndP
+                        Public my_VioSetMode
+
+
+
+code16                  EndS
+
+                        end
+

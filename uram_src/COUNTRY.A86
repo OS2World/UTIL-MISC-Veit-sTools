@@ -1,0 +1,84 @@
+Title   Ermittlung der DOS-Landeseinstellung
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+int_21_3800             macro
+                          push ss
+                          pop ds
+
+                          sub sp,40
+
+                            mov ax,03800
+                            mov dx,sp
+                            int 021
+
+                          add sp,40
+
+                          push cs
+                          pop ds
+                        #em
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+bestimme_country_bx_sys macro
+                          int_21_3800
+                        #em
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+bestimme_country_bx_com macro
+                          mov es,[0002c]
+                          sub di,di
+country__pruefe_eintrag:
+                          cmp b es:[di],0
+                          jz country__keine_ungebungsvariable
+
+                          push di
+                            mov si,country_gleich
+                            mov cx,country_gleich_ende-country_gleich
+                            cld
+                            rep cmpsb
+                            jz country__gefunden
+
+                          pop di
+
+                          mov al,0
+                          mov cx,0ffff
+                          repnz scasb
+                          jmp country__pruefe_eintrag
+
+
+country_gleich:
+                          db 'COUNTRY='
+country_gleich_ende:
+
+
+
+country__gefunden:
+                          pop ax
+
+                          mov si,di
+                          sub bx,bx ; country=0
+                          mov cx,10 ; dezimal
+country__ziffern_schleife:
+                          mov ah,0
+                          es:lodsb
+                          cmp al,'0'
+                          jb country__umgebung_ausgelesen
+
+                          sub al,'0'
+
+                          xchg ax,bx
+                          mul cx
+                          add bx,ax
+                          jmp country__ziffern_schleife
+
+
+country__keine_ungebungsvariable:
+                          int_21_3800
+country__umgebung_ausgelesen:
+                          push cs
+                          pop es
+                        #em
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+

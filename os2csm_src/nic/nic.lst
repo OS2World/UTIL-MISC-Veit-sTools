@@ -1,0 +1,673 @@
+# network card source list for os2csm menu code
+#
+# bus type:     I=ISA
+#               E=EISA
+#               N=MCA
+#               P=PCI
+#               C=CardBus
+#               U=USB
+#               A=PCCard
+#               L=PPORT
+#               -=n/a
+#               ?=unknown
+#
+# detection:   P+ =yes (pci detection)
+#
+#
+# special handling is needed for
+#   i2olosm
+#   IRDA
+#   maceth
+#   cb_peos2 (ibmtrp.os2: "IBM PCI and CardBus Token-Ring Adapters")
+#     (has 2 entries?)
+#   MACWD.OS2 MACWD2.OS2 - both have to be in config.sys
+#   DEVICE=PCISETUP.OS2 for IBM Triple LANStreamer
+#   TDKENAB.OS2+TDKFLYR.OS2
+#
+#   OCE20.NIF: OCE20ND.OS2+OCTENABL.OS2
+#
+#   some xircom epp modules (EPPOS2.OS2)
+#
+#
+# name conflict for pcind.OS2: Realtek<->VIA
+#
+#
+# i have suppressed duplicate driver entrys where pci detection appllies
+#
+# How about the ODI->NDIS driver? Ignore for now, since most times
+# the NDIS driver is way better suited. Does exist a card without
+# an NDIS driver, but with an ODI driver?
+#
+#
+#
+# ? in first column indicates missing files
+# .NIF       .OS2       type/detection  title
+#12345678  #12345678                    #1234567890123456789012345678901234567890123456789012345678901234567890
+#                                                 1111111111222222222233333333334444444444555555555566666666667
+#
+#- no driver --------------------------------------------------------
+#
+""         ""                           "-"
+#
+#- user supplied driver (floppy update)
+#
+"USERNIC?" "USERNIC?"   -               "User supplied driver, see documentation"
+#
+#- generic driver ---------------------------------------------------
+#
+#                                        SIS 900 Ethernet
+#                                        nForce2 Ethernet
+#                                        nForce3 Ethernet
+#                                        nForce Ethernet
+#                                       (NS-DP83820 Gigabit)
+#                                        3C905C-TX Fast Etherlink for PC Management NIC
+#                                        3C920B-EMB Integrated Fast Ethernet Controller
+#                                        3c555 Laptop Hurricane
+#                                        3C556 10/100 Mini PCI Fast Ethernet Adapter
+#                                        3C556 10/100 Mini PCI Fast Ethernet Adapter
+#                                        3Com 3C2000 GIGA
+#                                       (Realtek 8169s/8110s)
+
+#
+"genm32"   "genm32"     P+              "MyWis General Mac Driver"
+#
+#- 3Com -------------------------------------------------------------
+#
+"EL3IBMO2" "ELNK3"      IE?             "3Com EtherLink 10 ISA (3C509b) Family"
+"EL515IO2" "EL515"      I               "3Com Fast EtherLink ISA Bus Master"
+"EL59XIO2" "EL59X"      P+E             "3Com Fast EtherLink & EtherLink III Bus Master Family"
+"EL90XIO2" "EL90X"      P+              "3Com Fast EtherLink/EtherLink XL Family"
+"ELNK"     "ELNK"       I               "3Com 3C501 EtherLink"
+"elnk16"   "elnk16"     I               "3Com EtherLink 16 (3c507) Family"
+"elnkii"   "elnkii"     I               "3Com EtherLink II (3c503) Family"
+
+;!!! IBM documents a "elnkil" "elnkii" I "3Com EtherLink II-16"
+;!!! IBM documents a "elnkil" "elnkii" I "3Com EtherLink II-16-TP"
+;!!! elnk3
+
+"elnkmc"   "elnkmc"     M               "3Com EtherLink/MC (3c523) Family"
+!! << EtherDisk for the EtherLink MC/32 3c527x.exe 95-04-27>>
+"ELMC32"   "ELMC32"     M               "3Com EtherLink/MC-32 (3C527B)"
+"ELPC3OS2" "ELPC3"      A               "3Com Megahertz 10Mbps PC Card"
+"elpcxos2" "elpc3x"     A               "3Com EtherLink III LAN+Modem PC Card"
+"TL3C3X9"  "TL3C3X9"    P+              "3Com 3C3X9 PCI Token-Ring Adapter"
+"TL3IBMO2" "TLNK3"      I               "3Com TokenLink III Family"
+"tlpc3"    "tlpc3"      A               "3Com TokenLink III PC Card Adapter"
+"TLPN2"    "TLPN2"      P+              "3Com TokenLink Velocity PCI XL Adapter"
+#
+#- Accton -----------------------------------------------------------
+#
+<<duplicate of ethne.os2 NE2000 Compatible EtherCombo/Pair/Coax-16 Ethernet Adapter"?
+?"ETHNE"   "EN165X0"    I               "Accton EtherCombo/Pair/Coax-16"
+?"ACC1200" "ACC1200E"   E               "Accton EtherCombo-32"
+#
+#"EN5251"  "EN5251"     P+              "ACCTON EN5251 Based Fast Ethernet Adapter"
+"SMC1255"  "SMC1255"    P+              "ACCTON EN5251 Based Fast Ethernet Adapter"
+#
+"EN164XE"  "ETHNE"      I               "Accton EtherCombo/Pair/Coax-16 Ethernet Adapter"
+#
+#- ADMtek -----------------------------------------------------------
+#
+"COMETA"   "COMETA"     P+              "ADMtek Comet/Centaur/corega"
+"FASTNIC"  "FASTNIC"    P+              "ADMtek - PCI 10/100 Fast Ethernet Adapter"
+# NC100     FastNIC                      Linksys LNE100TX Fast Ethernet Adapter(LNE100TX v4)
+#
+#- AMD --------------------------------------------------------------
+#
+# "4.05"
+"PCNTND"   "PCNTND"     P+IE?A          "AMD - AMD PCnet Ethernet Family Adapter"
+# "3.20"
+# ->PCNTND
+"ibmeandi" "ibmeandi"   P(-)IE?A        "IBM PCI Ethernet Adapter (AMD PCnet)"
+# "2.27"
+# ->PCNTND
+"AT1500"   "AT1500"     P(-)IE?A        "ATI AT-1500 Network Adapter"
+# "2.27"
+# ->PCNTND
+"AT2450"   "AT2450"     P(-)IE?A        "ATI AT-2450 Network Adapter"
+#
+#
+#- Allied Telesyn ---------------------------------------------------
+#
+"AT1700"   "AT1700"     IM              "Allied Telesyn AT-1700 Network Adapter"
+#
+# driver has string "E2k/E1k/PCMCIA Ethernet"
+"RETH"     "RETH"       I               "Allied Telesyn Ethernet ISA (AT-2000)"
+#
+#- ARtem ------------------------------------------------------------
+#
+"arltndis" "arltndis"   A               "ARtem Onair ComCard"
+#
+#- Artisoft ---------------------------------------------------------
+#
+"AEXNDIS"  "AEXNDIS"    IM              "Arisoft NodeRunner"
+#
+#- Asante -----------------------------------------------------------
+#
+# note (IBM): nif is claimed to have errors
+?"EP2000"  "EP2000"     I               "Asante EtherPaC"
+#
+#- ASIX -------------------------------------------------------------
+#
+"AX814X"   "AX814X"     P+              "ASIX AX8814X Based PCI Fast Ethernet Adapter"
+#
+#- Broadcom Corporation ---------------------------------------------
+#
+"B57"      "B57"        P+              "Broadcom Corporation 10/100/1000 NetXtreme Ethernet"
+"b44a"     "b44a"       P+              "Broadcom BCM4401"
+#
+#- Cableron Corporation ---------------------------------------------
+#
+"E11"      "E11ND"      I               "Cabletron E11 Ethernet Adapter"
+"E20"      "E20ND"      I               "Cabletron E20 Ethernet Adapter"
+"E21"      "E21ND"      I               "Cabletron E21 Ethernet Adapter"
+"E22"      "E22ND"      I               "Cabletron E22 Ethernet Adapter"
+"E30"      "E30ND"      M               "Cabletron E30 Ethernet Adapter"
+"E31"      "E31ND"      M               "Cabletron E31 Ethernet Adapter"
+"F30"      "F30ND"      M               "Cabletron F30 FDDI Adapter"
+"F70"      "F70ND"      E               "Cabletron F70 FDDI Adapter"
+"T20"      "T20ND"      I               "Cabletron T20 Token-Ring Adapter"
+"T30"      "T30ND"      M               "Cabletron T30 Token-Ring Adapter"
+#
+#- Cogent (Adaptec) -------------------------------------------------
+#
+"EM3MCA"   "EM3MCA"     M               "Cogent E/Master III-MCA Ethernet Adapter"
+"EM525"    "EM525"      I               "Cogent EM525 AT Ethernet"
+"EM727"    "EM727"      E?              "Cogent EM727 ATS"
+"EM935"    "EM935"      E               "Cogent eMaster+EISA Ethernet Adapter (EM935XL)"
+"EM932"    "EM932"      I               "Cogent EM932 EISA Adapter"
+# note (IBM): dec
+?"EMPCL"   "EMPCL"      P               "Cogent EM100 PCI FAST Ethernet Adapter"
+#
+#- Compaq -----------------------------------------------------------
+#
+"NETFLX3"  "NETFLX3"    P+              "Compaq Ethernet Adapter"
+#
+#- Compex -----------------------------------------------------------
+#
+"RL2000"   "RL2000"     P+              "Compex RL2000 PCI Ethernet Adapter"
+#
+#- Cisco Systems ----------------------------------------------------
+#
+"airo340"  "airo340"    A               "Cisco Systems 340 Series Wireless Lan Adapter"
+# nonpublic/beta (JG)
+"ciscopcm" "ciscopcm"   A               "Cisco Aironet 340/350 11 Mbps Wireless LAN Adapter"
+#
+#- CNet -------------------------------------------------------------
+#
+# renamed OS2.NIF to E200P.NIF
+"E200P"    "E200P"      I               "CNet CN200E PLUS Series EtherCard Adapters"
+#
+#- Crystal (Cirrus?) ------------------------------------------------
+#
+"ENDS2ISA" "ENDS2ISA"   I?              "Crystal LAN CS8900/CS8920 Ethernet Adapter"
+#
+#- Danpex -----------------------------------------------------------
+#
+# 2420u19980316_f.exe (ne2000 compatible? ->realtek??)
+# 2420w19980320_m.exe
+"EN2XOS2"  "ETNET"      IE?             "Danpex EN-2XXX Ethernet Adapter"
+#
+# danpex: EN-6200Px PCMCIA
+#  ne2000 compatible, this is only the enabler.
+# "Ethernet TMI Card Enabler for OS/2. Version 1.15
+#  Copyright (c) 1994. TAMARACK MICROELECTRONIC INC."
+# note: the dos driver looks like a realtek driver (rtl8019?)
+# "ECARDOS2"
+#
+#- Davicom ----------------------------------------------------------
+#
+"DM9PCI"   "DM9PCI"     P+              "DAVICOM DM9 PCI Series Fast Ethernet Adapter"
+#
+#- Digital Semiconductor --------------------------------------------
+#
+"DC21X4"   "DC21X4"     P+E             "Digital Semiconductor 21040/21140/21041/21143/21142"
+# dlkpci    dlkpci->DC21X4               D-Link PCI Fast Ethernet Adapter
+#
+# note: should use DC21X4 instead of next KTC40, but keeped here, because it is allowed to ship
+#       no detection of course!
+"KTC40"    "KTC40"      P               "Kingston EtheRx PCI Ethernet Adapter"
+# SMCPWR    SMCPWR->DC21X4               SMC EtherPower
+# TCE32PCW  TCE32PCW->DC21X4             TCTX048 PCI Fast Ethernet Adapter
+# KTC100    KTC100->DC21X4               Kingston EtheRX PCI 10/100 Fast Ethernet Adapter
+#
+# EMPCI     EMPCI                        Cogent EMaster PCI Adapter Family
+#
+# depca13c.zip
+"depca"    "depca"      IE              "DEC EtherWORKS (MC, EISA, LC, Turbo & DEPCA) Ethernet Adapters"
+#
+#- D-Link -----------------------------------------------------------
+#
+"DFE650"   "DFE650"     A               "D-Link DFE-650 Fast Ethernet PC Card"
+# there exist older version using DE65SIBM.NIF+enablers..
+# linksys-hpna-pcmcia-ndis2.zip(PCM101H1) also has "D-Link DFE-650"
+"LE100"    "LE100"      A               "D-Link FE6100TX PCMCIA Fast Ethernet Card (LE100)"
+"LE100"    "LE100"      A               "Longshine 8538TX(n) PCMCIA Fast Ethernet Card"
+"LE100"    "LE100"      A               "Danpex FE6100TX PCMCIA Fast Ethernet Card"
+"de200"    "de200"      I?              "D-Link DE-200 Ethernet Card"
+"DE22XIBM" "DE22X"      I               "D-Link DE-220 Family Ethernet Adapter"
+#
+#- Grey Cell Systems - TDK? -----------------------------------------
+#
+# the card is NE2000 compatible, these are only enablers.
+#
+#"ECARD"    "ECARD"      A              "Ethernet 2200 Card Enabler"
+#"ECARDNM"  "ECARDNM"    A              "PCMCIA Ethernet 2200 Card plus Generic Modem Enabler for OS/2."
+#
+#- HP ---------------------------------------------------------------
+#
+"HPLANB"   "hplanb"     I               "HP EtherTwist 8/16 Bit PC/AT Cards"
+#
+#- IBM --------------------------------------------------------------
+#
+"IBMCOS2"  "IBMCNDIS"   C+              "IBM 10/100 EtherJet CardBus Adapter"
+"IBMMPC"   "IBMMPC"     IP+             "IBM Auto LANStreamer PCI Adapter"
+"ibmtrdb"  "IBMMPC"     M               "IBM LANStreamer 16/32 MCA Adapter"
+"IBMTRP"   "IBMTRP"     P+C             "IBM PCI and CardBus Token-Ring Adapter"
+"i2olosm"  "i2olosm"    ?               "IBM I2O LAN"
+"ibm16os2" "ibm16tr"    ?               "IBM Token Ring Network 16/4 Adapter II"
+# ?
+"ibmeindi" "ibmeindi"   I               "IBM EtherJet ISA Ethernet Adapter"
+"ibmeios2" "ibmeitr"    E               "IBM 16/4 Busmaster EISA Adapter"
+"ibmeni"   "ibmeni"     I               "IBM LAN Adapter for Ethernet"
+# IBMENII=48G7171
+"ibmenii"  "ibmenii"    M               "IBM LAN Adapter/A for Ethernet"
+?"ibmendi" "ibmendi"    IP!!            "IBM Etherjet ISA/PCI (IBMENDI)"
+"ibmesan2" "ibmesan2"   E               "IBM EISA Ethernet adapter"
+"ibmexndi" "ibmexndi"   A               "IBM EtherJet PC Card Ethernet Adapter"
+"ibmfdx"   "ibmfdx"     IM              "IBM FDDI-FI Adapter Device (SK)"
+"IBMNET"   "IBMNET"     I               "IBM PC Network II and Baseband Adapters"
+"IBMNETA"  "IBMNETA"    M               "IBM PC Network II/A and Baseband/A Adapters"
+"ibmtok"   "ibmtok"     I?              "IBM T-R Shared RAM Family (UP/SMP)"
+"ibmtokc"  "ibmtok"     I?              "IBM Compatible Token-Ring Network Adapter"
+"tcttok"   "ibmtok"     I?              "Thomas-Conrad Tropic Token-Ring Network Adapter"
+"tlnkiii"  "ibmtok"     I?              "3Com TokenLink III Network Adapters"
+"kngstn1"  "ibmtok"     I?              "Kingston TokenRx 16/4 Token-Ring Adapter"
+?"IBMWLO"   "IBMWLO"     IM              "IBM Wireless ISA/MCA LAN Adapter"
+?"IBMWLB"   "IBMWLB"     IM              "IBM Wireless ISA/MCA LAN Adapter"
+"IBMWLO"   "IBMWLO"     A               "IBM Wireless PCMCIA LAN Adapter"
+?"IRMACISA" "IRMAC"     I               "IBM wIReless LAN ISA Adapter"
+?"IRMACMCA" "IRMAC"     M               "IBM wIReless LAN MCA Adapter"
+?"IRMACPCM" "IRMAC"     A               "IBM wIReless LAN PCMCIA Adapter"
+# more drivers needed...!!
+?"IRNDNDIS" "IRDNDIS"    ?              "IBM Infrared NDIS MAC for the Thinkpad 755"
+"IRDANDIS"  "irdandis"  -               "IBM IrDA NDIS2 Driver"
+#
+# IBM Token-Ring Network Adapter/A...!
+"ibmtokcs" "ibmtokcs"   AM???           "IBM Turbo 16/4 Token-Ring PC Card"
+#
+"ibmtrbm"  "ibmtrbm"    IM              "IBM T-R Busmaster Server Adapter"
+"pcmniccs" "pcmniccs"   A               "IBM Credit Card Adapter for Ethernet"
+"maceth"   "maceth"     M               "IBM PS/2 Adapter for Ethernet Networks"
+# maceth   "maceth2
+"FME_NDIS" "FME_NDIS"   A               "IBM Fax/Modem/Ethernet Combo Adapter"
+"IBMXLN"   "IBMXLN"     I               "3270 Adapter for 3174 Peer Communications"
+?"MXPCI4BT" "MXPCI4BT"  P!!!!           "IBM Ethernet Quad PeerMaster PCI Server Adapter"
+# IBM note: MXMCA4TN,VNET.OS2
+?"MXMCA4BT" "MXMCA4BT"  M               "IBM Ethernet Quad BT/B2 PeerMaster Server Adapter"
+#
+#- Intel Corporation ------------------------------------------------
+#
+"exp16"    "exp16"      IM              "Intel EtherExpress 16 Family Adapter"
+?"eproeos2" "epro"      I               "Intel EtherExpress PRO/10 ISA Lan Adapter"
+"M16AOS2"  "M16ANDIS"   A               "Intel EtherExpress PRO/100 Mobile Adapter16"
+"M32AOS2"  "M32ANDIS"   C+              "Intel EtherExpress PRO/100 Mobile CardBus 32 Adapter"
+"E10PEOS2" "E10P"       P+              "Intel EtherExpress PRO/10 PCI LAN Adapter"
+"N100EO2"  "N100"       P+              "Intel - Compaq Ethernet or Fast Ethernet NIC"
+"E100BEO2" "E100B"      P+              "Intel PRO PCI Adapter"
+# note: should use E100B instead of next ibmfeeo2, but keeped here, because it is allowed to ship
+#       no detection of course!
+"ibmfeeo2" "ibmfe"      P               "IBM 10/100 EtherJet PCI Adapter"
+"E1000"    "E1000"      P+              "Intel 8254X Based Network Connection"
+# ibmgc supports a subset of E1000,IBMGU (copper)
+"ibmgc"    "IBMgc"      P               "IBM 1000BaseT Gigabit Ethernet Adapter"
+# ibmge supports a subset of E1000,IBMGU (fiber)
+"ibmge"    "IBMGE"      P               "IBM 1000BaseSX Gigabit Ethernet Adapter"
+# ibmgu and E1000 support mostly the same hardware
+"ibmgu"    "IBMGU"      P(+)            "IBM Gigabit Ethernet Adapter"
+"intel16"  "intel16"    IEMA            "Intel TokenExpress Network 16/4 Adapters"
+"intel32"  "intel32"    IEMA            "Intel TokenExpress Network Server Adapter"
+?"E100EOS2" "E100"      P!!!E           "Intel EtherExpress PRO/100 EISA/PCI"
+?"TPROEOS2" "TPRO"      I               "Intel TokenExpress PRO LAN Adapter with Flash"
+#
+#- Intersil ---------------------------------------------------------
+#
+"ibmprism" "ibmprism"   P+              "Intersil ISL3874 PRISM 2.5 Chipset"
+"ibmwifi2" "ibmwifi2"   A               "IBM High Rate Wireless LAN PC Card-128"
+#
+# nonpublic/beta(JG)
+#                                        AmbiCom WL1100B-PCI Adapter
+#                                        NetGear MA-301 PCI Adapter
+#                                        Belkin F5D6000n PCI Adapter
+#                                        LinkSys WDT-11 PCI Adapter
+#                                        3COM Airconnect PCI Adapter 3CRWE777A (PLX) board
+#                                        Siemens SpeedStream SS1023 PCI Adapter
+"pr25plx"  "pr25plx"    P+              "Prism 2.5 PLX PCI Card"
+#
+# nonpublic/beta (JG)
+"genprism" "genprism"   A               "Generic PRISM driver for PCMCIA/PLX cards"
+#
+# nonpublic/beta (JG)
+"ma401"    "MA401"      A               "NetGear MA-401 Wireless LAN PCCard"
+#
+# nonpublic/beta (JG)
+"wpc11"    "wpc11"      A               "LinkSys Instant Wireless Network PC Card WPC-11 V.3"
+#
+#
+#- Kawasaki ---------------------------------------------------------
+#
+"USBETHR"  "USBETHR"    U               "USB Ethernet Adapter (Kawasaki LSI KL5KUSB101)"
+#
+#- Kingston ---------------------------------------------------------
+#
+"AM2100"   "AM2100"     I               "Kingston KNE21XX ISA Ethernet Adapter"
+"ETHAT2"   "ETHAT2"     I               "Kingston KNE20XX ISA Ethernet Adapter"
+# xircom...
+"PEANDIS"  "EPPOS2+PEANDIS"   L         "Kingston KNE-PKL2 EPP Ethernet Pocket Adapter"
+#
+# looks like a realtek isa driver (KNE20,KTC20)
+"KTC20"    "KTC20"      I               "Kingston EtheRx 10Base-T/2 PnP ISA Ethernet Adapter"
+#
+# -> Digital Semiconductor: DC21X4
+# KTC40     K40         P                Kingston Ethernet PCI
+#
+"ktc2000"  "ktc2000"    I               "Kingston EtheRx LC ISA Ethernet Adapter"
+#
+"KNE3200"  "NSCEISA"    E               "Kingston EtheRx KNE3200 EISA Ethernet Adapter"
+#
+# looks like Realtek 8019 + Card Services, string in CIS
+"KTCPC2"   "KTCPC2"     A               "Kingston EtheRx IC PC Card Ethernet Adapter"
+#
+#- LinkSys ----------------------------------------------------------
+#
+?"METH16"  "METH16"     I               "LinkSys Ether16 LAN Card Combo"
+#
+# -> Digital Semiconductor: DC21X4
+# DC2IBM    PCI21X4     P                LinkSys EtherPCI LAN
+# -> Digital Semiconductor: DC21X4
+?? LNEPCII/DC2IBM LNEPIC/PCI21X4
+# LNEPCII/DC2IBM LNEPIC/PCI21X4  P       LinkSys Combo EtherFast 10/100Base-TX LAN Card
+#
+"EC2T"     "EC2T"       A               "Linksys Combo PCMCIA EthernetCard"
+"PC100"    "PC100"      A               "Linksys EtherFast 10/100 PC Card"
+#
+# linksys-hpna-pcmcia-ndis2.zip,see also DFE650,software writer is ABOCOM?
+"PCM100H1" "PCM101H1"   A               "Linksys HomeLink Phoneline + 10/100 Network PC Card"
+#
+"KTC111"   "KTC111"     P+              "Lite-On - Kingston EtherRX KNE110TX/KNE111TX"
+# KTC110    KTC110->KTC111               Kingston EtheRX PCI Fast Ethernet Adapter (KNE110TX)
+# L100      L100->KTC111                 PNIC 100 Base FX Fast Ethernet Adapter
+# ETHERRX   L100->KTC111                 Kingston EtherRX KNE111TX PCI Fast Ethernet Adapter
+# LNE100TX  L100->KTC111                 Linksys LNE100TX Fast Ethernet Adapter
+#
+"LNE100"   "LNE100"     P?              "Linksys LNE100TX Fast Ethernet Adapter (V2)"
+#
+#- Macronix ---------------------------------------------------------
+#
+"MXNICF"   "MXNICF"     P+              "Macronix MX987xx Family Fast Ethernet Adapters"
+# DFE540TX  MXNICF                       DFE-530TX+ 10/100 PCI Adapter
+# EN9120    MXNICF                       Edimax EN9120 Family Fast Ethernet Adapters
+#
+#- Madge Networks, LTD ----------------------------------------------
+#
+# driver is for OS/2 1.3+, no longer supported (IBM)
+"SMARTND"  "SMARTND"    IEMP+A          "Madge Smart Ringnodes"
+"MDGND"    "MDGND"      IEMP+A          "Madge;Olicom Token-Ring Adapter"
+?"MDGFND"  "MDGFND"     IE              "Madge Smart 100 ATT/EISA Ringnode"
+#
+#- Microdyne --------------------------------------------------------
+#
+"NE100I"   "NE100I"     I               "Microdyne NE10/100 ISA Adapter"
+#
+# Microdyne Novell PCI Ethernet Adapter -> AMD (PCNTND)
+#
+?"NE100E"  "NE100"      P!!!            "Microdyne Novell PCI Fast Ethernet Adapter (NE10/100)"
+#
+#- Myson ------------------------------------------------------------
+#
+"FEAND"    "FEAND"      P+              "Myson MTD80X Based Fast Ethernet Card"
+#
+#- National Semiconductor -------------------------------------------
+#
+# DP83815   DP83815->dp815a              National Semiconductor DP83815 10/100 MacPhyter3v PCI Adapter
+"dp815a"   "dp815a"     P               "National Semiconductor DP83815 10/100 MacPhyter3v PCI Adapter"
+# DP83820   DP83820->DP820A              National Semiconductor DP83820 10/100/1000 Mac PCI Adapter
+"DP820A"   "DP820A"     P+              "National Semiconductor DP83820 10/100/1000 Mac PCI Adapter"
+#
+#- NCR --------------------------------------------------------------
+#
+?"STRN"    "STRN"       IM              "NCR Corporation StarLAN Token-Ring ISA/MCA"
+?"ONCRWL02" "ONCRWL02"  -               "NCR Corporation WaveLAN Adapter"
+#
+#- "Novell" ---------------------------------------------------------
+#
+"NE1000"   "NE1000"     I               "Novell NE1000 Compatible"
+"NE2000NS" "NE2000NS"   I               "Novell NE2000 Compatible (Nat'l Semiconductor)"
+"ul000xo"  "ethne"      I               "NE2000 Compatible EtherCombo/Pair/Coax-16 Ethernet Adapter"
+#
+#- NULL MAC (IBM) ---------------------------------------------------
+#
+"nullndis" "nullndis"   -               "NULL MAC Driver"
+# nonetadp                               No Network Adapter
+# nicdrv                                 eCS install temporary driver definition
+#
+#- Olicom (Madge..) -------------------------------------------------
+#
+?"OCE7X"   "OCE20ND2"   I               "Olicom Ethernet ISA/IV Adapter"
+?"OCE4X"   "OCE4XND2"   P!!!            "Olicom Ethernet PCI/II Adapter"
+?"O100EOS2" "O100"      P!!!            "Olicom Ethernet PCI 10/100 Adapter"
+?"OCE20"   "OCE20ND"    A               "Olicom GoCard Ethernet"
+#
+# exp16.nif/os2 ->Intel M               "Olicom Ethernet MCA Adapter"
+#
+# nif name guessed
+?"OCE3X"   "OCE3XND2"   M               "Olicom Ethernet MCA 10/100 Adapter"
+"olitok"   "olitok16"   IEMP+           "Olicom Token-Ring Network 16/4 Adapters"
+?"OLITOKP" "OLITOKP"    L               "Olicom Pocket Token-Ring Adapter"
+# note: copyfille= problem for CID (IBM)
+"olitokce" "olitok16"   A               "Olicom Token-Ring PCMCIA Card"
+"olitok32" "olitok32"   I?E?M?          "Olicom Token-Ring Network Server Adapter"
+#
+#- Parallel Port (IBM) ----------------------------------------------
+#
+"pmac"     "pmac"       -               "Parallel Port NIC-less Adapter"
+#
+#- Proteon ----------------------------------------------------------
+#
+# Proteon ProNET/E PCI Ethernet: PRO16700.NIF/ETHPCI.OS2->DC21X4 (Digital Semiconductor)
+#
+# followning nif files have CID/Install problems (IBM)
+?"LS189XR" "NDIS89XR"   M               "Proteon p1892plus ProNET - 4/16 Plus"
+?"LS129XR" "NDIS39XR"   I               "Proteon p1392plus ProNET - 4/16 Plus"
+?"LS139XR" "NDIS39XR"   I               "Proteon p1393 Token-Ring"
+?"PINDIS2" "PINDIS2"    I               "Proteon ProNET - 4/16 ISA TokenRing (p1394plus)"
+#?"LS199XR" "NDIS99XR"   E               "Proteon p1990plus ProNET - 4/16 Plus"
+"NDIS99XR" "NDIS99XR"   E?              "Proteon ProNET-4/16 p199x Token-Ring Adapter"
+#
+#- Racal ------------------------------------------------------------
+#
+# IBM notes that a lot of Racal InterLan NIF files
+# are not compatible with LAPS...
+#
+# NI6510 has updated nif in 65lsvnif.exe.
+"NI6510"   "NI6510"     I               "Racal InterLan EtherBlaster Ethernet Adapter"
+?"ILANAT"  "ILANAT"     I               "Racal InterLan AT-TP"
+"NI5210"   "NI5210"     I               "Racal-Datacom NI5210 XT/AT Ethernet Adapter"
+?"ES3210"  "ES3210"     E               "Racal InterLan ES3210"
+?"EX3210"  "ES3210"     E               "Racal InterLan ES3210-TP"
+# driver from 93 has problems, use 92 (IBM)
+?"NI9210"  "NI9210"     M               "Racal InterLan MCA/MCA-TP"
+#
+# ILANPCI "Racal InterLan PCI T2" -> AND PCNet Family Ethernet Adapter
+#
+?"RIC16NDS" "RIC16NDS"  I               "Racal InterLan T/R 16/4 ISA"
+?"RDC16NDS" "RDC16NDS"  M               "Racal InterLan T/R 16/4 MCA"
+#
+#- Racore -----------------------------------------------------------
+#
+"rtr16nds" "rtr16nds"   IM              "Racore 16/4 Token-Ring Adapter ISA/MCA"
+"RVGNDIS"  "RVGNDIS"    P+              "Racore 10/100 AnyLAN Card"
+"EISANDIS" "EISANDIS"   E               "Racore EISA Token-Ring Adapter"
+# PCMCIA enabler after IBMKBD (IBM NOTE)
+"RCPTRNDS" "RCPTRNDS"   P+A             "Racore Preferred Token Ring Adapter (PCI/PCMCIA Support)"
+#
+#- Realtek ----------------------------------------------------------
+#
+"RTL8009"  "RTL09"      I               "Realtek 8009 ISA Ethernet Adapter"
+#
+"RTL8019"  "PNPND"      I?M?E?          "Realtek 8019 Plug and Play Ethernet Adapter"
+# ! name conflict with VIA
+"RTL8029"  "PCIND"      P+              "Realtek 8029AS PCI Ethernet Adapter"
+# De528     PCIND                        DE-528 PCI Ethernet Adapter
+# EN1208    PCIND                        Accton EN1208 PCI Ethernet Adapter
+# SMC1208   PCIND                        SMC EZ Card PCI 10 Adapter(SMC1208x)
+"RTL8129"  "RTFND"      P+              "Realtek 8129 Fast Ethernet Adapter"
+# A2500     RTSND                        ATI AT-2500 Fast Ethernet Adapter
+"RTL8139"  "RTSND"      P+              "Realtek 8139/8130/810x and compatibles"
+# ACCND     RTSND                        Accton EN1207D Series PCI Fast Ethernet Adapter
+# DFE530TX  RTSND                        DFE-530TX+ 10/100 PCI Adapter
+# DLKRTS    Dlkrts->RTSND                D-Link DFE-538TX 10/100 Adapter
+# EN9130    RTSND                        Edimax EN9130 Fast Ethernet Adapter
+# KTC120    KTC120->RTSND                Kingston EtheRX PCI Fast Ethernet Adapter
+# SMCND     SMCND->RTSND                 SMC EZ Card 10/100 (SMC1211TX)
+"rtgnda"   "rtgnda"                     "Realtek 8169 Gigabit Ethernet Adapter"
+#
+#- Serenity Systems International -----------------------------------
+#
+"goseth"  "goseth"      I+              "Virtual Ethernet Adapter"
+#
+#- Silicom ----------------------------------------------------------
+#
+"SFE"      "SFENDS"     A               "Silicom Fast Ethernet PCMCIA Adapter"
+#
+#- Silicon Integrated Systems ---------------------------------------
+#
+"SIS900"   "SIS900"     P+              "SiS 900/7016 SIS900 10/100 PCI Adapters"
+"sis90a"   "sis90a"     P(+)            "SiS900 Another MAC driver"
+#
+#- Standard Microsystems Corp ---------------------------------------
+#
+# IBM lists ethos2at/smc8000 (not Elite), perhaps obsolete
+"ethos2at" "smc8000"    I               "SMC Ethernet ISA Adapter Family"
+"ethos2mc" "smc8000"    M               "SMC Ethernet MCA Adapter Family"
+# IBM NOTE: disable bus mastering for LAN distance
+"smcos2e"  "smc8232"    E               "SMC Ethernet EISA Adapter"
+# SMCPWR: ->DC21X4 (SMC EtherPower 10BASE-T PCI,..)
+# IBM3:?"SMC9000" "SMC9X"      -               "SMC 9000"
+# danpex (fe1000tx_g-u2.exe\NDIS2\SMC9000.OS2)
+"FE1000"   "SMC9000"    IA?             "Danpex FE-1000TX 10/100 Ethernet ISA Adapter"
+"FE1000"   "SMC9000"    IA              "SMC 9000 Ethernet/PCMCIA Ethernet Adapter"
+"tokos2at" "smc8100"    I               "SMC TokenCard Elite"
+"tokos2mc" "smc8100"    M               "SMC TokenCard Elite/A"
+"smcos2et" "smc8332"    E               "SMC TokenCard Elite Master32"
+"SMCPWR2"  "SMCPWR2"    P+              "SMC EtherPower II 10/100 (9432TX) Ethernet Adapter"
+#
+#- SysKonnet/Schneider & Koch ---------------------------------------
+#
+"SKFPNO"   "SKFPNO"     P+              "SK-NET FDDI PCI Adapter"
+"SKTOKISA" "SKTOKN"     I               "SK-NET Token Ring ISA Adapter"
+"SKTOKPCI" "SKTOKN"     P+              "SK-NET Token Ring PCI Adapter"
+"SKG16"    "SKG16"      I?              "SK-NET G16 Ethernet Adadpter"
+"SKMCA"    "SKMCA"      M               "SK-NET MCA Ethernet Adadpter"
+"sk98nd"   "sk98nd"     P+              "SysKonnect SK-9E21D,SK-9521, Marvel Yukon"
+#
+#- Tamarack Microelectronics Inc ------------------------------------
+#
+"TC902X"   "TC902X"     P+              "Tamarack tmi TC9021 MAC Adapter"
+#
+#- TDK --------------------------------------------------------------
+#
+"TDKCD02"  "TDKCD02"    A               "TDK LAC-CD Series Ethernet Adapter"
+#
+# no not have nif file, only protocol.ini (IBM cardbus.exe)
+# both TDKENAB.OS2 and TDKFLYR.OS2 needed in config.sys
+"TDKFLYR"  "TDKENAB+TDKFLYR" A          "TDK Netflyer CardBus Card"
+#
+#- Texas Instruments ------------------------------------------------
+#
+?"TR2KNDIS" "TR2KNDIS"  I               "Texas Instruments Token-Ring Adapter"
+<<?"?" "?"                P!!!            "Texas Instruments ThunderLAN"
+#
+#- Thomas-Conrad ----------------------------------------------------
+#
+# TCE32PCW -> DC21X4
+#
+# copy file to root..
+?"TCCTOK"  "TCCTOK"     I               "Thomas-Conrad 16/4 Token-Ring Adapter AT/MC"
+#
+# Thomas-Conrad Tropic 16/4 TR->IBMTOK
+#
+#- Ungermann-Bass ---------------------------------------------------
+#
+"ubneipc"  "UBNEI"      I               "Ungermann-Bass NIUpc Adapter"
+"ubneips"  "UBNEI"      M               "Ungermann-Bass NIUps Adapter"
+#
+#- VIA --------------------------------------------------------------
+#
+"vfet1a"   "vfet1a"     P+              "VIA VT86C100A Rhine"
+"vfet2a"   "vfet2a"     P+              "VIA VT6102 Rhine2"
+"vfet3a"   "vfet3a"     P+              "VIA VT6105 Rhine3"
+"vgend2"   "vgend2"     P+              "VIA VT612x Velocity"
+"PCINDVIA" "PCINDVIA"   P+              "VIA 926 PCI 32-bit Ethernet Adapter"
+"FETND"    "FETND"      P+              "VIA PCI 10/100Mb Fast Ethernet Adapter"
+# DLKFET    DLKFET->FETND                D-Link DFE-530TX PCI Fast Ethernet Adapter
+#
+#- Western Digital --------------------------------------------------
+#
+#           MACWD.OS2+MACWD2.OS2
+"MACWDAT"  "MACWD"      I               "Western Digital EtherCard PLUS AT Adapters"
+"MACWDMC"  "MACWD"      M               "Western Digital EtherCard PLUS Micro Channel Adapters"
+#
+#- Winbond ----------------------------------------------------------
+#
+"W840ND"   "W840ND"     P+              "Winbond W89C840 PCI Ethernet Adapter"
+"W940ND"   "W940ND"     P+              "Winbond W89C940 PCI Ethernet Adapter"
+#
+#- Xircom -----------------------------------------------------------
+#
+# note: Xircom drivers have sometimes only ugly point enablers
+"XIRTOK"  "TRSETUP+SMARTND" L          "Xircom External Token-Ring Adapter"
+##???"XIRTOK"  "+SMARTND" L               "Xircom Pocket Token-Ring Adapter III"
+?"CTOS2V2" "CTND"       A               "Xircom CreditCard Token Ring Adapter"
+#
+##?"PE3IS2V2" "PE3NDIS" L               "Xircom Pocket Ethernet Adapter III"
+#
+# EPP.OS2?
+"PE3OS2"   "PE3NDIS"    L               "Xircom Pocket Ethernet Adapter III"
+#
+#IBM: "CEOS2V2" "CENDIS"    L(???)      "Xircom CreditCard Ethernet Adapter (PE3-10BX)"
+# Xircom CreditCard Ethernet Adapter (3.14)
+"CEOS2V2"  "CENDIS"     A               "Xircom CreditCard Ethernet Adapter (CENDIS)"
+?"CE2OS2"  "CE2NDIS"    A               "Xircom CreditCard Ethernet Adapter (CE-10BT/A,PS-CE2-10BT)"
+# RealPort Ethernet 10/100+Modem 56             REM56G-100
+# CreditCard Ethernet 10/100+Modem 56           CEM56-100
+"XCEMOS2"  "XCEMNDIS"   A               "Xircom Ethernet 10/100+Modem 56 (REM56G-100,CEM56-100)"
+# RealPort2 Ethernet 100                        R2E-100BTX
+# RealPort Ethernet 100                         RE-100BTX
+# CreditCard Ethernet 10/100                    CE3B-100BTX
+# CreditCard Ethernet 10                        CE3-10BT
+"CE3OS2"   "CE3NDIS"    A               "Xircom Ethernet Adapter 10/100 (R(2)E-100BTX,CE3(B)-100BT(X))"
+# CreditCard CardBus Ethernet 10/100 Adapter    CBE-10/100BTX
+# CreditCard CardBus Ethernet II 10/100 Adapter CBE2-100BTX
+# RealPort CardBus Ethernet 10/100 Adapter      RBE-100BTX
+# RealPort2 CardBus Ethernet 10/100 Adapter     R2BE-100BTX
+"CBEOS2"   "CBENDIS"    C+              "Xircom CardBus Ethernet 10/100 (CBE(2),R(2)BE)"
+# CardBus Ethernet 10/100+Modem 56              CBEM56G-100
+# RealPort CardBus Ethernet 10/100+Modem 56     RBEM56G-100
+# RealPort2 Cardbus Ethernet 10/100+Modem 56    R2BEM56G-100
+"CBEOS2"   "CBENDIS+CBMODEM"  C+        "Xircom CardBus Ethernet 10/100+Modem 56 (CBEM,/R(2)BEM)"
+# Xircom Performance Series CreditCard Ethernet Adapter IIps
+"XPSOS2"   "XPSNDIS"    A               "Xircom Performance Series Ethernet Adapter (CE2)"
+# Xircom CreditCard Ethernet+Modem 33.6
+"XPSMOS2"  "XPSNDIS"    A               "Xircom Performance Series Ethernet+Modem Adapter (CEM33)"
+#
+#-Z'NYX -------------------------------------------------------------
+#
+# Z'NYX EtherAction PCI LAN Adapter (ZX312) -> DC21X4
+#
+#--------------------------------------------------------------------
+#
+# .NIF       .OS2       type/detection  title
+#12345678  #12345678                    #1234567890123456789012345678901234567890123456789012345678901234567890
+#                                                 1111111111222222222233333333334444444444555555555566666666667
+

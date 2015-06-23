@@ -1,0 +1,3 @@
+@ECHO OFF
+REM PGP-CRC
+REM ....

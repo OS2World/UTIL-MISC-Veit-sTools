@@ -1,0 +1,2 @@
+rc = RxMessageBox('Hello!'||D2C(10)||'I am a small rexx program wrapped to REXX_PM.EXE. Use REXX2PM to replace me..', 'REXX_PM', 'OK', 'INFORMATION')
+Return 0

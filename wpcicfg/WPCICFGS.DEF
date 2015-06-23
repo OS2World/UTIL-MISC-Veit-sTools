@@ -1,0 +1,4 @@
+Library wpcicfgs
+Description '@#V.K:2002.08.04#@Write PCI config space register (snooper)'
+ProtMode
+Stub None

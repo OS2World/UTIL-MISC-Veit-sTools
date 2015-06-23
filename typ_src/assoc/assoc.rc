@@ -1,0 +1,17 @@
+#define EAF_DEFAULTOWNER 1
+#define EAF_REUSEICON    4
+
+ASSOCTABLE 1 PRELOAD
+  BEGIN
+    /* "", "*.exp", EAF_DEFAULTOWNER, expenses.ico*/
+    "VirtualPascalInfofile", "VPI", 0, "typ2.ico"
+    "Borland stroke font",   "CHR", 0, "typ2.ico"
+
+  END
+ 
+
+stringtable
+  begin
+    EAF_DEFAULTOWNER "EAF_DEFAULTOWNER"
+    EAF_REUSEICON "EAF_REUSEICON"
+  end

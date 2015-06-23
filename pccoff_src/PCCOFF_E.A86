@@ -1,0 +1,30 @@
+		mov dx,03e0
+                mov al,000
+                call ausschalten
+                mov al,040
+                call ausschalten
+                mov al,080
+                call ausschalten
+                mov al,0c0
+                call ausschalten
+                int 020
+
+ausschalten:
+                or al,002
+                out dx,al
+                inc dx
+                  xchg al,ah
+                    in al,dx
+                  xchg al,ah
+                dec dx
+                  
+		and ah,0ff-010
+                  
+		out dx,al
+                inc dx
+                  xchg al,ah
+                    out dx,al
+                  xchg al,ah
+                dec dx
+                ret
+

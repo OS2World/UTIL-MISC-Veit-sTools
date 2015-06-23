@@ -1,0 +1,1496 @@
+; Veit Kannegieser * 1999.05.17
+;***************************************************************************
+bit0                            equ   1
+bit1                            equ   2
+bit2                            equ   4
+bit3                            equ   8
+bit4                            equ  16
+bit5                            equ  32
+bit6                            equ  64
+bit7                            equ 128
+
+bios_bildschirmmodus            equ 00049 ;  8
+bios_spalten                    equ 0004a ; 16
+bios_bildschirmgroesse          equ 0004c ; 16
+bios_zeilenzahl_minus_1         equ 00084 ;  8
+bios_zeichen_hoehe              equ 00085 ; 16
+
+cursor_h10                      equ  8*0100+ 9
+cursor_h18                      equ 16*0100+17
+cursor_h20                      equ 17*0100+19
+
+palette_0                       equ 000 ; 000
+palette_1                       equ 055 ; 054
+palette_2                       equ 0aa ; 0a8
+palette_3                       equ 0ff ; 0fc
+
+attribute_controller            equ 003c0
+Miscellaneous_Output_Register_W equ 003c2
+Sequencer                       equ 003c4
+Miscellaneous_Output_Register_R equ 003cc
+CRTC                            equ 003d4 ; MONO: 3B4 ...
+
+
+;***************************************************************************
+pause                   macro
+                          call pause_
+                        #em
+
+iret_                   macro
+                          iret
+                        #em
+
+gong                    macro
+                          push ax
+                            mov ax,00e07
+                            pushf
+                            call 0c000:00fcd
+                          pop ax
+                        #em
+
+out_dx_ax               macro
+                          #if schneller_portzugriff
+                          out dx,ax
+                          #else
+                          call out_dx_ax_
+                          #endif
+                        #em
+                        
+out_dx_al               macro
+                          #if schneller_portzugriff
+                          out dx,al
+                          #else
+                          call out_dx_al_
+                          #endif
+                        #em
+
+in_al_dx                macro
+                          #if schneller_portzugriff
+                          in al,dx
+                          #else
+                          call in_al_dx_
+                          #endif
+                        #em
+                        
+;***************************************************************************
+                        jmp einrichten
+                        db 13
+#if et4000
+                        db 'ET4000'
+#endif
+#if standard_vga
+                        db 'SVGA'
+#endif
+#if s3_trio
+                        db 'S3TRIO'
+#endif
+                        db 13,10,26,0
+even 010
+;***************************************************************************
+
+;ЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫ
+
+nicht_modus_3:
+                        pop ds
+doch_nicht:
+alte_behandlung:
+			;jmp d cs:[int_10_org]
+                        db 0ea
+
+int_10_org:
+int_10_org_o		dw ?
+int_10_org_s		dw ?
+
+                        ;----------------------------------
+                        #if immer_rate_setzen
+
+vesa_oder_bios_modus_setzen:
+
+                        pushf
+                          call d cs:[int_10_org]
+
+                        pusha
+
+                          #if standard_vga
+                            mov cl,b cs:[clock_rest]
+                            call setze_standard_vga_clock
+                          #endif
+
+                          #if et4000
+                            mov cl,b cs:[clock_rest]
+                            call setze_et4000_clock
+                          #endif
+
+                          ; S3 Trio: keine Ћnderungen
+
+                        popa
+                        iret
+
+                        #endif
+                        ;----------------------------------
+
+                        ;##################################
+int_10_neu:
+                        #if debug
+                          call debug_ax_bx
+                        #endif
+
+                        ;----------------------------------
+                        ; Modus 3 Setzen ?
+                        cmp ah,000
+                        jne nicht_setzen_00
+
+                        push ax
+                          and al,07f
+                          cmp al,003
+                        pop ax
+                        je funktion_00
+
+                        ; z.B. 640*480*16 verbessern
+                        #if immer_rate_setzen
+                          jmp vesa_oder_bios_modus_setzen
+                        #else
+                          jmp short doch_nicht
+                        #endif
+                        ;----------------------------------
+
+  nicht_setzen_00:
+                        ;----------------------------------
+                        ; Modus 3 Ѓber VESA-Funktion 4f02 setzen ?
+                        cmp ax,04f02
+                        jne nicht_setzen_4f02
+                        push bx
+                          and bx,001ff
+                          cmp bx,00003
+                        pop bx
+                        jne nicht_setzen_4f02_0003
+                        ;----------------------------------
+
+                        ;----------------------------------
+                        ; INT 10/AX=0003,AX=0083 aufrufen
+                        pusha
+                          mov ax,00003
+                          and bh,080
+                          or al,bh ; 0x/8x
+                          pushf
+                          push cs
+                          call funktion_00
+                        popa
+                        mov ax,0004f ; VESA: Erfolg
+                        iret
+                        ;----------------------------------
+
+  nicht_setzen_4f02_0003:
+                        ;----------------------------------
+                        ; Bildschirmverbesserung auch in
+                        ; anderen Aufl”sungen
+                        #if immer_rate_setzen
+                          jmp vesa_oder_bios_modus_setzen
+                        #endif
+                        ;----------------------------------
+  nicht_setzen_4f02:
+                        ;----------------------------------
+                        ; betrifft die Funktion Modus 3 ?
+                        ; einige VESA-Treiber setzen fЃr 80*60 Text
+                        ; auch Modus 3
+  nicht_setzen:
+                        push ds
+                          push 00040
+                          pop ds
+                          cmp b [bios_bildschirmmodus],3
+                          jne nicht_modus_3
+
+                          push ax
+                            mov al,b [bios_zeilenzahl_minus_1]
+                            inc al
+                            mul b [bios_zeichen_hoehe]
+                            ; 25*16=400  (3)
+                            ; 28*14=392  (3)
+                            ; 50* 8=400  (3)
+                            ; 60* 8=480  (VESA 108)
+                            ; 25*20=500  (3+F20)
+                            ; 28*18=504  (3+F20)
+                            ; 50*10=500  (3+F20)
+                            cmp ax,480
+                          pop ax
+                          jbe nicht_modus_3
+
+                        pop ds
+
+;******************************************************************************
+behandlung:
+                        #if blinkx
+                          cmp ax,01003
+                          if e mov bl,0
+                        #endif
+
+                        cmp ah,001
+                        je funktion_01
+                        cmp ah,011
+                        je funktion_11
+                        jmp doch_nicht
+
+;ЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫ
+funktion_00:
+
+                        #if et4000
+
+                        ;----------------------------------
+                        ; schnell und ohne Bildschirmflackern
+                        call et4000_setzte_modus_3
+                        ;----------------------------------
+
+                        #else
+
+                        ;----------------------------------
+                        ; damit wirklich aus allen Grafikmodi
+                        ; wieder Text sichtbar wird muss das
+                        ; BIOS aufgerufen werden
+                        pushf
+                        call d cs:[int_10_org]
+
+
+                        ; hier Bildschirmrate erh”hen
+                        #if standard_vga
+                          push cx
+                            mov cl,b cs:[clock_80_25]
+                            call setze_standard_vga_clock
+                          pop cx
+                        #endif
+
+                        #if s3_trio
+                          push cx
+                            mov cx,w cs:[clock_80_25]
+                            call s3_trio_clock
+                          pop cx
+                        #endif
+
+                        #if blinkx
+                          call blinken_aus
+                        #endif
+
+                        ;----------------------------------
+
+                        #endif
+
+
+                        push ds,es
+                          pusha
+
+                            ;------------------------------
+                            ; Schrift 20 laden
+                            mov bh,20
+                            mov bl,0
+                            mov cx,256
+                            mov dx,0
+                            mov es,cs
+                            mov bp,font20
+                            call lade_schrift
+                            ;------------------------------
+
+                            ;------------------------------
+                            ; Parameter fЃr Schrift 20 setzen
+                            #if et4000
+
+                            ; CRTC schon beschickt
+
+                            #else
+
+                            push cs
+                            pop ds
+                            push 00040
+                            pop es
+                            mov bx,25
+                            mov cx,20
+                            call lies_crtc_nur_hoehe
+                            call berechne_crtc_block
+                            call schreibe_crtc_nur_hoehe
+
+                            #endif
+                            ;------------------------------
+
+                            ;------------------------------
+                            ; Cursorgr”бe fЃr Schrift 20
+                            mov cx,cursor_h20
+                            call setze_cursorgroesse
+                            ;------------------------------
+
+                          popa
+                        pop es,ds
+
+                        iret_
+;ЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫ
+funktion_01:
+                        push ds,ax
+
+                          push 00040
+                          pop ds
+
+                          ; "unsichtbar"
+                          cmp cx,02000
+                          je cga_emu_abgeschaltet
+
+                          ; CGA-Emulation
+                          ; fЃr NCMAIN.EXE (NC4) ist
+                          ; >25 Zeilen ein Indiz fЃr Font 8x8 als CGA
+                          ; deshalb wird hier das BIOS-Bit ignoriert
+                          ;*test b [00087],bit0
+                          ;*jnz cga_emu_abgeschaltet
+
+                          ; CGA: CX=0607   (NCMAIN.EXE 4)
+                          cmp cl,7
+                          ;jne kein_cga_cursor
+                          ; GWS.EXE (SCALE) 0506
+                          ja kein_cga_cursor
+
+                          mov al,b [bios_zeichen_hoehe]
+                          mov cl,al
+                          dec cl
+                          mul ch          ; 6*20 =140    0*20=000
+                          shr ax,3        ; 140/8= 17    000/8= 0
+                          mov ch,al
+  kein_cga_cursor:
+  cga_emu_abgeschaltet:
+                        pop ax,ds
+                        call setze_cursorgroesse
+
+                        iret_
+;ЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫ
+funktion_11:
+                        cmp al,000
+                        je lade_schrift_benutzerdefiniert
+
+                        cmp al,001 ; ROM 8x14
+                        if e jmp setze_80_28
+
+                        cmp al,002 ; ROM 8x8
+                        if e jmp setze_80_50
+
+                        cmp al,004 ; ROM 8x16
+                        if e jmp setze_80_25
+
+                        cmp al,010
+                        je lade_schrift_benutzerdefiniert
+
+                        cmp al,011 ; ROM 8x14
+                        if e jmp setze_80_28
+
+                        cmp al,012 ; ROM 8x8
+                        if e jmp setze_80_50
+
+                        cmp al,014 ; ROM 8x16
+                        if e jmp setze_80_25
+
+                        jmp alte_behandlung
+
+;****************************************************************************
+
+lade_schrift_benutzerdefiniert:
+                        pusha
+                          push ds,es
+
+                            ; OS/2 MODE.COM (DOS Sitzung) versucht Modus 3
+                            ; zu setzen und dann 8*16 Schriftart zu laden
+                            ; die Schrift basiert aber auf 8*20
+                            ; die unteren Teile von y,g,.. sind abgeschnitten ..
+                            push ax
+                              cmp bh,16
+                              jne nicht_mode_com_f16
+
+                              ; 'y'=Chr(121) testen ..
+                              mov ax,cs:[font20+121*20+14]
+                              cmp ax,es:[bp    +121*16+14]
+                              jne nicht_mode_com_f16
+                              mov ax,cs:[font20+121*20+12]
+                              cmp ax,es:[bp    +121*16+12]
+                              jne nicht_mode_com_f16
+
+                              ; Mode will also eigenlich 80*25 mit 9*20 ...
+                            pop ax
+                            jmp setze_80_25_kein_push
+
+  nicht_mode_com_f16:
+                              ; das gleiche fЃr Mode co80 bei 80*28 mit 9*18
+                              ; (mode will 8*14 setzen)
+                              cmp bh,14
+                              jne nicht_mode_com_f14
+
+                              ; 'y'=Chr(121) testen ..
+                              push di
+                                push es
+                                  ; 9*18 basiert auf 9*(1+16+1)
+                                  les di,d cs:[font16_zeiger]
+                                  mov ax,es:[di+121*16+12-1]
+                                  mov di,es:[di+121*16+10-1]
+                                pop es
+                                cmp di,es:[bp+121*14+10]
+                              pop di
+                              jne nicht_mode_com_f14
+                              cmp   ax,es:[bp+121*14+12]
+                              jne nicht_mode_com_f14
+
+                              ; Mode will also eigenlich 80*28 mit 9*18 ...
+                            pop ax
+                            jmp setze_80_28_kein_push
+
+  nicht_mode_com_f14:
+
+                              ; Mode co80 im Modus 80*50 mit 8/9*10 sieht
+                              ; nicht nur schrecklich aus sondern NC 4
+                              ; stellt sich auch noch d„mlich an (63 Zeilen)
+                              cmp bh,8
+                              jne nicht_mode_com_f08
+
+                              ; 'y'=Chr(121) testen ..
+                              push di
+                                push es
+                                  ; 9*10 basiert auf 9*(1+8+1)
+                                  les di,d cs:[font08_zeiger]
+                                  mov ax,es:[di+121*8+4-1]
+                                  mov di,es:[di+121*8+6-1]
+                                pop es
+                                cmp di,es:[bp+121*8+6]
+                              pop di
+                              jne nicht_mode_com_f08
+                              cmp   ax,es:[bp+121*8+4]
+                              jne nicht_mode_com_f08
+
+                              ; Mode will also eigenlich 80*50 mit 9*10 ...
+                            pop ax
+                            jmp setze_80_50_kein_push
+
+  nicht_mode_com_f08:
+
+                            pop ax
+                            call lade_schrift
+
+schrifthoehen_verrechnung:
+                            cmp bl,0
+                            jne nicht_block_null
+
+                            push cs
+                            pop ds
+                            push 00040
+                            pop es
+
+                            and bh,03f ; H”he <=32 (Bit7 entfernen)
+
+                            mov ax,504
+                            sub cx,cx
+                            mov cl,bh
+                            div cx ; Zeichenh”he >= 1 also sicher ...
+                            mov bx,ax
+                            call lies_crtc_nur_hoehe
+                            call berechne_crtc_block
+                            call schreibe_crtc_nur_hoehe
+                            call standardcursor
+
+  nicht_block_null:
+                          pop es,ds
+                        popa
+                        iret_
+
+;****************************************************************************
+
+setze_80_25:
+                        pusha
+                          push ds,es
+setze_80_25_kein_push:
+                            mov bh,20                   ; H”he 20
+                            ;mov bl,bl                  ; Block
+                            mov cx,256                  ; alle Zeichen
+                            mov dx,0                    ; vom ersten
+                            mov es,cs                   ; Schrift mit eingebunden
+                            mov bp,font20
+                            call lade_schrift
+
+                            jmp schrifthoehen_verrechnung
+
+;****************************************************************************
+
+setze_80_28:
+                        pusha
+                          push ds,es
+setze_80_28_kein_push:
+                            mov bh,18+bit7              ; H”he 18 zu berechnen aus 16
+                            ;mov bl,bl                  ; Block
+                            mov cx,256                  ; alle Zeichen
+                            mov dx,0                    ; vom ersten
+                            les bp,d cs:[font16_zeiger] ; Schrift 16
+                            call lade_schrift
+
+                            ; Ћnderungen Schrift 16 Breite 9
+                            les bp,d cs:[font16_zeiger_patch0809]
+                            mov cx,1       ; ein Zeichen
+  patch_16_08_09_schleife:
+                            mov dl,es:[bp] ; zu ersetzendes Zeichen
+                            inc bp
+                            cmp dl,0       ; Ende ?
+                            je patch_16_08_09_ende
+                            call lade_schrift
+                            add bp,16
+                            jmp patch_16_08_09_schleife
+
+  patch_16_08_09_ende:
+                            jmp schrifthoehen_verrechnung
+
+;****************************************************************************
+
+setze_80_50:
+                        pusha
+                          push ds,es
+setze_80_50_kein_push:
+                            mov bh,10+bit7              ; Schrift 10 aus Schrift 8
+                            ;mov bl,bl                  ; Block
+                            mov cx,256                  ; Anzahl
+                            mov dx,0                    ; erstes Zeichen
+                            les bp,d cs:[font08_zeiger] ; Schrift 8
+                            call lade_schrift
+
+                            jmp schrifthoehen_verrechnung
+
+;ЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫ
+; BH=H”he
+standardcursor:
+                        push cx
+                           mov cx,00607
+                           cmp bh,10
+                           if e mov cx,cursor_h10
+                           cmp bh,18
+                           if e mov cx,cursor_h18
+                           cmp bh,20
+                           if e mov cx,cursor_h20
+                           call setze_cursorgroesse
+                        pop cx
+                        ret
+;****************************************************************************
+; bx=Zeilen             (25)
+; cx=Schrifth”he        (20)
+;
+;(dx=Zeilen)            (500)
+berechne_crtc_block:
+                        pusha
+                          mov ax,cx
+                          mul bx ; 25*20=500
+                          mov dx,ax
+
+                          ; vertical total
+                          mov si,crtc_tabelle
+                          mov ax,dx
+                          add ax,43
+                          mov b [si+6],al
+                          and b [si+7],0ff-bit0-bit5
+                          mov al,ah
+                          and ax,00201 ; bit1 in ah, bit0 in al
+                          shl ah,4     ; bit5 in ah, bit0 in al
+                          or al,ah
+                          or b [si+7],al
+
+                          ; maximum scan line
+                          mov al,b [si+9]
+                          and al,bit7+bit6+bit5 ; bit 4..0 l”schen
+                          or al,cl
+                          dec al
+                          mov b [si+9],al
+
+                          ; vertical display end
+                          mov ax,dx
+                          dec ax
+                          mov b [si+012],al
+                          and b [si+007],0ff-bit1-bit6
+                          mov al,ah
+                          and ax,00201
+                          shl al,1
+                          shl ah,5
+                          or al,ah
+                          or b [si+007],al
+
+                          ; start vertical blank
+                          mov ax,dx
+                          add ax,7
+                          mov b [si+015],al
+                          and b [si+007],0ff-bit3-bit6
+                          mov al,ah
+                          and ax,00201
+                          shl al,3
+                          shl ah,5
+                          or al,ah
+                          or b [si+007],al
+
+                          ; vertical retrace start
+                          mov ax,dx
+                          add ax,9
+                          mov b [si+010],al
+                          and b [si+007],0ff-bit2-bit7
+                          mov al,ah
+                          and ax,00201
+                          shl al,2
+                          shl ah,6
+                          or al,ah
+                          or b [si+007],al
+
+                          ; vertical retrace end
+                          mov al,12
+                          mov b [si+011],al
+
+                          ; end vertical blank
+                          mov al,4
+                          mov b [si+016],al
+
+                          push ds
+                            push 00040
+                            pop ds
+                            mov al,bl
+                            dec al
+                            mov b [bios_zeilenzahl_minus_1],al
+                            mov w [bios_zeichen_hoehe],cx
+
+                            ; 25*80*2=4000
+                            ; 28*80*2=4480
+                            mov al,80*2
+                            mul bl
+                            ; 4000->4096
+                            cmp ax,4096
+                            if b mov ax,4096
+                            mov w [bios_bildschirmgroesse],ax
+                            mov ax,bx
+                            dec ax
+                            mov b [bios_zeilenzahl_minus_1],al
+                          pop ds
+
+                        popa
+
+                        ret
+;***************************************************************************
+; cx: ch=oben cl=unten
+setze_cursorgroesse:
+                        pusha
+
+                          mov al,00a            ; 00a
+                          mov ah,ch
+                          call schreibe_crtc
+
+                          inc al                ; 00b
+                          mov ah,cl
+                          call schreibe_crtc
+
+                          push ds
+                            push 00040
+                            pop ds
+                            mov w [00060],cx
+                          pop ds
+
+                        popa
+                        ret
+;***************************************************************************
+schreibe_crtc_block:
+                        #if test_cpu
+                        call cpu_zugriff_ein
+                        #endif
+
+                        mov al,011
+                        mov ah,b [crtc_tabelle+011]
+                        and ah,07f ; Bit 7 aus
+                        call schreibe_crtc
+
+                        mov dx,CRTC
+                        mov si,crtc_tabelle
+                        mov cx,040
+                        mov al,0
+                        call port_ausgabe_schleife
+
+                        #if test_cpu
+                        call cpu_zugriff_aus
+                        #endif
+
+                        ret
+;***************************************************************************
+; dx=Port
+; ds:si Bytefeld
+; cx=Anzahl Byte
+; al=erster Index
+
+port_ausgabe_schleife:
+                        push ax,cx
+                          cld
+
+port_ausgabe_schleife_schleife:
+
+                          out_dx_al
+
+                          push ax
+
+                            lodsb
+                            inc dx
+                            out_dx_al
+
+                            dec dx
+
+                          pop ax
+
+                          inc al
+                          loop port_ausgabe_schleife_schleife
+
+                        pop cx,ax
+                        ret
+;***************************************************************************
+pause_:
+
+                        out 0ed,al
+                        out 0ed,al
+                        out 0ed,al
+                        out 0ed,al
+                        out 0ed,al
+                        out 0ed,al
+                        out 0ed,al
+                        out 0ed,al
+
+                        ret
+;***************************************************************************
+lies_crtc_nur_hoehe:
+                        push ds
+                          pusha
+
+                            mov ds,cs
+                            mov si,crtc_tabelle
+
+                            mov dx,CRTC
+                            in_al_dx
+                            push ax                 ; alter Indexwert
+
+                              mov al,006
+                              call lies_crtc
+                              mov b [si+006],ah
+
+                              mov al,007
+                              call lies_crtc
+                              mov b [si+007],ah
+
+                              mov al,009
+                              call lies_crtc
+                              mov b [si+009],ah
+
+                              mov al,010
+                              call lies_crtc
+                              mov b [si+010],ah
+
+                              mov al,011
+                              call lies_crtc
+                              mov b [si+011],ah
+
+                              mov al,012
+                              call lies_crtc
+                              mov b [si+012],ah
+
+                              mov al,015
+                              call lies_crtc
+                              mov b [si+015],ah
+
+                              mov al,016
+                              call lies_crtc
+                              mov b [si+016],ah
+
+                            pop ax
+                            out_dx_al
+
+                          popa
+                        pop ds
+                        ret
+;***************************************************************************
+; vorher:
+;   nichts
+; nachher:
+;  alles unver„ndert
+
+schreibe_crtc_nur_hoehe:
+                        push ds
+                          pusha
+
+                            #if test_cpu
+                            call cpu_zugriff_ein
+                            #endif
+
+                            mov ds,cs
+                            mov si,crtc_tabelle
+
+                            mov dx,CRTC
+                            in_al_dx
+                            push ax                 ; alter Indexwert
+
+                              mov al,011
+                              mov ah,b [si+011]
+                              and ah,0ff-bit7
+                              call schreibe_crtc
+
+                              mov al,006
+                              mov ah,b [si+006]
+                              call schreibe_crtc
+
+                              mov al,007
+                              mov ah,b [si+007]
+                              call schreibe_crtc
+
+                              mov al,009
+                              mov ah,b [si+009]
+                              call schreibe_crtc
+
+                              mov al,010
+                              mov ah,b [si+010]
+                              call schreibe_crtc
+
+                              mov al,012
+                              mov ah,b [si+012]
+                              call schreibe_crtc
+
+                              mov al,015
+                              mov ah,b [si+015]
+                              call schreibe_crtc
+
+                              mov al,016
+                              mov ah,b [si+016]
+                              call schreibe_crtc
+
+                              mov al,011
+                              mov ah,b [si+011]
+                              or  ah,bit7
+                              call schreibe_crtc
+
+                            pop ax
+                            out_dx_al
+
+                            #if test_cpu
+                            call cpu_zugriff_aus
+                            #endif
+
+                          popa
+                        pop ds
+                        ret
+
+;***************************************************************************
+#if test_cpu
+cpu_zugriff_ein:
+                        ret
+                        push ax,dx
+                          mov dx,Sequencer
+                          mov al,1
+                          call hole_port
+                          or ah,bit5
+                          out_dx_ax
+                        pop dx,ax
+                        ret
+
+cpu_zugriff_aus:
+                        ret
+                        push ax,dx
+                          mov dx,Sequencer
+                          mov al,1
+                          call hole_port
+                          and ah,0ff-bit5
+                          out_dx_ax
+                        pop dx,ax
+                        ret
+#endif
+;***************************************************************************
+;   al=Index
+;   dx=Port
+; ->ah=Wert
+; ->al=Index
+;
+hole_port:
+                        out_dx_al
+                        xchg al,ah
+                        inc dx
+
+                        in_al_dx
+                        xchg al,ah
+                        dec dx
+
+                        ret
+;***************************************************************************
+out_dx_ax_:
+                        out_dx_al
+                        inc dx
+                        xchg al,ah
+                        out_dx_al
+                        dec dx
+                        xchg al,ah
+                        ret
+;***************************************************************************
+out_dx_al_:
+                        out dx,al
+                        pause
+                        ret
+;***************************************************************************
+in_al_dx_:
+                        in al,dx
+                        pause
+                        ret
+;***************************************************************************
+reset_lesen_03da:
+                        push ax,dx
+                          mov dx,003da ; reset flip-flop
+                          in al,dx
+                          pause
+                        pop dx,ax
+                        ret
+;***************************************************************************
+; vorher
+;   al=Index
+; nachher
+;   ah=Wert
+lies_crtc:
+                        push dx
+
+                          mov dx,CRTC
+                          out_dx_al
+                          inc dx
+
+                          xchg al,ah
+                          in_al_dx
+                          xchg al,ah
+
+                        pop dx
+
+                        ret
+
+;***************************************************************************
+; vorher
+;   al=Index
+;   ah=Wert
+;
+; nachher
+;   alles unver„ndert
+schreibe_crtc:
+                        push dx
+                          mov dx,CRTC
+
+                          #if rrrrrrrrrr_et4000
+
+                            out dx,ax
+
+                          #else
+
+                            out dx,al
+                            inc dx
+
+                            xchg al,ah
+                            out dx,al
+                            xchg al,ah
+
+                          #endif
+                        pop dx
+                        ret
+;***************************************************************************
+; ah=index
+
+lies_03c0:
+                        push dx
+
+                          call reset_lesen_03da
+                          xchg al,ah
+                          mov dx,003c0
+                          out_dx_al
+
+                          xchg al,ah
+                          inc dx
+                          in_al_dx
+                          dec dx
+
+                        pop dx
+                        ret
+;***************************************************************************
+#if blinkx
+
+blinken_aus:
+                        push ax,dx
+                          call reset_lesen_03da
+
+                          mov dx,attribute_controller
+                          mov al,010                    ; Index 010
+                          out_dx_al
+
+                          inc dx
+                          in_al_dx                      ; Wert lesen
+                          dec dx
+                          and al,0ff-Bit3               ; Bit 3 l”schen
+
+                          call reset_lesen_03da
+
+                          xchg al,ah                    ; al sichern
+
+                          mov al,010                    ; Index 010
+                          out_dx_al
+
+                          xchg al,ah                    ; al zurЃck
+
+                          out_dx_al                     ; Wert schreiben
+
+                          call reset_lesen_03da
+
+                          mov al,bit5                   ; Bild wieder sichtbar
+                          out dx,al
+
+                        pop dx,ax
+                        ret
+#endif
+;***************************************************************************
+; bh=H”he               bit 7 bei Spezialberechnungen
+; bl=Block
+; cx=Anzahl
+; dx=erstes Zeichen
+; es:bp
+;
+lade_schrift_ende:
+                        ret
+lade_schrift:
+                        jcxz lade_schrift_ende
+
+                        push ds,es
+                          pusha
+
+                            ; ds:si=Schriftquelle
+                            push es
+                            pop ds
+                            mov si,bp
+
+                            ; es:di=Schriftziel
+                            push 0a000
+                            pop es
+                            mov di,dx
+                            shl di,5 ; *32
+
+                            mov al,bl                   ; +Block*16K
+                            shl ax,14
+                            add di,ax
+
+                            ; zu ersetzendes Zeichen (Z„hler)
+                            mov bp,dx
+
+                            ;------------------------------
+                            ; Zugriff auf Schrift-RAM
+                            mov dx,003c4
+
+                            ; Sequencer: Map Mask Register
+                            mov al,002                          ; 3c4.02
+                            call hole_port
+                            push ax
+                              mov ah,bit2 ; Plane 2 (0..3)
+                              out_dx_ax
+
+                              ; Sequencer: Memory Mode Register
+                              mov al,004                        ; 3c4.04
+                              call hole_port
+                              push ax
+                                mov ah,007 ; ?
+                                out_dx_ax
+
+                                mov dx,003ce                    ; 3ce.05
+                                ; Graphics: Mode Register
+                                mov al,005
+                                call hole_port
+                                push ax
+                                  mov ah,0
+                                  out_dx_ax
+
+                                  ; Graphics: Miscellaneous Register
+                                  ; bit   0  Indicates Graphics Mode if set, Alphanumeric mode else.
+                                  ;       1  Enables Odd/Even mode if set.
+                                  ;     2-3  Memory Mapping:
+                                  ;            0: use A000h-BFFFh
+                                  ;            1: use A000h-AFFFh   VGA Graphics modes
+                                  ;            2: use B000h-B7FFh   Monochrome modes
+                                  ;            3: use B800h-BFFFh   CGA modes
+                                  mov al,006                    ; 3ce.06
+                                  call hole_port
+                                  push ax
+                                    mov ah,bit2
+                                    out_dx_ax
+
+                                    ; Graphics: Read Map Select Register
+                                    ; bit 0-1  Number of the plane Read Mode 0 will read from.
+                                    mov al,004                  ; 3ce.04
+                                    call hole_port
+                                    push ax
+                                      mov ah,2
+                                      out dx,ax
+
+                                      ;--------------------
+
+                                      cld
+
+                                      ;--------------------
+                                      ; Fallunterscheidung
+                                      cmp bh,10+bit7
+                                      je lade_schrift_10_aus_08
+                                      cmp bh,18+bit7
+                                      je lade_schrift_18_aus_16
+                                      ;--------------------
+
+                                      ;--------------------
+                                      ; Normalfall
+  lade_schrift_schleife:
+                                      push cx,di
+                                        mov cx,bx
+                                        shr cx,8 ; bh
+                                        rep movsb
+                                      pop di,cx
+                                      add di,32
+                                      loop lade_schrift_schleife
+                                      jmp short lade_schrift_weiter
+                                      ;--------------------
+
+
+                                      ;--------------------
+  lade_schrift_10_aus_08:
+                                      mov al,0
+                                      stosb    ; Zeile 1
+                                      movsw    ; Zeile 2/3 aus 1/2
+                                      movsw    ; Zeile 4/5 aus 3/4
+                                      movsw    ; Zeile 6/7 aus 5/6
+                                      movsw    ; Zeile 8/9 aus 7/8
+                                      stosb    ; Zeile 10
+                                      cmp bp,8
+                                      je pseudografikzeichen_10_aus_08
+                                      cmp bp,10
+                                      je pseudografikzeichen_10_aus_08
+                                      cmp bp,176
+                                      jb kein_pseudografikzeichen_10_aus_08
+                                      cmp bp,223
+                                      ja kein_pseudografikzeichen_10_aus_08
+  pseudografikzeichen_10_aus_08:
+                                      mov al,[si- 8+ 2-1]
+                                      mov es:[di-10+ 1-1],al ; Zeile  1 aus 2
+                                      mov al,[si- 8+ 7-1]
+                                      mov es:[di-10+10-1],al ; Zeile 10 aus 7
+  kein_pseudografikzeichen_10_aus_08:
+                                      add di,32-10
+                                      inc bp
+                                      loop lade_schrift_10_aus_08
+                                      jmp short lade_schrift_weiter
+                                      ;--------------------
+
+
+                                      ;--------------------
+  lade_schrift_18_aus_16:
+                                      mov al,0
+                                      stosb             ; Zeile  1
+                                      push cx
+                                        mov cx,16/2
+                                        rep movsw       ; Zeile 2..17 aus 1..16
+                                      pop cx
+                                      stosb             ; Zeile 18
+                                      cmp bp,8
+                                      je pseudografikzeichen_18_aus_16
+                                      cmp bp,10
+                                      je pseudografikzeichen_18_aus_16
+                                      cmp bp,176
+                                      jb kein_pseudografikzeichen_18_aus_16
+                                      cmp bp,223
+                                      ja kein_pseudografikzeichen_18_aus_16
+  pseudografikzeichen_18_aus_16:
+                                      mov al,[si-16+ 2-1]
+                                      mov es:[di-18+ 1-1],al ; Zeile  1 aus  2
+                                      mov al,[si-16+16-1]
+                                      mov es:[di-18+18-1],al ; Zeile 18 aus 16
+  kein_pseudografikzeichen_18_aus_16:
+                                      add di,32-18
+                                      inc bp
+                                      loop lade_schrift_18_aus_16
+                                      ;jmp short lade_schrift_weiter
+                                      ;--------------------
+
+                                      ;--------------------
+                                      ; VGA wiederherstellen
+  lade_schrift_weiter:
+                                      mov dx,003ce
+                                    pop ax                      ; 3ce.04
+                                    out_dx_ax
+                                  pop ax                        ; 3ce.06
+                                  out_dx_ax
+                                pop ax                          ; 3ce.05
+                                out_dx_ax
+
+                                mov dx,003c4
+                              pop ax                            ; 3c4.04
+                              out_dx_ax
+                            pop ax                              ; 3c4.02
+                            out_dx_ax
+                            ;------------------------------
+
+                          popa
+                        pop es,ds
+                        ret
+;***************************************************************************
+#if et4000
+                        include et4000.a86
+#endif
+
+#if standard_vga
+                        include vga.a86
+#endif
+
+#if s3_trio
+                        include s3trio.a86
+#endif
+
+#if debug
+                        include debug.a86
+#endif
+
+;***************************************************************************
+
+crtc_tabelle:           db 040 dup ?
+
+font08_zeiger:          dd 0
+;font10:                 include cp437_10.a86
+font16_zeiger:          dd 0
+font16_zeiger_patch0809 dd 0
+font20:                 include cp437_20.a86
+
+#if et4000
+clock_80_25:            db 6
+clock_rest:             db 6
+#endif
+
+#if standard_vga
+clock_80_25:            db 3
+clock_rest:             db 0ff
+#endif
+
+#if s3_trio
+clock_80_25:            dw 0ffff
+#endif
+
+;***************************************************************************
+
+tsr_ende:
+;ЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫЫ
+
+;***************************************************************************
+include ..\lhtsr\lh.a86
+include ..\lhtsr\prg.a86
+include konfigur.a86
+;***************************************************************************
+
+#if et4000
+  programm_name:	db 'F20_ET40'
+#endif
+#if standard_vga
+  programm_name:	db 'F20_SVGA'
+#endif
+#if s3_trio
+  programm_name:	db 'F20_S3TR'
+#endif
+
+programm_resident_ende: dw tsr_ende
+
+programm_int            equ 010
+programm_int_neu        equ int_10_neu
+programm_int_org        equ int_10_org
+
+installation_text:	db 'lade F20',00d,00a
+			db '$'
+deinstallation_text:	db 'entferne F20',00d,00a
+			db '$'
+doppelt_text:		db 'mehrfache Installation von F20 !',00d,00a
+			db '$'
+nichtaktiv_text:	db 'F20 nicht aktiv im Speicher gefunden !',00d,00a
+			db '$'
+
+
+einrichten:
+                        call konfigration
+
+                        ;----------------------------------
+                        ; was ist gesetzt ?
+                        mov ah,00f
+                        int 010
+                        and al,07f
+                        cmp al,003
+                        je schon_modus_03
+
+                        ; neu setzen fЃr frische Daten
+                        mov ax,00003
+                        int 010
+
+  schon_modus_03:
+                        ;----------------------------------
+
+                        ;----------------------------------
+                        #if et4000
+                        unlock_et4000
+                        #endif
+
+                        mov dx,03d4
+                        mov di,crtc_tabelle
+                        mov cx,040
+                        mov al,0
+                        cld
+
+lies_crtc_schleife:
+                        out_dx_al
+                        pause
+                        inc dx
+                        xchg al,ah
+                        in_al_dx
+                        pause
+                        stosb
+                        dec dx
+                        xchg al,ah
+                        inc al
+                        loop lies_crtc_schleife
+
+                        #if et4000
+                        lock_et4000
+                        #endif
+                        ;----------------------------------
+
+                        ;----------------------------------
+                        ; hole Schrift 8
+                        mov ax,01130
+                        mov bh,003 ; 8*8 (0..127 Annahme: auch 128..255)
+                        int 010
+                        mov w [font08_zeiger+0],bp
+                        mov w [font08_zeiger+2],es
+
+                        ; hole Schrift 16
+                        mov ax,01130
+                        mov bh,006 ; 16*8
+                        int 010
+                        mov w [font16_zeiger+0],bp
+                        mov w [font16_zeiger+2],es
+
+                        ; hole Schrift 16 Ћnderungen 8->9
+                        mov ax,01130
+                        mov bh,007 ; 16*9
+                        int 010
+                        mov w [font16_zeiger_patch0809+0],bp
+                        mov w [font16_zeiger_patch0809+2],es
+
+                        mov es,cs
+                        ;----------------------------------
+
+
+                        ;----------------------------------
+                        ; Instllieren oder Entfernen
+                        einfaches_tsr
+
+			mov ax,04c00
+			int 021
+                        ;----------------------------------
+
+;ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
+
+installations_prozedur:
+                        pusha
+
+                          ;--------------------------------
+                          ; schon vor der Installation die
+                          ; bessere Aufl”sung einstellen
+                          push es,ds
+                            mov ax,03510
+                            int 021
+                            mov w [int_10_org_o],bx
+                            mov w [int_10_org_s],es
+                            mov ax,02510
+                            mov ds,cs
+                            mov dx,int_10_neu
+                            int 021
+                          pop ds,es
+
+                          #if et4000
+
+                          mov ah,003            ; Cursorgr”бe/Position bestimmen
+                          mov bh,0              ; Seite 0
+                          int 010
+                                                ; dx merken
+
+                            mov ax,00083        ; ohne zu l”schen
+                            int 010
+
+                            push ds
+                              push 00040
+                              pop ds
+                              and b [00049],07f ; Bit 7 wieder vergessen
+                              and b [00087],07f
+                            pop ds
+
+
+                          mov ah,002            ; Cursorposition setzen
+                          mov bh,0              ; Seite 0
+                          int 010
+
+                          mov ah,001     ; Cursorgr”бe setzen
+                          mov cx,00607   ; CGA-Wert (Annahme CGA-Emulation ist eingeschaltet)
+                          int 010
+
+                          #else  ; SPEA Mercury V7 P64 V hat mit $83 Probleme ...
+                          mov ax,00003
+                          int 010
+                          #endif
+
+
+                          push ds
+                            mov ax,02510
+                            lds dx,[int_10_org_o]
+                            int 021
+                          pop ds
+                          ;--------------------------------
+
+                        popa
+			ret
+
+;ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
+
+deinstallations_prozedur:
+                        pusha
+
+                          ;--------------------------------
+                          ; das selbe wie fЃr die Installation
+                          ; nur hier wird der alte INT $10 aufgerufen
+
+                          #if et4000
+                          mov ah,003            ; Cursorgr”бe/Position bestimmen
+                          mov bh,0              ; Seite 0
+                          pushf
+                          call d es:[int_10_org]
+                                                ; dx merken
+
+                            mov ax,00083        ; ohne zu l”schen
+                            pushf
+                            call d es:[int_10_org]
+
+                            push ds
+                              push 00040
+                              pop ds
+                              and b [00049],07f ; Bit 7 wieder vergessen
+                              and b [00087],07f
+                            pop ds
+
+
+                          mov ah,002            ; Cursorposition setzen
+                          mov bh,0              ; Seite 0
+                          pushf
+                          call d es:[int_10_org]
+
+                          mov ah,001     ; Cursorgr”бe setzen
+                          mov cx,00607   ; CGA-Wert (Annahme CGA-Emulation ist eingeschaltet)
+                          pushf
+                          call d es:[int_10_org]
+
+                          #else
+
+                            ; standard SVGA
+                            ; S3 TRIO
+                            mov ax,00003
+                            pushf
+                            call d es:[int_10_org]
+
+                          #endif
+                          ;--------------------------------
+
+                        popa
+
+			ret
+
+;***************************************************************************

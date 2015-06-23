@@ -1,0 +1,133 @@
+Title   VLSI Lynx
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; PCI
+;
+; 0046.7
+;     .6
+;     .5
+;     .4
+;     .3 \                     |1|      |1|
+;     .2 - \  C000-C7FF   WRAM=|1| SROM=|0|
+;     .1 - /                   |1|      |1|
+;     .0 /                     |1|      |0|
+;
+; 0047.7
+;     .6
+;     .5
+;     .4
+;     .3
+;     .2
+;     .1
+;     .0
+;
+; 0048.7 \
+;     .6 -
+;     .5 -
+;     .4 - \  E000-EFFF
+;     .3 - /
+;     .2 -
+;     .1 -
+;     .0 /
+;
+; 0049.7 \                     |1|      |1|
+;     .6 -                     |1|      |0|
+;     .5 -                     |1|      |1|
+;     .4 - \  F000-FFFF   WRAM=|1| SROM=|0|
+;     .3 - /                   |1|      |1|
+;     .2 -                     |1|      |0|
+;     .1 -                     |1|      |1|
+;     .0 /                     |1|      |0|
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+vlsi_lynx_umrechnung:
+                                db 0 ; Lesen=0 Schreiben=0
+                                db 2 ; Lesen=1 Schreiben=0
+                                db 1 ; Lesen=0 Schreiben=1
+                                db 3 ; Lesen=1 Schreiben=1
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_vlsi_lynx                 macro
+                                  mov di,#1     ; Segment 'D8'
+                                  mov cx,#2     ; Index
+                                  mov dl,#3     ; Bits 0/2/4/6
+                                  call prozedur_setze_vlsi_lynx
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+prozedur_setze_vlsi_lynx:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz prozedur_setze_vlsi_lynx_weiter
+
+                                call ausschrift_segment
+
+                                mov al,ah
+                                and al,Bit1+Bit0 ; Lesen,Schreiben
+                                mov ah,0
+                                mov si,ax
+                                mov bh,b [vlsi_lynx_umrechnung+si]
+                                mov bl,0ff-Bit1+Bit0
+
+                                call rol_bl_bh__dl
+
+                                call bios_aufruf__prozedur_registeraenderung
+
+prozedur_setze_vlsi_lynx_weiter:
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+; von axxflash.a86
+variante_disable_shadowing_vlsi_lynx:
+                                ausschrift_xxxx_aehnliches_bios text_variante_disable_shadowing_vlsi_lynx
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+3+1]
+                                add ax,di
+                                add ax,3+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+12+1]
+                                add ax,di
+                                add ax,12+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_vlsi_lynx_awdflash
+
+vlsi_lynx_gemeinsam:
+                                setze_vlsi_lynx 'C0',00046,0
+                                setze_vlsi_lynx 'C4',00046,2
+                                setze_vlsi_lynx 'C8',00046,4
+                                setze_vlsi_lynx 'CC',00046,6
+
+                                setze_vlsi_lynx 'D0',00047,0
+                                setze_vlsi_lynx 'D4',00047,2
+                                setze_vlsi_lynx 'D8',00047,4
+                                setze_vlsi_lynx 'DC',00047,6
+
+                                setze_vlsi_lynx 'E0',00048,0
+                                setze_vlsi_lynx 'E4',00048,2
+                                setze_vlsi_lynx 'E8',00048,4
+                                setze_vlsi_lynx 'EC',00048,6
+
+                                setze_vlsi_lynx 'F0',00049,0
+                                setze_vlsi_lynx 'F4',00049,2
+                                setze_vlsi_lynx 'F8',00049,4
+                                setze_vlsi_lynx 'FC',00049,6
+
+                                jmp initialisieren
+
+;頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰
+registeraenderung_vlsi_lynx_awdflash:
+                                call bios_aufruf__prozedur_registerlesen
+                                and ah,bl
+                                or ah,bh
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_vlsi_lynx:
+                                mov w [registeraenderung_emulation],aenderung_standard_pci
+                                jmp vlsi_lynx_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

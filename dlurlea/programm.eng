@@ -1,0 +1,84 @@
+Name     DOS OS/2 Source    Description
+
+83       +   -    +         Save/unarchive invalid filenames
+AC       +   -    +         add small prefix-programs to EXE/COM/BIN
+AMI_PPM  +   +    +         converts AMI GRFX to PPM
+AMIDECO  +   -    +         decompresses AMI/Intel/IBM-BIOS
+APM_UHR  +   -    +         clock-correction for powermanagment
+AUTODET  +   *    +         detect launched application in OS/2 DOS-session Autoexec
+AWARDECO +   +    +         decompresses Award-Bios
+AWBM_PPM +   +    +         converts Award BMP to PPM
+BDSAP    -   +    +         create small and fast selfextractor
+BILDSCHI *   -    +         bootsector with register dump and memory viewer
+BLINKX   +   -    +         blink->bright backgroundcolors
+CADH     -   +    +         CAD Popup menu
+CBENABLE -   +    +         OS/2 CardBus Enabler client
+D1D2CRK  +   +    +         create .CRK and .PAT -files
+DAT_LOG  +   -    +         file acces monitor
+DENYNONE +   -    +         multiple acces to the same file (NC)
+DGCP_PAT +   -    +         Bugfix for WATCOM dos_get_code_page_
+DLURLEA  -   +    +         Add .URL/.SUBJECT extended attribute to Mozilla downloads
+DOG212A  +   *    +         DOG 2.12 modified and unpacker
+E_LC10   +   +    +         unpack LC10 compressed DOS4/G[W] programs
+E_MSGF   +   +    +         produces source from .MSG files created by MKMSGF
+E_VXREXX -   -    -         VX-Rexx unpacker/decrypter
+E_WISE   +   +    +         WISE Setup unpacker
+E0X      +   *    +         floppy emulator
+EARLYAPM -   +    +         early connects APM, to prevent problems (testcfg/apm.sys)
+ENTPACK  +   -    -         EXE/COM unpacker
+ES       +   -    +         merge EXE-files
+F4_35_CA +   *    +         release CPU-time under OS/2
+FB_MENU  +   -    +         fast reboot, prevent reboot if TaskMgr is loaded
+FONT19   -   +    +         font 16->20 points in textmode
+FONT20   +   +    +         font 16->20 points in textmode
+HDD_VHD  +   +    +         Harddisk image converter: DFSee/SVISTA/Virtual PC
+HOLEN    +   -    +         create copy of system-BIOS
+IHPFS    +   -    (GPL)     HPFS Driver for DOS
+IHPFSIOM +   -    +         access to HPFS IOMEGA-ZIP-100 with IHPFS (old)
+IMG      +   +    +         copies image files <-> drives
+INT6     +   -    +         abort program on invalid opcode
+IOMZUNPR -   +    +         IOMEGA ZIP 100 automatic unprotect
+LB_M2E   -   +    +         ESS/AC97[Maestro2E]-driver for LbMix
+LGOPROC  -   +    +         OS/2 boot logo file format procedure for MMOS2
+LMICRO   +   +    +         apply Intel P6+ and AMD K8 cpu microcode updates
+MEMDISK  +   +    +         memory emulated bootable hard disk, CD boot
+MRDECO   +   -    +         decompresses MR-BIOS
+NELITE   +   +    +         OS/2 NE format executable Packer, useable for BP7 DPMI16
+NORM_FAT +   -    +         correction of FAT-directory-entrys
+OLE2X    +   +    +         OLE2 stream unpacker
+OS2CSM   +   +    +         Menu to modify OS/2 Config.sys in Memory
+PACKVXRX +   +    +         Fix+pack VX-Rexx programs
+PATCHVPT +   *    +         increase video refresh rate
+PCCOFF   +   +    +         power off PCMCIA/Cardbus cards
+PCI0??VK +   +    +         Port of hardware sniffer PCI
+PG_PPM   +   +    +         converts Phoenix graphic to PPM
+PHOEDECO +   +    +         decompress Phoenix BIOS 4.x, 6.0, BCPVPD and $COMPIBM
+PROTMENU -   +    +         menuprogram for CMD/PMShell/PMShell with WPS
+PRSYS    +   +    +         EXE2BIN relocation packer for DOS driver files
+R_EADATA -   +    +         util to delete "EA DATA. SF"
+R200FIX  +   -    +         Turbo/Borland Pascal Runtime error 200 [CRT]
+REB_MENU +   -    +         prevents reboot if overwritten bios or other processes running
+RXUNLOCK -   +    +         Rexx-functions for executable unlock, digest, pseudorandom
+SAUBER   +   -    +         clean free memory
+SCHNITT  +   +    +         copy parts of files
+SETAMP   +   +    +         turn off/on amplifier of soundcards like mirosound pcm pro
+SPCIIRQ  +   +    +         Change IRQ for PCI cards
+STIX     +   +    +         InstallShield extractor
+STOP_LH  +   -    +         prevents highload of programparts
+SYSODECO +   +    +         Decompressor for SystemSoft-BIOS flash images
+TEXTREIN +   +    +         remove control characters,convert tabs/linebreaks
+TYP      +   +    +         file recognition/archive lister/compiler detection
+UNXLINK  +   +    +         XLINK 2.02 extractor
+URAM     +   -    +         Shadow-RAM-memory util
+VESAMAX  +   -    +         limits maximum available screen resolution
+VPART    +   +    +         bootmanager
+WAKEUP   +   +    +         Wake up sleeping PCI devices at boot time
+XGAPROC  -   +    +         Phoenix suspend graphic file format procedure for MMOS2
+XGA_PPM  +   +    +         graphic converter for Phoenix BIOS hibernate suspend/resume progress display, for example on ThinkPad T42
+ZUFPASS  +   +    +         password generator
+
+to force all programs to display english messages put
+SET COUNTRY=001
+and
+SET LANG=en
+in your autoexec.bat (001 can replaced by other numbers).

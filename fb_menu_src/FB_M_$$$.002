@@ -1,0 +1,18 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_Fehler_beim_OEffnen_der_Datei  :^string;
+  textz_XMS_2_erforderlich  :^string;
+  textz_REB_MENU_bereits_installiert  :^string;
+  textz_installierte_Version_unbekannt  :^string;
+  textz_Speicherbereich_ist_noch_schreibgeschuetzt  :^string;
+  textz_Entferne_FB_MENU  :^string;
+  textz_Speicherbereich_ist_schon_benutzt_inkompatibles_BIOS  :^string;
+  textz_unbekannter_Parameter  :^string;
+  textz_Dokumentation_lesen  :^string;
+  textz_Kopie_der_Itab  :^string;
+  textz_Kopie_des_System_BIOS  :^string;
+  textz_URAM_Kode_zur_Restauration_des_oberen_Speicherbereiches  :^string;
+  textz_OBJ_SPRACHE  :^string;
+  textz_Fehler_bei_Anforderung_von_68K_Speicher_ueber_XMS_2  :^string;
+  textz_installiert  :^string;

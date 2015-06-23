@@ -1,0 +1,2 @@
+@ECHO OFF
+CALL ..\TPU I1587

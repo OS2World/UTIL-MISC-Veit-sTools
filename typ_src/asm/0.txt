@@ -1,0 +1,5 @@
+dll:
+  rexxfuncadd,..
+  typ_exe hauptprogramm
+  -rexx
+  -asm

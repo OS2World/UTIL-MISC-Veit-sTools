@@ -1,0 +1,34 @@
+(* nicht editieren ! *)
+procedure sprach_modul;assembler;(*&FRAME-*) (*&USES NONE*) (*$S-*)
+  asm
+    db   7,'<SPRA2>'
+    db   4,'ENDE'
+    dw  12
+    db  32,'replace filenames in systemfiles'
+    db  40,'Ersetzen von Dateinamen in Systemdateien'
+    db  61,'usage: ERSETZE.EXE <filename> <serch string> <replace string>'
+    db  65,'Benutzung: ERSETZE.EXE <Dateiname> <Suchen nach> <Ersetzen du'
+    db     'rch>'
+    db  63,'example:   ERSETZE.EXE C:\COMMAND.COM AUTOEXEC.BAT AUTO_600.B'
+    db     'AT'
+    db  63,'Beispiel:  ERSETZE.EXE C:\COMMAND.COM AUTOEXEC.BAT AUTO_600.B'
+    db     'AT'
+    db  10,'filename ?'
+    db  11,'Dateiname ?'
+    db  19,'error opening file '
+    db  29,'Fehler beim ôffnen der Datei '
+    db  24,'search for wich string ?'
+    db  25,'suche nach Zeichenkette ?'
+    db   5,'e.g.:'
+    db   5,'z.B.:'
+    db  25,'search string not found !'
+    db  29,'Zeichenkette nicht gefunden !'
+    db  13,'serch string '
+    db  12,'Zeichekette '
+    db  13,' times found.'
+    db  14,' mal gefunden.'
+    db  16,'replace string ?'
+    db  16,'Ersetzen durch ?'
+    db   0
+    db  46,'Die Zeichenketten mÅssen gleiche LÑnge haben !'
+  end;

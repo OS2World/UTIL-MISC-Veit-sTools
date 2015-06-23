@@ -1,0 +1,7 @@
+; Rollen ausschalten
+sub ax,ax
+mov ds,ax
+and b [00417],(0ff-010)
+mov ax,04c00
+int 021
+

@@ -1,0 +1,26 @@
+#if !deutsch
+  #if !englisch
+    deutsch=1
+    ;englisch=1
+  #endif
+#endif
+include mac.a86
+include vpart2a.a86
+include speicher.a86
+include passwort.a86
+include schoner.a86
+include point.a86
+include a20.a86
+include apmb.a86
+include bios.a86
+include cmos.a86
+include fat_cfg.a86
+include crc32.a86
+include versteck.a86
+include cwboot.a86
+include cdboot.a86
+include tauscher.a86
+include bootsekt.a86
+include plugin.a86
+include vpart2b.a86
+

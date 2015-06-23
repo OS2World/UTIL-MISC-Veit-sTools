@@ -1,0 +1,119 @@
+;*****************************************************************************
+; Abschalten der A20
+; DR DOS himem.sys bringt die Fehlermeldung beim
+; fehlerhaften SystemSoft BIOS das die A20 schon gesteuert wird
+;*****************************************************************************
+
+; Informationsquelle: A20TEST.ZIP
+;   Date: 10 Dec 90 23:44:54 GMT
+;   Path: yale!cmcl2!panix!schuster
+;   From: schuster@panix.uucp (Michael Schuster)
+
+schalte_a20_ab:
+                        pusha
+                          push ds,es
+
+                            push 0
+                            pop ds
+
+                            push 0ffff
+                            pop es
+
+                            mov bp,Sync8042
+
+                            mov dl,1
+                            call a20_schalten
+
+                            ; "VDISK" l”schen
+                            mov si,010+3
+                            cmp w [si],'DV'
+                            if e mov w [si],0
+
+
+                            mov dl,0
+                            call a20_schalten
+
+                          pop es,ds
+                        popa
+                        ret
+;*****************************************************************************
+a20_schalten:
+                        call pruefe_ob_a20_richtig
+                        jz ret
+
+                        ; PS/2 --------------------------------------
+                        in al,092
+                        out 0eb,al
+
+                        and al,0ff-002
+                        cmp dl,1
+                        if e or al,002
+                        out 092,al
+
+                        mov ah,al
+                        null cx
+  a20_schalten_sl_ps2:
+                        in al,092
+                        cmp al,ah
+                        loope a20_schalten_sl_ps2
+
+                        call pruefe_ob_a20_richtig
+                        jz ret
+
+                        ; AT ----------------------------------------
+                        call bp ; Sync8042
+                        jnz ret
+
+                        mov al,0D1
+                        out 064,al
+                        call bp ; Sync8042
+                        jnz ret
+
+                        ; 0df=1101 1111 -> gate A20 = 1
+                        ; 0dd=1101 1101 -> gate A20 = 0
+                        mov al,0dd
+                        cmp dl,1
+                        if e or al,002
+                        out 060,al
+                        call bp ; Sync8042
+                        jnz ret
+
+                        mov al,0FF
+                        out 064,al
+                        call bp ; Sync8042
+                        ret
+;*****************************************************************************
+Sync8042:
+                        push ax,cx
+
+                          null cx
+  S8InSync:
+                          in al,064
+                          and al,2
+                          loopnz S8InSync
+
+                        pop cx,ax
+                        ret
+;*****************************************************************************
+; dl=0(aus) oder 1(ein)
+pruefe_ob_a20_richtig:
+                       push w [0]
+                         mov w [0],'VK'
+
+                         mov dh,1 ; ein
+                         cmp w es:[0+010],'VK'
+                         jne pruefe_ob_a20_richtig_ende
+
+                         xor w ds:[0],'  '
+                         cmp w es:[0+010],'vk'
+                         jne pruefe_ob_a20_richtig_ende
+
+                         mov dh,0 ; aus
+
+  pruefe_ob_a20_richtig_ende:
+                         cmp dl,dh
+
+                       pop w [0]
+                       ret
+;*****************************************************************************
+

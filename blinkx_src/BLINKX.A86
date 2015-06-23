@@ -1,0 +1,56 @@
+; 11.03.1998 neues deencom
+                        jmp einrichten
+
+include blinkxi.a86
+include ..\lhtsr\lh.a86
+include ..\lhtsr\prg.a86
+
+programm_name:          db 'Blinkxxx'
+programm_resident_ende: dw resident_ende
+
+programm_int            equ 010
+programm_int_neu        equ neu_int10
+programm_int_org        equ org_int10
+
+#if englisch
+
+installation_text:      db 'load blinkx',00d,00a
+                        db '$'
+deinstallation_text:    db 'remove blinkx',00d,00a
+                        db '$'
+doppelt_text:           db 'multiple install of blinkx !',00d,00a
+                        db '$'
+nichtaktiv_text:        db 'blinkx not found active in memory !',00d,00a
+                        db '$'
+                        
+#else
+
+installation_text:      db 'lade blinkx',00d,00a
+                        db '$'
+deinstallation_text:    db 'entferne blinkx',00d,00a
+                        db '$'
+doppelt_text:           db 'mehrfache Installation von blinkx !',00d,00a
+                        db '$'
+nichtaktiv_text:        db 'blinkx nicht aktiv im Speicher gefunden !',00d,00a
+                        db '$'
+
+#endif
+
+einrichten:
+                        einfaches_tsr
+
+                        mov ax,01a00
+                        int 010
+
+                        mov ax,04c00
+                        int 021
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+installations_prozedur:
+                        ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+deinstallations_prozedur:
+                        ret

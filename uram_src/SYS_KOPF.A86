@@ -1,0 +1,105 @@
+Title   럑derungen um als device=uram.com geladen werden zu k봭nen
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; COM/SYS Kopf
+                                jmp com_anfang  ; \ dd -1
+                                db -1           ; /
+
+                                dw 08000 ; Zeichenger꼝
+                                dw strategie-00100 ; ORG 0100
+                                dw interrupt
+                                db 'URAM$$$$'
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+parameter:                      dd ?
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+strategie:
+                                mov cs:[parameter+0-00100],bx
+                                mov cs:[parameter+2-00100],es
+
+                                push ds,es,si,di,cx,ax
+                                  push cs
+                                  pop ds
+                                  push cs
+                                  pop es
+                                  mov di,Offset programm_ende
+                                  dec di
+                                  lea si,[di-0100h]
+                                  mov cx,si
+                                  std
+                                  rep movsb
+                                  movsb
+                                  cld
+                                  mov ax,-1
+                                  mov w [0],ax
+                                  mov w [2],ax
+                                pop ax,cx,di,si,es,ds
+
+                                retf
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+interrupt:
+                                pusha
+                                  pushf
+                                    push ds,es
+
+                                      mov ax,cs
+                                      mov ds,ax
+                                      mov b [device_uram_sys],'1'
+
+                                      les bx,cs:[parameter]
+
+
+                                      ; mov w es:[bx+3],08000+0000c
+                                      ; Bit 15    Fehler
+                                      ; Bit 7..0  "General Failure"
+                                      mov w es:[bx+3],0 ; kein Fehler
+                                      ; nicht im Speicher bleiben
+                                      mov w es:[bx+0e+0],0    ; 0 Byte
+                                      mov w es:[bx+0e+2],cs
+
+
+                                      ; Befehlszeile
+                                      lds si,es:[bx+012]
+                                      push cs
+                                      pop es
+                                      mov di,081
+                                      mov cx,128
+                                      cld
+      noch_nicht_befehlszeile:
+                                      lodsb
+                                      cmp al,00
+                                      jz jetzt_befehlszeile
+                                      cmp al,09
+                                      jz jetzt_befehlszeile
+                                      cmp al,00a
+                                      jz jetzt_befehlszeile
+                                      cmp al,00d
+                                      jz jetzt_befehlszeile
+                                      cmp al,' '
+                                      jz jetzt_befehlszeile
+                                      loop noch_nicht_befehlszeile
+
+      jetzt_befehlszeile:
+                                      rep movsb
+                                      mov al,00d
+                                      stosb
+                                      mov al,000
+                                      stosb
+
+                                      push cs
+                                      pop ds
+
+                                      mov w [stackorg+0],sp
+                                      mov w [stackorg+2],ss
+                                      jmp com_anfang
+
+stackorg                              dd ?
+
+sys_exit:
+                                      mov sp,w cs:[stackorg+0]
+                                      mov ss,w cs:[stackorg+2]
+
+                                    pop es,ds
+                                  popf
+                                popa
+                                retf
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

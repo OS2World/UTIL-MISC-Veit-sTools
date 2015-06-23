@@ -1,0 +1,71 @@
+; 11.03.1998 deencom neu
+; 2001.10.20 opro crt
+
+                        jmp einrichten
+
+include r200fixi.a86
+include ..\lhtsr\lh.a86
+include ..\lhtsr\prg.a86
+
+programm_name:		db 'R200 FIX'
+programm_resident_ende: dw tsr_ende
+
+programm_int            equ 021
+programm_int_neu        equ int_21_neu
+programm_int_org        equ int_21_org
+
+
+#if englisch
+installation_text:	db 'R200FIX loaded',00d,00a
+			db '$'
+deinstallation_text:	db 'R200FIX remoded',00d,00a
+			db '$'
+doppelt_text:		db 'multiple intstall of R200FIX !',00d,00a
+			db '$'
+nichtaktiv_text:        db 'R200FIX not found in memory !',00d,00a
+			db '$'
+#else
+installation_text:	db 'lade R200FIX',00d,00a
+			db '$'
+deinstallation_text:	db 'entferne R200FIX',00d,00a
+			db '$'
+doppelt_text:		db 'mehrfache Installation des R200FIX !',00d,00a
+			db '$'
+nichtaktiv_text:        db 'R200FIX nicht aktiv im Speicher gefunden !',00d,00a
+			db '$'
+#endif
+
+
+einrichten:
+                        mov ah,009
+                        mov dx,titel
+                        int 021
+
+                        einfaches_tsr
+
+			mov ax,04c00
+			int 021
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+installations_prozedur:
+			ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+deinstallations_prozedur:
+			ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+titel:
+#if englisch
+                        db 'R200 FIX * repair for Turbo/Borland Pascal programs [CRT]',00d,00a
+#else
+                        db 'R200 FIX * Fehlerbehebung fr Turbo/Borland Pascal Programme [CRT]',00d,00a
+#endif
+                        db 'Veit Kannegieser * 1998.03.08..2001.10.20',00d,00a
+                        db ' ş BPL70N16',00d,00a
+                        db ' ş BP 7.01 RTL',00d,00a
+                        db ' ş VGACopy',00d,00a
+                        db ' ş OPRO',00d,00a
+                        db '$'

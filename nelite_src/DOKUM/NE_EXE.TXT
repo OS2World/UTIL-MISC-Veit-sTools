@@ -1,0 +1,218 @@
+Format of new executable header:                                                
+Offset  Size    Description     (Table 01596)                                   
+ 00h  2 BYTEs   "NE" (4Eh 45h) signature                                        
+ 02h  2 BYTEs   linker version (major, then minor)                              
+ 04h    WORD    offset from start of this header to entry table (see #01603)    
+ 06h    WORD    length of entry table in bytes                                  
+ 08h    DWORD   file load CRC (0 in Borland's TPW)                              
+ 0Ch    BYTE    program flags (see #01597)                                      
+ 0Dh    BYTE    application flags (see #01598)                                  
+ 0Eh    WORD    auto data segment index                                         
+ 10h    WORD    initial local heap size                                         
+ 12h    WORD    initial stack size (added to data seg, 0000h if SS <> DS)       
+ 14h    DWORD   program entry point (CS:IP), "CS" is index into segment table   
+ 18h    DWORD   initial stack pointer (SS:SP), "SS" is segment index            
+                if SS=automatic data segment and SP=0000h, the stack pointer is 
+                  set to the top of the automatic data segment, just below the  
+                  local heap                                                    
+ 1Ch    WORD    segment count                                                   
+ 1Eh    WORD    module reference count                                          
+ 20h    WORD    length of nonresident names table in bytes                      
+ 22h    WORD    offset from start of this header to segment table (see #01601)  
+ 24h    WORD    offset from start of this header to resource table              
+ 26h    WORD    offset from start of this header to resident names table        
+ 28h    WORD    offset from start of this header to module reference table      
+ 2Ah    WORD    offset from start of this header to imported names table        
+                (array of counted strings, terminated with a string of length   
+                  00h)                                                          
+ 2Ch    DWORD   offset from start of file to nonresident names table            
+ 30h    WORD    count of moveable entry point listed in entry table             
+ 32h    WORD    file alignment size shift count                                 
+                0 is equivalent to 9 (default 512-byte pages)                   
+ 34h    WORD    number of resource table entries                                
+ 36h    BYTE    target operating system                                         
+                00h unknown                                                     
+                01h OS/2                                                        
+                02h Windows                                                     
+                03h European MS-DOS 4.x                                         
+                04h Windows 386                                                 
+                05h BOSS (Borland Operating System Services)                    
+                81h PharLap 286|DOS-Extender, OS/2                              
+                82h PharLap 286|DOS-Extender, Windows                           
+ 37h    BYTE    other EXE flags (see #01599)                                    
+ 38h    WORD    offset to return thunks or start of gangload area               
+ 3Ah    WORD    offset to segment reference thunks or length of gangload area   
+ 3Ch    WORD    minimum code swap area size                                     
+ 3Eh  2 BYTEs   expected Windows version (minor version first)                  
+Note:   this header is documented in detail in the Windows 3.1 SDK Programmer's 
+          Reference, Vol 4.                                                     
+SeeAlso: #01594                                                                 
+                                                                                
+Bitfields for new executable program flags:                                     
+Bit(s)  Description     (Table 01597)                                           
+ 0-1    DGROUP type                                                             
+          0 = none                                                              
+          1 = single shared                                                     
+          2 = multiple (unshared)                                               
+          3 = (null)                                                            
+ 2      global initialization                                                   
+ 3      protected mode only                                                     
+ 4      8086 instructions                                                       
+ 5      80286 instructions                                                      
+ 6      80386 instructions                                                      
+ 7      80x87 instructions                                                      
+                                                                                
+Bitfields for new executable application flags:                                 
+Bit(s)  Description     (Table 01598)                                           
+ 0-2    application type                                                        
+        001 full screen (not aware of Windows/P.M. API)                         
+        010 compatible with Windows/P.M. API                                    
+        011 uses Windows/P.M. API                                               
+ 3      is a Family Application (OS/2)                                          
+ 5      0=executable, 1=errors in image                                         
+ 6      non-conforming program (valid stack is not maintained)                  
+ 7      DLL or driver rather than application                                   
+        (SS:SP info invalid, CS:IP points at FAR init routine called with       
+          AX=module handle which returns AX=0000h on failure, AX nonzero on     
+          successful initialization)                                            
+                                                                                
+Bitfields for other new .EXE flags:                                             
+Bit(s)  Description     (Table 01599)                                           
+ 0      supports long filenames                                                 
+ 1      2.X protected mode                                                      
+ 2      2.X proportional font                                                   
+ 3      gangload area                                                           
+                                                                                
+Format of Codeview trailer (at end of executable):                              
+Offset  Size    Description     (Table 01600)                                   
+ 00h    WORD    signature 4E42h ('NB')                                          
+ 02h    WORD    Microsoft debug info version number                             
+ 04h    DWORD   Codeview header offset                                          
+SeeAlso: #01624                                                                 
+                                                                                
+Format of new executable segment table record:                                  
+Offset  Size    Description     (Table 01601)                                   
+ 00h    WORD    offset in file (shift left by alignment shift to get byte offs) 
+ 02h    WORD    length of image in file (0000h = 64K)                           
+ 04h    WORD    segment attributes (see #01602)                                 
+ 06h    WORD    number of bytes to allocate for segment (0000h = 64K)           
+Note:   the first segment table entry is entry number 1                         
+SeeAlso: #01604                                                                 
+                                                                                
+Bitfields for segment attributes:                                               
+Bit(s)  Description     (Table 01602)                                           
+ 0      data segment rather than code segment                                   
+ 1      unused???                                                               
+ 2      real mode                                                               
+ 3      iterated                                                                
+ 4      movable                                                                 
+ 5      sharable                                                                
+ 6      preloaded rather than demand-loaded                                     
+ 7      execute-only (code) or read-only (data)                                 
+ 8      relocations (directly following code for this segment)                  
+ 9      debug info present                                                      
+ 10,11  80286 DPL bits                                                          
+ 12     discardable                                                             
+ 13-15  discard priority                                                        
+                                                                                
+Format of new executable entry table item (list):                               
+Offset  Size    Description     (Table 01603)                                   
+ 00h    BYTE    number of entry points (00h if end of entry table list)         
+ 01h    BYTE    segment number (00h if end of entry table list)                 
+ 02h 3N BYTEs   entry records                                                   
+                Offset  Size    Description                                     
+                 00h    BYTE    flags                                           
+                                bit 0: exported                                 
+                                bit 1: single data                              
+                                bits 2-7: unused???                             
+                 01h    WORD    offset within segment                           
+                                                                                
+Format of new executable relocation data (immediately follows segment image):   
+Offset  Size    Description     (Table 01604)                                   
+ 00h    WORD    number of relocation items                                      
+ 02h 8N BYTEs   relocation items                                                
+                Offset  Size    Description                                     
+                 00h    BYTE    relocation type                                 
+                                00h LOBYTE                                      
+                                02h BASE                                        
+                                03h PTR                                         
+                                05h OFFS                                        
+                                0Bh PTR48                                       
+                                0Dh OFFS32                                      
+                 01h    BYTE    flags                                           
+                                bit 2: additive                                 
+                 02h    WORD    offset within segment                           
+                 04h    WORD    target address segment                          
+                 06h    WORD    target address offset                           
+SeeAlso: #01601,#01605                                                          
+                                                                                
+Format of new executable resource data:                                         
+Offset  Size    Description     (Table 01605)                                   
+ 00h    WORD    alignment shift count for resource data                         
+ 02h  N RECORDs resources                                                       
+        Format of resource record:                                              
+        Offset  Size    Description                                             
+         00h    WORD    type ID                                                 
+                        0000h if end of resource records                        
+                        >= 8000h if integer type                                
+                        else offset from start of resource table to type string 
+         02h    WORD    number of resources of this type                        
+         04h    DWORD   reserved for runtime use                                
+         08h  N Resources (see #01606)                                          
+Note:   resource type and name strings are stored immediately following the     
+          resource table, and are not null-terminated                           
+SeeAlso: #01606                                                                 
+                                                                                
+Format of new executable resource entry:                                        
+Offset  Size    Description     (Table 01606)                                   
+ 00h    WORD    offset in alignment units from start of file to contents of     
+                the resource data                                               
+ 02h    WORD    length of resource image in bytes                               
+ 04h    WORD    flags                                                           
+
+                bit 4: moveable                                                 
+                bit 5: shareable                                                
+                bit 6: preloaded                                                
+ 06h    WORD    resource ID                                                     
+                >= 8000h if integer resource                                    
+                else offset from start of resource table to resource string     
+ 08h    DWORD   reserved for runtime use                                        
+Notes:  resource type and name strings are stored immediately following the     
+          resource table, and are not null-terminated                           
+        strings are counted strings, with a string of length 0 indicating the   
+          end of the resource table                                             
+SeeAlso: #01605,#01607                                                          
+                                                                                
+Format of new executable module reference table [one bundle of entries]:        
+Offset  Size    Description     (Table 01607)                                   
+ 00h    BYTE    number of records in this bundle (00h if end of table)          
+ 01h    BYTE    segment indicator                                               
+                00h unused                                                      
+                FFh movable segment, segment number is in entry                 
+                else segment number of fixed segment                            
+ 02h  N RECORDs                                                                 
+        Format of segment record                                                
+        Offset  Size    Description                                             
+         00h    BYTE    flags                                                   
+                        bit 0: entry is exported                                
+                        bit 1: entry uses global (shared) data                  
+                        bits 7-3: number of parameter words                     
+        ---fixed segment---                                                     
+         01h    WORD    offset                                                  
+        ---moveable segment---                                                  
+         01h  2 BYTEs   INT 3F instruction (CDh 3Fh)                            
+         03h    BYTE    segment number                                          
+         05h    WORD    offset                                                  
+Note:   table entries are numbered starting from 1                              
+SeeAlso: #01608                                                                 
+                                                                                
+Format of new executable resident/nonresident name table entry:                 
+Offset  Size    Description     (Table 01608)                                   
+ 00h    BYTE    length of string (00h if end of table)                          
+ 01h  N BYTEs   ASCII text of string                                            
+ N+1    WORD    ordinal number (index into entry table)                         
+Notes:  the first string in the resident name table is the module name; the     
+          first entry in the nonresident name table is the module description   
+        the strings are case-sensitive; if the executable was linked with       
+          /IGNORECASE, all strings are in uppercase                             
+SeeAlso: #01607                                                                 

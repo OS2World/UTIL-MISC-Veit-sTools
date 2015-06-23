@@ -1,0 +1,26 @@
+@ECHO OFF
+REM %1.A86 Quelle
+REM %2     Zielverzeichnis
+REM %3     Erweiterung (COM)
+REM %4     nicht packen (-)
+REM %5..   A86
+REM
+SET ERW=COM
+IF [%ERW%]==[] GOTO FEHLER
+IF NOT [%3]==[] SET ERW=%3
+
+IF [%2]==[] GOTO FEHLER
+IF NOT EXIST %1.A86 GOTO FEHLER
+IF EXIST %2%1.%ERW% DEL %2%1.%ERW%
+IF EXIST %2%1.UND DEL %2%1.UND
+C:\A86\A86.COM %5 %6 %7 %8 %9 %1.A86 TO %2%1.%ERW%,NUL
+IF NOT EXIST %2%1.%ERW% GOTO FEHLER
+IF [%4]==[-] GOTO ENDE
+SIEGEL %2%1.%ERW%
+GOTO ENDE
+
+:FEHLER
+ECHO %1,%2,%3
+PAUSE
+
+:ENDE

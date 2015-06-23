@@ -1,0 +1,64 @@
+; 07.07.1998 Veit Kannegieser
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+org 0000
+                        jmp uram_min_funktion
+                        db -1
+                        dw 0c000 ; Bit 15=Zeichenger„t
+                        dw strat
+                        dw inter
+                        db 'URAM$MIN'
+
+para_paket:             dd ?
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+strat:
+                        mov cs:[para_paket+0],bx
+                        mov cs:[para_paket+2],es
+                        retf
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+inter:
+                        push ds,es
+                          pusha
+                            mov w cs:[0],-1
+                            mov w cs:[2],-1
+
+                            les bx,cs:[para_paket]
+                            mov w es:[bx+3],0  ; kein Fehler
+                            sub ax,ax
+                            mov w es:[bx+00e+0],ax ; L„nge im Speicher
+                            mov w es:[bx+00e+2],ax
+
+                            call uram_min_funktion
+
+                          popa
+                        pop es,ds
+                        retf
+
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+uram_min_funktion:
+                        mov ah,009
+                        call weiter
+                        
+                        db 'URAMMIN * Veit Kannegieser * 07.07.1998úú'
+include ..\datum.a86
+                        db 00d,00a,'$'
+
+
+  weiter:               pop dx
+                        int 021
+
+                        pop ax   ; ret -> retf
+                        push cs
+                        push ax
+
+                        jmp short uram_funktion
+
+uram_funktion_laenge:   dw 1
+
+uram_funktion:
+                        retf            ; <- hier wird eingefgt
+
+

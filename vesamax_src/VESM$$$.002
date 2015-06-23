@@ -1,0 +1,19 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_Grafik_  :^string;
+  textz_Bit_strich  :^string;
+  textz_Text_  :^string;
+  textz_entfernt_strich  :^string;
+  textz_bleibt_strich  :^string;
+  textz_beschreibung_1  :^string;
+  textz_beschreibung_2  :^string;
+  textz_Benutzung_  :^string;
+  textz_groesste_Zeilenzahl__groesste_Farbtiefe  :^string;
+  textz_kein_VESA_Treiber_installiert  :^string;
+  textz_fuer_meine_Zwecke_benoetige_ich_einen_VESA_Treiber_Version_1_02  :^string;
+  textz_Schreiben_sie_an_den_Autor  :^string;
+  textz_tabellenkopf  :^string;
+  textz_Problem_ROM  :^string;
+  textz_tip_rom_problem  :^string;
+  textz_Farben  :^string;

@@ -1,0 +1,28 @@
+Title   small OS2CSM.BIN that does nothing than preventing MemDisk error message
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+.386p
+
+code                    segment 'code' use16
+                        assume cs:code
+                        assume ds:code
+                        org 00000h
+  dummycsm_entry:
+                        ; do nothing; return to MemDisk
+                        retf
+
+                        include typedef.inc
+                        include i_csm_md.inc
+                        include datum.inc
+
+                        ; to help matching versions
+                        db datum
+
+                        ; untouched interface data block
+
+                        table_memdisk_os2csm_interface_Struc <>
+code                    ends
+
+                        end dummycsm_entry
+

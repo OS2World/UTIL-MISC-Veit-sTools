@@ -1,0 +1,199 @@
+; 11.07.1998
+; 24.07.1998 deutsch/englisch
+;            rate_int.a86 -> itab_dat.a86
+
+                        mov ah,009
+                        mov dx,titel
+                        int 021
+
+                        mov si,80*60*2
+                        mov dx,vpart_b000
+
+                        push 0b000
+                        pop ds
+                        ; "ITVK"
+                        cmp w [si+256*4+0],'TI'
+                        jne versuche_b800
+                        cmp w [si+256*4+2],'KV'
+                        je vpart_gefunden
+
+  versuche_b800:
+                        mov dx,vpart_b800
+
+                        push 0b800
+                        pop ds
+                        ; "ITVK"
+                        cmp w [si+256*4+0],'TI'
+                        jne vpart_nicht_gefunden
+                        cmp w [si+256*4+2],'KV'
+                        jne vpart_nicht_gefunden
+
+  vpart_gefunden:
+                        mov di,itab
+                        mov cx,256*4/2
+                        cld
+                        rep movsw
+                        jmp schreibe_itab
+
+
+  vpart_nicht_gefunden:
+
+                        sub ax,ax
+                        mov ds,ax
+                        mov si,ax
+                        mov di,itab
+                        mov cx,256*4/2
+                        cld
+                        rep movsw
+
+                        mov ds,cs
+
+                        mov si,itab_patch
+                        cld
+  itab_patch_schleife:
+                        lodsb
+                        cmp al,0ff
+                        je itab_patch_schleife_ende
+
+                        sub ah,ah
+                        shl ax,2 ; *4
+                        mov di,ax
+                        add di,itab
+                        lodsw
+                        stosw
+                        lodsw
+                        stosw
+                        jmp itab_patch_schleife
+
+  itab_patch_schleife_ende:
+
+                        push 00070
+                        pop ds
+                        mov si,00100
+                        mov cx,5
+                        mov dx,dos_ohne_unterstuetzung
+
+                        cmp b [si],010
+                        jne dos_itab_kopiert
+
+  kopiere_drdos_itab_schleife:
+                        lodsb
+                        sub ah,ah
+                        shl ax,2 ; *4
+                        mov di,ax
+                        add di,itab
+                        lodsw
+                        stosw
+                        lodsw
+                        stosw
+                        loop kopiere_drdos_itab_schleife
+
+                        mov dx,drdos_itab
+
+  dos_itab_kopiert:
+
+  schreibe_itab:
+                        mov ds,cs
+                        mov ah,009
+                        int 021
+
+                        mov ah,03c
+                        mov cx,0
+                        mov dx,dateiname
+                        int 021
+
+                        mov bx,ax
+                        mov ah,040
+                        mov cx,256*4+4
+                        mov dx,itab
+                        int 021
+
+                        mov ah,03e
+                        int 021
+
+
+                        mov ax,04c00
+                        int 021
+
+titel:                  db 'ITAB_DAT * V.K. * 11˙˙24.07.1998',00d,00a,'$'
+
+#if deutsch
+
+vpart_b000:             db 'VPart Interrupttabelle von B000:2580 kopiert',00d,00a,'$'
+
+vpart_b800:             db 'VPart Interrupttabelle von B800:2580 kopiert',00d,00a,'$'
+
+dos_ohne_unterstuetzung:db 7,'DOS ohne UnterstÅtzung von 0070:0100 !!!',00d,00a,'$'
+
+drdos_itab:             db 'Interrupts von 0070:0100 kopiert',00d,00a,'$'
+
+#else
+
+vpart_b000:             db 'using VPart interrupttable at B000:2580',00d,00a,'$'
+
+vpart_b800:             db 'using VPart interrupttable at B800:2580',00d,00a,'$'
+
+dos_ohne_unterstuetzung:db 7,'DOS without support of 0070:0100 !!!',00d,00a,'$'
+
+drdos_itab:             db 'using DOS-interrupts at 0070:0100',00d,00a,'$'
+
+#endif
+
+dateiname:              db 'ITAB.DAT',0
+
+itp                     macro
+                          db #1
+                          dw #2
+                          dw #3
+                        #em
+
+itab_patch:
+                        itp 000,0ef6f,0f000
+                        itp 001,0ef6f,0f000
+                        itp 003,0ef6f,0f000
+                        itp 004,0ef6f,0f000
+                        itp 009,0e987,0f000
+                        itp 013,0b6ec,0f000
+                        itp 019,0e6f2,0f000
+                        itp 01b,0ff53,0f000
+                        itp 01e,0efc7,0f000
+
+                        itp 020,0ef6f,0f000
+                        itp 021,0ef6f,0f000
+                        itp 022,0ef6f,0f000
+                        itp 023,0ef6f,0f000
+                        itp 024,0ef6f,0f000
+                        itp 025,0ef6f,0f000
+                        itp 026,0ef6f,0f000
+                        itp 027,0ef6f,0f000
+                        itp 028,0ef6f,0f000
+                        itp 029,0ef6f,0f000
+                        itp 02a,0ef6f,0f000
+                        itp 02b,0ef6f,0f000
+                        itp 02c,0ef6f,0f000
+                        itp 02d,0ef6f,0f000
+                        itp 02e,0ef6f,0f000
+                        itp 02f,0ef6f,0f000
+                        itp 030,0ef6f,0f000
+                        itp 031,0ef6f,0f000
+                        itp 032,0ef6f,0f000
+                        itp 033,0ef6f,0f000
+                        itp 034,0ef6f,0f000
+                        itp 035,0ef6f,0f000
+                        itp 036,0ef6f,0f000
+                        itp 037,0ef6f,0f000
+                        itp 038,0ef6f,0f000
+                        itp 039,0ef6f,0f000
+                        itp 03a,0ef6f,0f000
+                        itp 03b,0ef6f,0f000
+                        itp 03c,0ef6f,0f000
+                        itp 03d,0ef6f,0f000
+                        itp 03e,0ef6f,0f000
+                        itp 03f,0ef6f,0f000
+
+                        db 0ff
+
+itab:
+                        dw 256 dup ('**','**') ;(0ef6f,0f000)
+                        db 'ITVK'
+

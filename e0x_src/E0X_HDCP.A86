@@ -1,0 +1,119 @@
+importiere_hd_copy:
+                        ; Beginn EntschlÅsselung HD-COPY
+                        call sauberen_kopf_einrichten
+
+                        mov [sektoren],ax
+
+                        ; es=Lesepuffer
+                        mov ax,es:[0000e] ; al = Spuren-1
+                                          ; ah = Sekt/Spur
+                        inc al
+                        mov [sekt_spur],ah
+                        mov [spuren],al
+                        mov b [koepfe],2
+
+                        ; Spurentabelle kopieren
+                        mov si,00010
+                        mov ds,[lese_puffer_seg]
+                        mov di,diskdupe_pack
+                        mov es,cs
+                        mov cx,spur_max
+                        shl cx,1
+                        kopiere
+
+                        ; EntschlÅsselung von Lesepuffer nach hd_copy_entschluesselt
+                        ; Lesepuffer=DS, wird aber nur zur Arbeit umgeschaltet
+                        mov ds,cs
+                        mov w [quell_h],0
+                        mov w [quell_o],hd_copy_entschluesselt
+                        mov w [quell_s],cs
+                        mov w [ziel_h],[xms_handhabe]
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+
+                        mov si,000b8
+                        mov di,hd_copy_entschluesselt
+                        call kopiere_ins_xms_zaehler_nullen
+
+hd_copy_entschluesselung_schleife:
+
+                        mov cx,w [kopi_ins_xms_512_zaehler]
+                        cmp cx,[sektoren]
+                        if ae ret
+
+                        cmp di,hd_copy_entschluesselt ; (index=0 ?)
+                        jnz hd_copy_entschluesselung_sektor_nicht_eingespart
+
+                        mov ax,cx ; [kopi_ins_xms_512_zaehler]
+                        mov dl,[sekt_spur]
+                        div dl
+                        xor ah,ah
+                        push si
+                           mov si,diskdupe_pack
+                           add si,ax
+                           mov al,[si]
+                        pop si
+
+                        ; 0 ... eingespart
+                        ; 1 ... vorhanden/komprimiert
+                        ; 2 ... Lesefehler
+                        cmp al,1
+                        jz hd_copy_entschluesselung_sektor_nicht_eingespart
+
+                        mov cl,[sekt_spur]
+                        xor ch,ch
+                        shl cx,9           ; sek_spur*512
+                        mov al,0f6
+
+              hd_copy_schreibe_leere_sektoren_schleife:
+
+                        call schreibe_hd_copy_zeichen
+                        loop hd_copy_schreibe_leere_sektoren_schleife
+
+                        jmp hd_copy_entschluesselung_schleife
+
+hd_copy_entschluesselung_sektor_nicht_eingespart:
+
+                        ; Bestimmung der Grîsse des zu entschlÅsselnden Blockes
+                        call lies_hd_copy_zeichen
+                        mov cl,al
+                        call lies_hd_copy_zeichen
+                        mov ch,al
+
+                        ; Bestimmung des Sonderzeichens
+                        call lies_hd_copy_zeichen
+                        mov [hd_copy_sonderzeichen],al
+                        dec cx
+
+                hd_copy_entschluesselung_zeichenschleife:
+
+                        call lies_hd_copy_zeichen
+                        cmp al,[hd_copy_sonderzeichen]
+                        jz hd_copy_beachte_sonderzeichen
+
+                        call schreibe_hd_copy_zeichen
+                        loop hd_copy_entschluesselung_zeichenschleife
+                        jmp hd_copy_entschluesselung_schleife ; Ende des Blockes
+
+                hd_copy_beachte_sonderzeichen:
+                        sub cx,2  ; Sonderzeichen,Anzahl,Zeichen
+                        push cx
+
+                          ; Welches Zeichen ist zu wiederholen ?
+                          call lies_hd_copy_zeichen
+                          push ax
+
+                            ; Anzahl ?
+                            call lies_hd_copy_zeichen
+                            mov cl,al
+                            xor ch,ch
+
+                          pop ax
+
+                hd_copy_entschluesselung_vielfach_zeichenschleife:
+                          call schreibe_hd_copy_zeichen
+                          loop hd_copy_entschluesselung_vielfach_zeichenschleife
+
+                        pop cx
+                        loop hd_copy_entschluesselung_zeichenschleife
+                        jmp hd_copy_entschluesselung_schleife ; Ende des Blockes

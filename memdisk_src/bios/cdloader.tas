@@ -1,0 +1,325 @@
+Title   Load MEMBOOT.BIN for badly broken SystemSoft BIOS
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; MEMBOOT.BIN is ~16KB. this is around $1c emulated sectors (*512 byte)
+; SytemSoft loads at specified:$7c00 (bug: should be specified:$0000 or
+; $0000:$7c00 if specified=0.) and jumps to $7c00:0000 (bug: should be
+; at least do jump where it loads) 3. Bug: SytemSoft read sector size
+; is 2048. loading should then end at $7c00+2048*$1c=$15C00 but of course
+; it wraps around to 0:0 and trashes the interrupt table (bug 4).
+
+; "Solution"
+;   load segment has to be 0. (0:7c00)
+;   file size can only be ($10000-$7c00)/4 = $2100 (8448)
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        .386p
+                        locals @@
+
+IFNDEF dos
+IFNDEF bios
+                        .err dos tsr or bios target
+ENDIF
+ENDIF
+
+cdloader                equ 1
+
+IFDEF dos
+loadsegment             equ 01000h
+ELSE
+loadsegment             equ 01000h
+ENDIF
+
+fontsegment             equ 04000h
+
+; serial_debug          equ 1
+IFNDEF dos
+fastboot_function       equ 1
+ENDIF
+
+nodebugstep             equ 1
+
+                        include vga_attr.inc
+IFDEF language_de
+                        include lang_de.inc
+ENDIF
+IFDEF language_en
+                        include lang_en.inc
+ENDIF
+IFDEF language_es
+                        include lang_es.inc
+ENDIF
+IFDEF language_fr
+                        include lang_fr.inc
+ENDIF
+IFDEF language_it
+                        include lang_it.inc
+ENDIF
+IFDEF language_jp
+                        include lang_jp.inc
+ENDIF
+IFDEF language_nl
+                        include lang_nl.inc
+ENDIF
+IFDEF language_ru
+                        include lang_ru.inc
+ENDIF
+                        include datum.inc
+                        include begincd.inc
+                        include mac.inc
+                        include typedef.inc
+                        include cdboot.inc
+                        include sektor.inc
+                        include cdread.inc
+                        include deb_com1.inc
+                        include deb_com2.inc
+                        include ausschri.inc
+                        include cdconfig.inc
+                        include cdemterm.inc
+                        include font.inc
+IFDEF ScrewDrv
+                        include sd_load.inc
+                        include sd_rom.inc
+ENDIF
+
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+boot_drive              db ?
+cd_sector_size_s        db 11
+cd_sector_size_b        dw 2048
+
+IFDEF dos
+meldung_titel           db msg_title_dos_cdloader,datum,13,10
+ELSE
+meldung_titel           db msg_title_bios_cdloader,datum,13,10
+ENDIF
+                        db msg_loading_part2,0
+
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+a_proc          einrichten
+
+IFDEF bios
+                far_jmp 0 continue_00007cxx
+  continue_00007cxx:
+                sub ax,ax
+                cli
+                mov ss,ax
+                mov sp,07c00h
+                sti
+ELSE
+                mov dl,090h ; VK/SystemSoft
+ENDIF
+                ; remember drive letter
+                push cs
+                pop ds
+                mov boot_drive,dl
+
+IFDEF serial_debug
+                call init_com2
+ENDIF           ; serial_debug
+
+IFDEF ScrewDrv
+                call load_ScrewDrv
+ENDIF
+
+
+                mov si,Offset meldung_titel
+                call ausschrift
+
+
+                ; no emulation boot type ?
+                mov al,'<'
+                call ausschrift_zeichen
+                mov al,boot_drive
+                call ausschrift_al_hex
+                mov al,':'
+                call ausschrift_zeichen
+                mov al,'-'
+                call query_cd_emulation_type
+                jnz not_no_emulation_type        ; no answer->no
+
+                mov al,specification_packet.cdrom_boot_media_type
+                and al,00fh
+                or al,'0'
+  not_no_emulation_type:
+                call ausschrift_zeichen
+                mov al,'>'
+                call ausschrift_zeichen
+                mov al,' '
+                call ausschrift_zeichen
+
+
+
+                push loadsegment
+                pop es
+                sub bx,bx
+                call determine_cd_sector_size
+
+
+                ; load VTOC
+                mov eax,010h                  ; VTOC
+                push loadsegment
+                pop es
+                sub bx,bx
+                mov cx,1
+                mov es:[bx].VTOC.cdType,-1    ; clear signature area
+                call read_cd_sector
+                ; ignore CF value, must be CF=0
+;               cmp es:[bx].VTOC.cdType,0
+;               je invalid_VTOC
+                cmp DWord Ptr es:[bx].VTOC.ID+0,'00DC' ; CD001
+                jne invalid_VTOC
+                cmp Byte Ptr es:[bx].VTOC.ID+4,'1' ; CD001
+                jne invalid_VTOC
+                cmp es:[bx].VTOC.Version,1
+                je valid_VTOC
+
+invalid_VTOC:
+                trap <msg_invalid_VTOC>
+
+valid_VTOC:
+
+                ; get boot directory and read it, one directory level each loop
+                mov si,Offset p_cd_boot_directory
+                mov eax,es:[bx].VTOC.DirRec.DataLenLSB          ; size req directory
+                mov edi,es:[bx].VTOC.DirRec.ExtLocLSB           ; position
+
+  go_to_bootimgs_directory_loop:
+                ; ds:si=@directory in form of l_string lstring .. #0
+                ; eax=size of current directory (bytes)
+                ; edi=postition of current directory (first sector)
+
+                ; set minimum size of director/file size and our buffer space
+                mov ecx,0ffffh                                  ; size avail buffer max
+                call round_down_to_sectorsize                   ; next lower sector size for buffer
+                cmp ecx,eax                                     ; size dir/file
+                if_a <mov ecx,eax>                              ; select min
+
+                mov eax,edi                                     ; eax=position
+                                                                ; ecx=size bytes
+
+               ;es:bx..
+                sub bx,bx
+                push cx
+                  call byte_to_sectornum                        ; round up,divide
+                  call read_cd_sector                           ; load them
+                  ; ignore CF value, must be CF=0
+                pop cx
+
+                ; do not look past directory name string buffer
+                cmp si,(Offset p_cd_boot_directory)+cd_boot_directory_max_len
+                jae have_bootimgs_directory
+                ; no more directory names?
+                cmp Byte Ptr [si],0
+                je have_bootimgs_directory
+
+                ; search subdirectory for boot file(s) or fill
+               ;mov si,si                                       ; ds:si=directory item to search
+                call search_in_iso9660_directory
+
+                ; carry means usually not found
+                if_c <trap msg_can_not_find_boot_directory>
+                ; we can only 'cd directory' to directories, not files
+                test es:[bx].isoDirRec.dirFlags,cdrom_DIR
+                if_z <trap msg_boot_directory_is_not_a_directory>
+
+                ; update string pointer: add directory just searched
+                movzx ax,Byte Ptr [si]
+                inc ax
+                add si,ax
+
+                ; get first sector number and size of file or next directory level
+                mov edi,es:[bx].isoDirRec.ExtLocLSB
+                mov eax,es:[bx].isoDirRec.DataLenLSB
+                ; have dir, read next level
+                jmp go_to_bootimgs_directory_loop
+
+  have_bootimgs_directory:
+
+                ; ecx=directory size (bytes)
+                ; es:bx=ISO-9660 directory
+
+                pushad
+                push es
+
+                ; try loading font file, no error messages
+                call generate_font_filename
+                mov si,Offset font_file_fxx
+                call search_in_iso9660_directory
+                jc no_font_available
+                test es:[bx].isoDirRec.dirFlags,cdrom_DIR
+                jnz no_font_available
+                mov ecx,size_vgafont
+                cmp ecx,es:[bx].isoDirRec.DataLenLSB
+                jne no_font_available
+
+                mov si,Offset ptr_vgafont
+                call cdloader_load_file
+
+                call load_vga_font
+
+  no_font_available:
+                pop es
+                popad
+
+                ; get boot file (memboot.bin) and load it
+                mov si,Offset p_cd_boot_memboot_bin
+                call search_in_iso9660_directory
+                if_c <trap msg_can_not_find_memboot_bin>
+                test es:[bx].isoDirRec.dirFlags,cdrom_DIR
+                if_nz <trap msg_memboot_bin_is_not_a_file>
+
+                mov si,Offset ptr_memboot_bin
+                call cdloader_load_file
+
+                call ausschrift_zeichen_CRLF
+
+                mov si,-1 ; can not point to a valid BIOS parameter block
+                mov dl,cs:[boot_drive]
+                mov bx,Offset p_cd_boot_directory ; pass directory to memboot.bin
+               ;far_jmp loadsegment 0
+                jmp DWord Ptr ptr_memboot_bin
+a_endp          einrichten
+
+ptr_memboot_bin ptr1616 <0,loadsegment>
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                ; es:bx=directory entry
+                ; ds:si=@buffer ptr
+a_proc          cdloader_load_file
+                pushad
+
+                  mov ecx,0ffffh                                  ; size avail
+                  call round_down_to_sectorsize
+                  mov eax,es:[bx].isoDirRec.DataLenLSB            ; size req
+                  cmp ecx,eax
+                  if_a <mov cx,ax>                                ; select min
+
+                  mov eax,es:[bx].isoDirRec.ExtLocLSB             ; position
+
+                  les bx,ds:[si]
+                 ;push loadsegment
+                 ;pop es
+                 ;sub bx,bx
+                  push cx
+                    call byte_to_sectornum
+                    call read_cd_sector
+                    ; ignore CF value, must be CF=0
+                  pop cx
+
+                popad
+                ret
+a_endp          cdloader_load_file
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                        include puffer.inc
+
+code                    EndS
+
+end                     anfang_org
+

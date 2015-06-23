@@ -1,0 +1,53 @@
+Benutzerdokumentation         DXL_DECO                    Veit Kannegieser
+
+
+Einleitung
+----------
+
+DXL_DECO entschl《selt (und entpackt) verschl《selte DXL (Doors eXtension Language)
+Dateien, zum Beispiel mit Telelogic Doors mitgeliefert: versions.inc, clonemod.inc.
+
+Es gib ein Verschl《selungsprogramm smartCrypt.exe von Tony Goodman, und
+Telelogic bietet jetzt auch so ein Werkzeug.
+
+
+Beschreibung der Verschl《selung (DOORS 8.X)
+--------------------------------------------
+
+Zuerst wird eine Laufl�ngenkodierung angewandt, dann werden jeweils Bl把ke
+von 8 Byte in 16 Runden um 4 Bit rotiert und Byte-Permutationen durchgef”rt
+
+Die Permutationstabellen in Doors werden aus 16 Byte Schl《seln erzeugt,
+in diesem Entschl《selungsprogramm habe ich mir das gespart, und benutze die
+f］f Tabellen direkt.
+
+DXL_Deco probiert alle Tabellen durch, bis es die Zeichenkette '//<'
+am Dateianfang findet.
+
+DOORS 9.2 verwendet blowfish, aber die selben Schl《sel.
+
+
+Benutzung
+---------
+
+dxl_deco <Name der Quelldatei> [ <Name der Ausgabedatei> ]
+
+Wenn <Name der Ausgabedatei> nicht angegeben ist, wird <Name der Quelldatei>
+｜erschrieben.
+
+
+Verweise
+--------
+http://www.telelogic.com
+http://smartdxl.com/tools.html
+http://www.dreckstool.de
+http://www-947.ibm.com/support/entry/portal/Overview/Software/Rational/Rational_DOORS
+
+
+始derungen
+----------
+
+2010-05-12
+* Unterst》zung f〉 DOORS 9.2 (Verschl《selung mit blowfish) hinzugef“t
+
+

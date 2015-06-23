@@ -1,0 +1,3 @@
+Library pmvdmcc
+Description '@#V.K:2008.11.02#@patch miniVDM int10/13 creation code for uncommon memory situaltions'
+ProtMode

@@ -1,0 +1,88 @@
+importiere_copy_qm:
+                        call kopiere_ins_xms_zaehler_nullen
+                        call sauberen_kopf_einrichten
+                        mov ax,es:[0000b] ; Anzahl Sektoren
+                        mov bl,es:[00010] ; Sektoren / Spur
+                        mov [sektoren],ax
+                        mov [sekt_spur],bl
+                        mov b [koepfe],2
+                        div bl            ; 1.4: (2880/$12)=160
+                        shr al,1          ; 160 -> 80
+                        mov [spuren],al
+
+                        mov di,hd_copy_entschluesselt
+                        mov si,es:[0006f]
+                        add si,00085 ; anfang Kommentar
+
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+                        mov w [quell_h],0
+                        mov w [quell_o],hd_copy_entschluesselt
+                        mov w [quell_s],cs
+                        mov w [ziel_h],[xms_handhabe]
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+
+;***************************************************************************
+
+blockschleife_copyqm:
+                        ; Blockgroesse
+                        call lies_hd_copy_zeichen
+                        cmp ah,1 ; Dateiende
+                        jz importiere_copy_qm_fertig
+
+                        mov cl,al
+                        call lies_hd_copy_zeichen
+                        mov ch,al
+
+                        cmp cx,07fff
+                        ja copyqm_einzelzeichen_vielfach
+
+copyqm_zeichen_einfach_schleife:
+
+                        call lies_hd_copy_zeichen
+                        call schreibe_hd_copy_zeichen
+                        loop copyqm_zeichen_einfach_schleife
+
+                        jmp blockschleife_copyqm
+
+copyqm_einzelzeichen_vielfach:
+                        not cx
+                        inc cx
+                        call lies_hd_copy_zeichen
+
+copyqm_einzelzeichen_vielfach_schleife:
+
+                        call schreibe_hd_copy_zeichen
+                        loop copyqm_einzelzeichen_vielfach_schleife
+
+                        jmp blockschleife_copyqm
+
+;***************************************************************************
+
+importiere_copy_qm_fertig:
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+                        mov ax,'öö'
+                        call fuelle_lese_puffer
+
+                        mov w [quell_h],0
+                        mov w [quell_o],0
+                        mov w [quell_s],[lese_puffer_seg]
+
+                        mov cx,[sektoren]
+                        mov dx,w [kopi_ins_xms_512_zaehler]
+                        cmp dx,cx
+                        jae importiere_copy_qm_fertig_fertig
+
+                        sub cx,dx
+importiere_copy_qm_fertig_fuellschleife:
+                        call kopiere_ins_xms_512
+                        loop importiere_copy_qm_fertig_fuellschleife
+
+importiere_copy_qm_fertig_fertig:
+                        ret

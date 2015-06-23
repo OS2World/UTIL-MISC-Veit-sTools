@@ -1,0 +1,312 @@
+;*****************************************************************************
+; CMOS: Standardwert lesen und schreiben
+; 2000.05.26 Veit Kannegieser (cmos.lst/RB)
+;*****************************************************************************
+pruefe_bios_fuer_cmosvariante:
+                        ; Datei auf FAT-Partition suchen ?
+                        cmp bios_typ,biostyp_FAT_cfg
+                        if e call berechne_konfigurationssektor
+
+                        ; Datei in Sektor umgerechnet ?
+                        cmp bios_typ,biostyp_Sektor
+                        je pruefe_bios_fuer_cmosvariante_ende
+
+                        call bestimme_vorhandenes_bios
+                        mov ah,0
+
+                        cmp al,0
+                        ; Annahme: Nutzer hat recht gehabt
+                        je pruefe_bios_fuer_cmosvariante_ende
+
+                        cmp ax,bios_typ
+                        ; šbereinstimmung mit dem gefundenen
+                        je pruefe_bios_fuer_cmosvariante_ende
+
+                        ; Unterschiede -> auf dumm schalten
+                        mov bios_typ,biostyp_unbekannt
+
+  pruefe_bios_fuer_cmosvariante_ende:
+                        ret
+
+;*****************************************************************************
+lade_cmos2:
+                        mov di,cmos_tabelle
+                        call lade_cmos
+                        mov di,cmos_kopie
+                        call lade_cmos
+
+                        cld
+                        mov si,cmos_tabelle+010
+                        mov di,cmos_kopie  +010
+                        mov cx,080-010
+                        rep cmpsb
+
+                        jnz lade_cmos2 ; nochmal versuchen
+
+                        ret
+;*****************************************************************************
+lade_cmos:
+                        mov cx,010 ; 00..0f sind fr die Uhr gedacht
+                        add di,cx
+                        cld
+                        cli
+  lade_cmos_schleife:
+                        mov al,cl
+                        out 070,al
+                        in al,071
+                        stosb
+
+                        inc cx
+                        cmp cx,00080
+                        jne lade_cmos_schleife
+
+                        sti
+
+                        ret
+
+;*****************************************************************************
+schreibe_cmos:
+                        cld
+                        mov cx,010 ; 00..0f sind fr die Uhr gedacht
+                        mov si,cmos_tabelle+010
+                        cli
+  schreibe_cmos_schleife:
+
+                        mov al,cl
+                        out 070,al
+                        lodsb
+                        out 071,al
+
+                        inc cx
+                        cmp cx,00080
+                        jne schreibe_cmos_schleife
+
+                        sti
+
+                        mov di,cmos_kopie
+                        call lade_cmos
+
+                        mov si,cmos_tabelle+010
+                        mov di,cmos_kopie  +010
+                        mov cx,080-010
+                        rep cmpsb
+                        jne schreibe_cmos ; nochmal versuchen
+
+                        ret
+
+;*****************************************************************************
+berechne_pruefsumme:
+                        sub dx,dx
+                        sub ax,ax
+                        cld
+
+  berechne_pruefsumme_schleife:
+                        lodsb
+                        add dx,ax
+                        loop berechne_pruefsumme_schleife
+
+                        xchg dl,dh
+                        mov ax,dx
+                        ret
+;*****************************************************************************
+teste_pruefsumme_10_bis_2d:
+                        pusha
+                          mov si,cmos_tabelle+010
+                          mov cx,02d-010+1
+                          jmp short teste_pruefsumme_
+
+teste_pruefsumme_40_bis_5d:
+                        pusha
+                          mov si,cmos_tabelle+040
+                          mov cx,05d-040+1
+
+teste_pruefsumme_:
+                          call berechne_pruefsumme
+                          cmp w [si],ax
+                        popa
+                        ret
+;*****************************************************************************
+berechne_pruefsumme_10_bis_2d:
+                        pusha
+                          mov si,cmos_tabelle+010
+                          mov cx,02d-010+1
+                          jmp short berechne_pruefsumme_
+
+berechne_pruefsumme_40_bis_5d:
+                        pusha
+                          mov si,cmos_tabelle+040
+                          mov cx,05d-040+1
+berechne_pruefsumme_:
+                          call berechne_pruefsumme
+                          mov w [si],ax
+                        popa
+                        ret
+;*****************************************************************************
+
+lies_standardwert_vom_cmos:
+                        call pruefe_bios_fuer_cmosvariante
+                        cmp bios_typ,biostyp_unbekannt
+                        je ret
+
+                        cmp bios_typ,biostyp_sektor
+                        if e jmp lies_konfigurationssektor
+
+                        call lade_cmos2
+
+                        sub ax,ax
+                        mov si,cmos_tabelle
+                        mov cx,bios_typ
+
+                        ;--------------------------------------------
+                        cmp cl,biostyp_Award
+                        jne lies_cmos_nicht_Award
+
+                        call teste_pruefsumme_10_bis_2d
+                        jne cmos_lesen_pruefsummenfehler
+                        mov al,[si+013]
+                        shr ax,2
+  lies_cmos_nicht_Award:
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        cmp cl,biostyp_AMI_Hi_Flex
+                        jne lies_cmos_nicht_AMI_Hi_Flex
+
+                        call teste_pruefsumme_10_bis_2d
+                        jne cmos_lesen_pruefsummenfehler
+                        mov al,[si+011]
+  lies_cmos_nicht_AMI_Hi_Flex:
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        cmp cl,biostyp_AMI_WinBIOS
+                        jne lies_cmos_nicht_AMI_WinBIOS
+
+                        call teste_pruefsumme_10_bis_2d
+                        jne cmos_lesen_pruefsummenfehler
+                        mov al,[si+013]
+                        shr ax,5
+  lies_cmos_nicht_AMI_WinBIOS:
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        cmp cl,biostyp_SystemSoft
+                        jne lies_cmos_nicht_SystemSoft
+
+                        call teste_pruefsumme_40_bis_5d
+                        jne cmos_lesen_pruefsummenfehler
+                        mov al,[si+044]
+                        and al,07f
+  lies_cmos_nicht_SystemSoft:
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; weitere F„lle ..
+                        ;cmp cl,...
+                        ;--------------------------------------------
+
+                        inc ax ; 0.. -> 1..
+                        cmp ax,w [anzahl_lw]
+                        if be mov w [standard_lw],ax
+
+                        ret
+
+cmos_lesen_pruefsummenfehler:
+                        mov bios_typ,biostyp_unbekannt
+                        ret
+;*****************************************************************************
+
+schreibe_standardwert_ins_cmos:
+                        call pruefe_bios_fuer_cmosvariante
+                        cmp bios_typ,biostyp_unbekannt
+                        je ret
+
+                        cmp bios_typ,biostyp_sektor
+                        if e jmp schreibe_konfigurationssektor
+
+                        call lade_cmos2
+
+                        mov ax,[standard_lw]
+                        cmp ax,[anzahl_lw]
+                        ja ret
+                        dec ax
+
+                        mov cx,bios_typ
+
+                        ;--------------------------------------------
+                        cmp cl,biostyp_Award
+                        jne schreibe_cmos_nicht_Award
+
+                        mov di,cmos_tabelle+013
+                        mov bl,[di]
+                        shl ax,2
+                        and bl,003
+                        or al,bl
+                        cmp al,[di]
+                        je schreibe_standardwert_ins_cmos_sinnlos
+                        mov [di],al
+                        call berechne_pruefsumme_10_bis_2d
+
+  schreibe_cmos_nicht_Award:
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        cmp cl,biostyp_AMI_Hi_Flex
+                        jne schreibe_cmos_nicht_AMI_Hi_Flex
+
+                        mov di,cmos_tabelle+011
+                        mov bl,[di]
+                        cmp al,bl
+                        je schreibe_standardwert_ins_cmos_sinnlos
+                        mov [di],al
+                        call berechne_pruefsumme_10_bis_2d
+
+  schreibe_cmos_nicht_AMI_Hi_Flex:
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        cmp cl,biostyp_AMI_WinBIOS
+                        jne schreibe_cmos_nicht_AMI_WinBIOS
+
+                        mov di,cmos_tabelle+013
+                        mov bl,[di]
+                        shl ax,5
+                        and bl,01f
+                        or al,bl
+                        cmp al,[di]
+                        je schreibe_standardwert_ins_cmos_sinnlos
+                        mov [di],al
+                        call berechne_pruefsumme_10_bis_2d
+
+  schreibe_cmos_nicht_AMI_WinBIOS:
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        cmp cl,biostyp_SystemSoft
+                        jne schreibe_cmos_nicht_SystemSoft
+
+                        mov di,cmos_tabelle+044
+                        mov bl,[di]
+                        and bl,080
+                        and al,07f
+                        or al,bl
+                        cmp al,[di]
+                        je schreibe_standardwert_ins_cmos_sinnlos
+                        mov [di],al
+                        call berechne_pruefsumme_40_bis_5d
+
+  schreibe_cmos_nicht_SystemSoft:
+                        ;--------------------------------------------
+
+
+                        ;--------------------------------------------
+                        ; weitere F„lle ..
+                        ;cmp cl,...
+                        ;--------------------------------------------
+
+                        call schreibe_cmos
+
+  schreibe_standardwert_ins_cmos_sinnlos:
+                        ret
+;*****************************************************************************
+

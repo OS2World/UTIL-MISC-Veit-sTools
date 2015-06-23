@@ -1,0 +1,797 @@
+Title   Setup variables: detect host adapter
+
+;--------------------------------------------------------------------
+
+p8str "DaniS506"  ; Extended ATA(PI)/(E)IDE (DaniS506, DaniATAPI)
+db 0 ; no detection, always selected as first driver entry
+
+;--------------------------------------------------------------------
+
+p8str "IBM1S506"  ; Standard ATA(PI)/(E)IDE (IBM1S506, IBMATAPI)
+db 0 ; no detection
+
+;--------------------------------------------------------------------
+
+p8str "AHA152X"  ; Adaptec 1460/151x/152x/153x, 6260/63xx chips
+db 0 ; ISA, EISA, VL, PCMCIA (PC Card), no detection
+
+;--------------------------------------------------------------------
+
+p8str "AHA154X"  ; Adaptec 154x, 7970 chip and compatible
+db 0 ; ISA, EISA, VL, no detection
+
+;--------------------------------------------------------------------
+
+p8str "AIC7870"  ; Adaptec 29xx/39xx F-UW, 785x/60/70/80/95 chips
+;  V  9004   Adaptec Inc
+
+;! D  1078  AIC-7810C RAID Coprocessor
+;! D  1160  AIC-1160 Family Fibre Channel Adapter
+;! D  2178  AIC-7821 SCSI Host Adapter
+
+;  D  3860  AHA-2930CU PCI SCSI Controller
+
+;  D  3B78  AHA-4944W/4944UW Quad Fast-Wide/Ultra SCSI-II
+
+;  D  5075  AIC-755x SCSI Controller
+;  D  5078  AVA-2902I/E,AVA-2904,AVA-2910 (AIC-7850P) Fast/Wide SCSI II
+;  O   9004  AHA-2904/Integrated AIC-7850
+;  S    7850  AHA-2904/Integrated AIC-7850
+;  D  5175  AIC-755x SCSI Controller
+;  D  5178  AIC-7850 Fast SCSI Controller
+;  D  5275  AIC-755x SCSI Controller
+;  D  5278  AIC-7850 Fast SCSI Controller
+;  D  5375  AIC-755x SCSI Controller
+;  D  5378  AIC-7850 Fast SCSI Controller
+;  D  5475  AIC-755x SCSI Controller
+;  D  5478  AIC-7850 Fast SCSI Controller
+;  D  5575  AVA-2930 SCSI Host Adapter
+;  D  5578  AIC-7855 Fast SCSI Controller
+;  D  5675  AIC-755x SCSI Controller
+;  D  5678  AIC-7856 Fast SCSI Controller
+;  D  5775  AIC-755x SCSI Controller
+;  D  5778  AIC-7850 Fast SCSI Controller
+
+;! D  5800  AIC-5800 IEEE-1394 FireWire Controller
+;! D  5900  ANA-5910/5930/5940 ATM155 & 25 LAN Adapter
+;! D  5905  ANA-5910A/5930A/5940A ATM Adapter
+
+;  D  6075  APA-1480 CardBus Ultra SCSI Controller
+;  O   9004  APA-1480 CardBus Ultra SCSI Controller
+;  S    7560  APA-1480 CardBus Ultra SCSI Controller
+;  D  6078  AIC-7860 PCI SCSI Controller
+;  D  6178  AIC-7861 AHA-2940AU PCI SCSI Controller
+;  O   9004  AHA-2940AU Single
+;  S    7861  AHA-2940AU Single
+;  D  6278  AIC-7860 SCSI Controller
+;  D  6378  AIC-7860 SCSI Controller
+;  D  6478  AIC-786x SCSI Controller
+;  D  6578  AIC-786x SCSI Controller
+;  D  6678  AIC-786x SCSI Controller
+;  D  6778  AIC-786x SCSI Controller
+
+;! D  6915  ANA620xx/ANA69011A Fast Ethernet
+
+;  D  7078  AIC-7870P Fast/Wide SCSI II Chip
+;  D  7178  AHA-2940/W Fast/Wide SCSI Host Adapter
+;  D  7278  AHA-3940/W Dual-Channel FAST/Wide SCSI Host Adapter
+;! D  7378  AHA-3985 4 Channel RAID SCSI Host Adapter
+;  D  7478  AHA-2944/W SCSI Host Adapter
+;  D  7578  AHA-3944/W Multichannel Fast/Fast-Wide Differential SCSI
+;  D  7678  AHA-4944W/UW Quad Fast-Wide/Ultra Differential SCSI
+;  D  7778  AIC-787x SCSI Controller
+
+;! D  7810  AIC-7810 Memory Controller IC
+;! D  7815  AIC-7815 RAID+Memory Controller IC
+;! O   9004  AIC-7815 RAID+Memory Controller IC
+;! S    7815  ARO-1130U2 RAID Controller
+;! S    7840  AIC-7815 RAID+Memory Controller IC
+;  D  7850  AIC-7850 Fast/Wide SCSI II Chip
+;  D  7855  AHA-2930 SCSI Host Adapter
+
+;  D  7860  AIC-7860 based PCI SCSI Controller
+
+;  D  7870  AIC-7870 Fast/Wide SCSI II Chip
+;  D  7871  AHA-2940 Fast/Wide SCSI Host Adapter
+;  D  7872  AHA-3940 Dual-Channel FAST/Wide SCSI Host Adapter
+;! D  7873  AHA-3985 4 Channel RAID SCSI Host Adapter (AIC-7873)
+;  D  7874  AHA-2944 SCSI Host Adapter
+
+;  D  7880  AIC-7880P Ultra/Ultra Wide SCSI Chipset
+
+;  D  7890  AIC-7890 SCSI Controller
+;  D  7891  AIC-789x SCSI Controller
+;  D  7892  AIC-789x SCSI Controller
+;  D  7893  AIC-7895C SCSI Controller
+;  D  7894  AIC-789x SCSI Controller
+;  D  7895  AIC-7895 PCI SCSI Controller
+;  O   9004  AIC-7895 PCI SCSI Controller
+;  S    7890  AHA-2940U/UW Dual/AHA-394xAU/AUW/AUWD SCSI Controller
+;  S    7891  AHA-2940U/UW Dual Channel PCI SCSI Controller
+;  S    7892  AHA-3940AU/AUW/AUWD/UWD PCI SCSI Controller
+;  S    7894  AHA-3944AUWD PCI SCSI Controller
+;  S    7895  AHA-2940U/2940UW Dual AHA-394xAU/AUW/AUWD AIC-7895B
+;  S    7896  AHA-2940U/2940UW Dual AHA-394xAU/AUW/AUWD AIC-7895B
+;  S    7897  AHA-2940U/2940UW Dual AHA-394xAU/AUW/AUWD AIC-7895B
+;  D  7896  AIC-789x SCSI Controller
+;  D  7897  AIC-789x SCSI Controller
+
+;  D  8078  AIC-7880P Ultra/Ultra Wide SCSI Chipset
+;  O   9004  AIC-7880P Ultra/Ultra Wide SCSI Chipset
+;  S    7880  AIC-7880P Ultra/Ultra Wide SCSI Chipset
+;  D  8178  AHA-2940U/UW/2940D Ultra/Ultra Wide/Dual SCSI Host Adapter
+;  O   9004  AHA-2940UW SCSI Host Adapter
+;  S    7881  AHA-2940UW SCSI Host Adapter
+;  D  8278  AHA-3940U/UW/UWD Ultra/Ultra Wide/Dual SCSI Host Adapter
+;! D  8378  AHA-389X (AIC-7883U)
+;  D  8478  AHA-2944UW SCSI Host Adapter
+;  D  8578  AHA-3944U/UWD Ultra/Ultra Wide/Dual SCSI Host Adapter
+;  D  8678  AHA-4944UW AIC-7880 SCSI Host Adapter
+;  D  8778  AHA-2940UW Pro AIC-788x Ultra-Wide SCSI Controller
+;  O   9004  2940UW Pro Ultra-Wide SCSI Controller
+;  S    7887  2940UW Pro Ultra-Wide SCSI Controller
+;  D  8878  AHA-2930UW Ultra-Wide SCSI Controller
+;  O   9004  AHA-2930UW Ultra-Wide SCSI Controller
+;  S    7888  AHA-2930UW Ultra-Wide SCSI Controller
+;! D  8B78  ABA-1030 PCI
+
+;  D  EC78  AHA-4944W/4944UW Quad Differential SCSI Controller
+
+;* db 4 ; aus dem Treiber:
+;*    dw 09004h, 07895h,0ffffh ; 9004:7895 "2"
+;*    dw 09005h, 00050h,0fff0h ; 9005:005x "2" ; belongs to AIC78U2!
+;*    dw 09004h, 07800h,0ff00h ; 9004:78xx "1"
+;*    dw 09005h, 00010h,0fff0h ; 9005:001x "1" ; belongs to AIC78U2!
+
+db 14
+   dw 09004h, 03860h,0ffffh ; 9004:3860 ; AHA-2930CU ; *device number matches AIC-3860 LVD/SE transceiver chip!*
+   dw 09004h, 03b78h,0ffffh ; 9004:3B78 ; AHA-4944UW/W Quad Channel HVD
+   dw 09004h, 05075h,0f0ffh ; 9004:5x75 ; AIC-755x ; 7/5/5x first '5' a typo?
+   dw 09004h, 05078h,0f0ffh ; 9004:5x78 ; AIC-785x Fast
+   dw 09004h, 06075h,0f0ffh ; 9004:6x75 ; APA-1480/A PCMCIA (Cardbus) Ultra
+   dw 09004h, 06078h,0f0ffh ; 9004:6x78 ; AIC-786x Ultra
+   dw 09004h, 07078h,0f0ffh ; 9004:7x78 ; AIC-787x Fast (Wide) ; exclusion of 7378, 7{ABCDEF}78 required!
+   dw 09004h, 07850h,0fff0h ; 9004:785x ; AIC-785x Fast
+   dw 09004h, 07860h,0ffffh ; 9004:7860 ; AIC-7860 Ultra
+   dw 09004h, 07870h,0fff0h ; 9004:787x ; AIC-787x Fast (Wide) ; exclusion of 7873 required!
+   dw 09004h, 07880h,0ffffh ; 9004:7880 ; AIC-7880 Ultra (Wide)
+   dw 09004h, 07890h,0fff0h ; 9004:789x ; AIC-7895 Dual Channel Ultra (Wide)
+   dw 09004h, 08078h,0f0ffh ; 9004:8x78 ; AIC-7880 Ultra (Wide) ; exclusion of 8378, 8{ABCDEF}78 required!
+   dw 09004h, 0ec78h,0ffffh ; 9004:EC78 ; AHA-4944UW/W Quad Channel HVD
+
+;--------------------------------------------------------------------
+
+p8str "AIC78U2"  ; Adaptec 29xx/39xx U2W, 7890/91/96/97 chips
+;  V  9005  Adaptec
+
+;  D  0010  AHA-2940U2W/U2B AHA-2950U2W Ultra2 SCSI Controller
+;  O   9005  AHA-2940U2W/U2B AHA-2950U2W Ultra2 SCSI Controller
+;  S    2180  AHA-2940U2 Ultra2 SCSI Controller
+;  S    8100  AHA-2940U2B Ultra2 SCSI Controller
+;  S    A180  AHA-2940U2W Ultra2 SCSI Controller
+;  S    E100  AHA-2950U2B Ultra2 SCSI Controller
+;  D  0011  AHA-2930U2 Ultra2 SCSI Host Adapter
+;  D  0013  AIC-7890/1 SCSI Host Adapter
+;  O   9005  AIC-7890/1 SCSI Host Adapter
+;  D  001F  AHA-2940U2/AHA-2940U2W AIC-7890/1 Ultra2 SCSI Controller
+;  O   9005  2940U2W SCSI Controller
+;  S    000F  2940U2W SCSI Controller
+;  S    A180  2940U2W SCSI Controller
+
+;  D  0020  AIC-789x SCSI Controller
+;  D  002F  AIC-789x SCSI Controller
+
+;  D  0030  AIC-789x SCSI Controller
+;  D  003F  AIC-789x SCSI Controller
+
+;  D  0050  AHA-3940U2x/AHA-3950U2x Ultra2 SCSI Controller
+;  O   9005  AHA-3940U2x/AHA-3950U2x Ultra2 SCSI Controller
+;  S    F500  AHA-3950U2B Ultra2 SCSI Controller
+;  D  0051  AHA-3950U2x Ultra2 SCSI Controller
+;  O   9005  AHA-3950U2x Ultra2 SCSI Controller
+;  S    B500  AHA-3950U2D Ultra2 SCSI Controller
+;  D  0053  AIC-7896 SCSI Controller
+;  O   9005  AIC-7896 SCSI Controller
+;  S    FFFF  AIC-7896 SCSI Controller mainboard implementation
+;  D  005F  AIC-7896/7 Ultra2 SCSI Controller
+
+db 4
+   dw 09005h, 00010h,0fff0h ; 9005:001x
+   dw 09005h, 00020h,0fff0h ; 9005:002x
+   dw 09005h, 00030h,0fff0h ; 9005:003x
+   dw 09005h, 00050h,0fff0h ; 9005:005x
+
+;--------------------------------------------------------------------
+
+p8str "AICU160"  ; Adaptec x9160/3960D U160, 7892/99 chips (AICU160)
+;  V  0E11  Compaq Computer Corp (Now owned by Hewlett-Packard)
+;  D  00C0  AIC-7899G 64-bit, 66MHz Dual Channel Wide Ultra3 SCSI Controller
+
+;  V  9005  Adaptec
+
+;  D  0080  29160/N/LP Ultra160 (AIC-7892A) SCSI Host Adapter
+;  O   0E11  29160 Ultra160 (AIC-7892A) SCSI Host Adapter
+;  S    E2A0  64-bit/66MHz Wide Ultra3 SCSI Adapter
+;  O   9005  29160/N/LP Ultra160 (AIC-7892A) SCSI Host Adapter
+;  S    62A0  29160N Ultra160 SCSI Controller
+;  S    E220  29160LP Low Profile Ultra160 SCSI Controller
+;  S    E2A0  29160 Ultra160 SCSI Controller
+;  D  0081  19160 AIC-7892B Ultra160 SCSI Adapter
+;  O   9005  19160 AIC-7892B Ultra160 SCSI Adapter
+;  S    62A1  19160 AIC-7892B Ultra160 SCSI Adapter
+;  D  0083  AIC-7892D SCSI Host Adapter
+;  D  008F  AIC-7892 Ultra160 SCSI Host Adapter
+;  O   9005  AIC-7892 Ultra160 SCSI Host Adapter
+;  S    008F  AIC-7892 Ultra160 SCSI Host Adapter
+;  D  00C0  AHA-39160 (AIC-7899A) Ultra160 SCSI Host Adapter
+;  O   0E11  64-Bit/66MHz Dual Channel Wide Ultra3 SCSI Adapter
+;  S    F620  64-Bit/66MHz Dual Channel Wide Ultra3 SCSI Adapter
+;  O   9005  AHA-39160 (AIC-7899A) Ultra160 SCSI Host Adapter
+;  S    F620  AHA-39160 (AIC-7899A) Ultra160 SCSI Host Adapter
+;  D  00C1  AIC-7899B Ultra160 SCSI Host Adapter
+;  D  00C3  AIC-7899D Ultra160 SCSI Host Adapter
+;  D  00CF  AIC-7899 Ultra160 SCSI Host Adapter
+
+db 3
+   dw 00e11h, 000c0h,0ffffh ; 0E11:00C0 ; Compaq on-board chip
+   dw 09005h, 00080h,0fff0h ; 9005:008x ; AIC-7892
+   dw 09005h, 000c0h,0fff0h ; 9005:00Cx ; AIC-7899
+
+;--------------------------------------------------------------------
+
+p8str "ASC"      ; AdvanSys 39xx/5xx/7xx/8xx/9xx Fast/Ultra
+;  V  10CD  Advanced System Products (AdvanSys)
+
+;  D  1100  ASC1100 PCI SCSI Host Adapter
+;  D  1200  ASC1200 PCI SCSI Host Adapter (Fast SCSI II)
+;  D  1300  ASC1300 PCI SCSI Host Adapter (Fast Wide SCSI II)
+
+db 3 ; aus dem Treiber:
+   dw 010cdh, 01100h,0ffffh
+   dw 010cdh, 01200h,0ffffh
+   dw 010cdh, 01300h,0ffffh
+
+;--------------------------------------------------------------------
+
+p8str "MRAID"    ; AMI MegaRAID Enterprise/Elite/Express, OEMs
+; Treiber benutzt kein PCI
+
+;  V  1000  LSI Logic / Symbios Logic
+;  D  1960  PowerEdge Expandable RAID Controller 4
+;  O   1028  PowerEdge Expandable RAID Controller 4
+;  S    0518  PowerEdge Expandable RAID Controller 4/DC
+;  S    0520  PowerEdge Expandable RAID Controller 4/SC
+;  S    0531  PowerEdge Expandable RAID Controller 4/QC
+
+;  V  101E  American Megatrends Inc
+;  D  1960  MegaRAID
+;  O   101E  MegaRAID
+;  S    0471  MegaRAID 471 Enterprise 1600 RAID Controller
+;  S    0475  MegaRAID 475 Express 500 RAID Controller
+;  S    0493  MegaRAID 493 Elite 1600 RAID Controller
+;  S    0471  PowerEdge RAID Controller 3/QC
+;  S    0475  PowerEdge RAID Controller 3/SC
+;  S    0493  PowerEdge RAID Controller 3/DC
+;  O   101E  MegaRAID RAID Controller
+;  S    0471  MegaRAID 471 Enterprise 1600 RAID Controller
+;  S    0475  MegaRAID 475 Express 500 RAID Controller
+;  S    0493  MegaRAID 493 Elite 1600 RAID Controller
+;  O   1028  PowerEdge RAID Controller
+;  S    0471  PowerEdge RAID Controller 3/QC
+;  S    0493  PowerEdge RAID Controller 3/DC
+;  D  9010  MegaRAID 428 Ultra Fast Wide SCSI RAID Controller
+;  D  9060  MegaRaid 434 Ultra GT RAID Controller
+
+;  V  1028  Dell Computer Corp
+;  D  0001  PowerEdge Expandable RAID Controller 2/Si
+;  O   1028  PowerEdge Expandable RAID Controller 2
+;  S    0001  PowerEdge Expandable RAID Controller 2/Si
+;  D  0002  PowerEdge Expandable RAID Controller 3/Di
+;  O   1028  PowerEdge Expandable RAID Controller 3
+;  S    0002  PowerEdge Expandable RAID Controller 3/Di
+;  S    00D1  PowerEdge Expandable RAID Controller 3/Di
+;  S    00D9  PowerEdge Expandable RAID Controller 3/Di
+;  D  0003  PowerEdge Expandable RAID Controller 3/Si
+;  O   1028  PowerEdge Expandable RAID Controller 3/Si
+;  S    0003  PowerEdge Expandable RAID Controller 3/Si
+;  D  0004  PowerEdge Expandable RAID Controller 3/Si
+;  O   1028  PowerEdge Expandable RAID Controller 3/Si
+;  S    00d0  PowerEdge Expandable RAID Controller 3/Si
+;  D  0005  PowerEdge Expandable RAID Controller 3/Di
+;  D  0006  PowerEdge Expandable RAID Controller 3/Di
+;  D  0008  PowerEdge Expandable RAID Controller 3/Di
+;  D  000A  PowerEdge Expandable RAID Controller 3/Di
+;  O   1028  PowerEdge Expandable RAID Controller 3
+;  S    0121  PowerEdge Expandable RAID Controller 3/Di
+;  S    0106  PowerEdge Expandable RAID Controller 3/Di
+;  S    011B  PowerEdge Expandable RAID Controller 3/Di
+;  D  000E  PowerEdge Expandable RAID Controller
+;  D  000F  PowerEdge Expandable RAID Controller 4/Di
+
+;  V  1077  Qlogic
+;  D  1216  ISP12160 Dual Channel Ultra3 SCSI Processor
+;  O   101E  QLA12160 on AMI MegaRAID
+;  S    8471  QLA12160 on AMI MegaRAID
+;  S    8493  QLA12160 on AMI MegaRAID
+
+;  V  8086  Intel Corporation
+;  D  1960  80960RP i960RP Microprocessor
+;  X     11111111  MegaRaid 466 RAID Controller
+;  X     11111112  PowerEdge Expandable RAID Controller 2/SC
+;  O   101E  MegaRaid RAID Controller
+;  S    0431  MegaRaid 431 RAID Controller                      ???
+;  S    0438  MegaRaid 438 RAID Controller Ultra2 LVD
+;  S    0466  MegaRaid 466 Express Plus RAID Controller
+;  S    0467  MegaRAID 467 Enterprise 1500 RAID Controller
+;  S    0490  MegaRAID 490 Express 300 RAID Controller
+;  S    09A0  PowerEdge Expandable RAID Controller 2/SC
+;  O   1028  PERC series RAID Controllers
+;  S    0467  PERC, PERC 2/Sc, 2/Dc
+;  S    1111  PERC-2/SC RAID Controller
+;  O   103C  MegaRaid RAID Controller
+;  S    10C6  MegaRaid 438, HP NetRAID-3Si RAID Controller
+;  S    10C7  MegaRaid T5, Integrated HP NetRAID RAID Controller
+;  S    10CC  MegaRaid, Integrated HP NetRAID RAID Controller
+;  S    10CD  HP NetRAID-1Si RAID Controller
+;  O   113C  MegaRaid RAID Controller
+;  S    03A2  MegaRaid RAID Controller
+;  S    10C6  MegaRAID 438, HP NetRAID-3Si
+;  S    10C7  MegaRAID T5, Integrated HP NetRAID
+;  S    10CC  MegaRAID, Integrated HP NetRAID
+;  S    10CD  HP NetRAID-1Si
+;  O   113C  MegaRAID
+;  S    03A2  MegaRAID
+
+db 7
+   dw 01000h, 01960h,0ffffh ; 1000:1960 ; LSI Logic 53C1010 Dual Channel Ultra160 chip
+   dw 0101eh, 01960h,0ffffh ; 101E:1960 ; AMI MegaRAIDs with QLogic QLA12160
+   dw 0101eh, 09010h,0ffffh ; 101E:9010 ; AMI MegaRAID Enterprise 1200 (Series 428) Fast Wide
+   dw 0101eh, 09060h,0ffffh ; 101E:9060 ; AMI;MegaRAID Enterprise 1300 (Series 434) Ultra Wide
+   dw 01028h, 00000h,0fff0h ; 1028:000x ; Dell PERC/{234} UW/U2W/U160 *Dell ships own drivers!*
+   dw 01077h, 01216h,0ffffh ; 1077:1216 ; QLogic QLA12160 Dual Channel Ultra160 chip
+   dw 08086h, 01960h,0ffffh ; 8086:1960 ; Intel i960Rx I/O processor
+
+;--------------------------------------------------------------------
+
+p8str "FLASHPT"  ; BusLogic Flashpoint BT-920/93x/95x
+;  V  104B  Buslogic
+;  D  8130  BT-930/932/950/952 FlashPoint LT/DL/LW/DW Ultra(wide) SCSI
+
+db 1 ; Treiber:
+   dw 0104bh, 08130h,0ffffh
+
+;--------------------------------------------------------------------
+
+p8str "BTSCSI"   ; BusLogic Multimaster BT-4xx/5xx/6xx/7xx/9xx
+;  V  104B  Buslogic
+;  D  0140  BT-946C PCI-SCSI-2 MultiMaster
+;  D  1040  BA80c30 PCI-SCSI MultiMaster
+
+;  V  4B10  Buslogic Inc           (little Endian error -> 104B?)
+;  D  3080  SCSI Host Adapter      (little Endian error -> 8030? -> BA80C30)
+;  D  4010  Wide SCSI Host Adapter (little Endian error -> 1040?)
+
+db 3
+   dw 0104bh, 00040h,000ffh
+   dw 04b10h, 03080h,0ffffh
+   dw 04b10h, 04010h,0ffffh
+
+;--------------------------------------------------------------------
+
+p8str "DPT20XX"  ; DPT SmartRAID/SmartCache PM20xx/21xx/32xx/33xx
+;  V  1044  Adaptec (Formerly: Distributed Processing Technology (DPT))
+;  D  A400  DPT 2124/9X SmartCache III/RAID SCSI Controller
+
+;  V  1D44  Distributed Processing Technology (DPT)
+;  D  A400  PM2x24/PM3224 SCSI Adapter
+
+db 2
+   dw 01044h, 0a400h,0ffffh
+   dw 01d44h, 0a400h,0ffffh
+
+
+;--------------------------------------------------------------------
+
+p8str "FD16-700" ; Future Domain TMC-1800/18Cxx/36C70 chips
+; no detection of ISA, EISA, VL, MCA, PCMCIA (PC Card) cards!
+
+;  V  1036  Future Domain Corp
+;  D  0000  TMC-18XX/TMC-3260 SCSI-2 Controller (36c70)
+
+db 1
+   dw 01036h, 00000h,0ffffh
+
+;--------------------------------------------------------------------
+
+p8str "IPSRAID"  ; IBM ServeRAID, ServeRAID II, ServeRAID 3/4/5
+;  V  1014  IBM
+;  D  002E  ServeRAID I/II/3x/4H SCSI Adapter
+;  O   0104  ServeRAID I/II/3x/4H SCSI Adapter
+;  S    022E  ServeRAID 4H
+;  O   1014  ServeRAID I/II/3x/4H SCSI Adapter
+;  S    002E  ServeRAID-3x
+;  S    022E  ServeRAID-4H
+;  D  01BD  ServeRAID 4,5 Series SCSI RAID Controller
+;  O   1014  ServeRAID 4,5 Series SCSI RAID Controller
+;  S    01BE  ServeRAID 4M SCSI RAID Controller
+;  S    01BF  ServeRAID 4L SCSI RAID Controller
+;  S    0208  ServeRAID 4Mx SCSI RAID Controller
+;  S    020E  ServeRAID 4Lx SCSI RAID Controller
+;  S    022E  ServeRAID-4H
+;  S    0258  ServeRAID 5i SCSI RAID Controller
+;  S    0259  ServeRAID 5i SCSI RAID Controller
+
+db 2 ; der Treiber sucht Speicherbereich (9:0000) ab
+     ; und hat keine PCI-Zugriff
+   dw 01014h, 0002eh,0ffffh
+   dw 01014h, 001bdh,0ffffh
+
+;--------------------------------------------------------------------
+
+p8str "GDTX000"  ; ICP vortex GDT20x0, 30x0, 6xxx/RD/RP, 7xxxRN
+;  V   1119   ICP-Vortex Computersysteme GmbH
+;  D   0000   GDT6000/6020/6050 PCI SCSI RAID Controller
+;  D   0001   GDT6000B/6010 PCI 1-Channel SCSI RAID Controller
+;  D   0002   GDT6110/6510 PCI 1-Channel SCSI RAID Controller
+;  D   0003   GDT6120/6520 PCI 2-Channel SCSI RAID Controller
+;  D   0004   GDT6530 PCI 3-Channel SCSI RAID Controller
+;  D   0005   GDT6550 PCI 5-Channel SCSI RAID Controller
+;  D   0006   GDT6117/6517 Wide Ultra SCSI HBA
+;  D   0007   GDT6127/6527 Wide Ultra SCSI HBA
+;  D   0008   GDT6537 Wide Ultra SCSI HBA
+;  D   0009   GDT6557/6557-ECC Wide Ultra SCSI HBA
+;  D   000A   GDT6115/6515 Wide SCSI HBA
+;  D   000B   GDT6125/6525 Wide SCSI HBA
+;  D   000C   GDT6535 Wide SCSI HBA
+;  D   000D   GDT6555/6555-ECC Wide SCSI Controller
+;  D   0100   GDT6117RP/6517RP Wide Ultra SCSI HBA
+;  D   0101   GDT6127RP/6527RP Wide Ultra SCSI HBA
+;  D   0102   GDT6537RP Wide Ultra SCSI HBA
+;  D   0103   GDT6557RP Wide Ultra SCSI HBA
+;  D   0104   GDT6111RP/6511RP Ultra SCSI HBA
+;  D   0105   GDT6121RP/6521RP Ultra SCSI HBA
+;  D   0110   GDT6117RD/6517RD Wide Ultra SCSI HBA
+;  D   0111   GDT6127RD/6527RD Wide Ultra SCSI HBA
+;  D   0112   GDT6537RD Wide Ultra SCSI HBA
+;  D   0113   GDT6557RD Wide Ultra SCSI HBA
+;  D   0114   GDT6111RD/6511RD Ultra SCSI HBA
+;  D   0115   GDT6121RD/6521RD Ultra SCSI HBA
+;  D   0118   GDT6x18RD Wide Ultra2 SCSI HBA
+;  D   0119   GDT6x28RD Wide Ultra2 SCSI HBA
+;  D   011A   GDT6x38RD Wide Ultra2 SCSI HBA
+;  D   011B   GDT6558RD/6658RD Wide Ultra2 SCSI HBA
+;! D   0120   GDT6117RP2/6517RP2
+;! D   0121   GDT6127RP2/6527RP2
+;! D   0122   GDT6537RP2
+;! D   0123   GDT6557RP2
+;! D   0124   GDT6111RP2/6511RP2
+;! D   0125   GDT6127RP2/6527RP2
+;! D   0136   GDT 6113RS/6513RS
+;! D   0137   GDT 6123RS/6523RS
+;! D   0138   GDT 6118RS/6518RS/6618RS
+;! D   0139   GDT 6128RS/6528RS/6628RS
+;! D   013A   GDT 6538RS/6638RS
+;! D   013B   GDT 6558RS/6658RS
+;! D   013C   GDT 6533RS/6633RS
+;! D   013D   GDT 6543RS/6643RS
+;! D   013E   GDT 6553RS/6653RS
+;! D   013F   GDT 6563RS/6663RS
+;! D   0166   GDT 7113RN/7513RN/7613RN
+;! D   0167   GDT 7123RN/7523RN/7623RN
+;  D   0168   GDT7x18RN 64-bit Wide Ultra2 SCSI HBA
+;  D   0169   GDT7x28RN 64-bit Wide Ultra2 SCSI HBA
+;  D   016A   GDT7x38RN 64-bit Wide Ultra2 SCSI HBA
+;  D   016B   GDT7x58RN 64-bit Wide Ultra2 SCSI HBA
+;! D   016C   GDT 7533RN/7633RN
+;! D   016D   GDT 7543RN/7643RN
+;! D   016E   GDT 7553RN/7653RN
+;! D   016F   GDT 7563RN/7663RN
+;! D   01D6   GDT 4x13RZ
+;! D   01D7   GDT 4x23RZ
+;! D   01F6   GDT 8x13RZ
+;! D   01F7   GDT 8x23RZ
+;! D   01FC   GDT 8x33RZ
+;! D   01FD   GDT 8x43RZ
+;! D   01FE   GDT 8x53RZ
+;! D   01FF   GDT 8x63RZ
+;  D   0210   GDT6519RN/6619RN Fibre Channel HBA
+;  D   0211   GDT6529RN/6629RN Fibre Channel HBA
+;  D   0260   GDT7519RN/7619RN 64-bit Fibre Channel HBA
+;  D   0261   GDT7529RN/7629RN 64-bit Fibre Channel HBA
+;! D   0300   GDT Rx Controller
+
+db 12 ; der Treiber ist verwirrend
+   db 01119h, 00000h, 0fff0h ; 1119:000x
+   db 01119h, 00100h, 0fff0h ; 1119:010x
+   db 01119h, 00110h, 0fff0h ; 1119:011x
+   db 01119h, 00168h, 0ffffh ; 1119:0168
+   db 01119h, 00169h, 0ffffh ; 1119:0169
+   db 01119h, 0016ah, 0ffffh ; 1119:016A
+   db 01119h, 0016bh, 0ffffh ; 1119:016B
+   db 01119h, 00210h, 0ffffh ; 1119:0210
+   db 01119h, 00211h, 0ffffh ; 1119:0211
+   db 01119h, 00260h, 0ffffh ; 1119:0260
+   db 01119h, 00261h, 0ffffh ; 1119:0261
+   db 0941ch, 00000h; 0f000h ; unbekannte Firma ?
+
+;--------------------------------------------------------------------
+
+p8str "INI910"   ; Initio INI-9100/W, INIC-910 chip
+;  V  1101  Initio Corp
+;  D  9100  INI-9100/W SCSI/Wide SCSI Controller
+;  D  9700  Fast Wide SCSI Controller
+
+db 2 ; Treiber:
+   dw 01101h, 09100h,0ff00h ; 91xx
+   dw 01101h, 09700h,0ffffh ; OEM?
+
+;--------------------------------------------------------------------
+
+p8str "INI910U"  ; Initio INI-9090/9x00/9520, INIC-940/950 chips
+;  V  1101  Initio Corp
+;  D  134A  Ultra SCSI Adapter
+;  D  9400  INI-940 Fast Wide SCSI Controller
+;  D  9401  INI-935 Fast Wide SCSI Controller
+;  D  9500  INI-950 SCSI Controller
+
+db 3 ; Treiber:
+   dw 01101h, 0134ah,0ffffh ; OEM?
+   dw 01101h, 09400h,0ff00h ; 94xx
+   dw 01101h, 09500h,0ff00h ; 95xx
+
+;--------------------------------------------------------------------
+
+p8str "INIA100"  ; Initio INI-A100U2W, INIC-1060 chip
+;  V  1101  Initio Corp
+;  D  1060  INI-A100U2W Orchid Ultra2 SCSI Controller
+;  O   1101  INI-A100U2W Orchid Ultra2 SCSI Controller
+;  S    1060  INI-A100U2W Orchid Ultra2 SCSI Controller
+
+db 1 ; Treiber:
+   dw 01101h, 01060h,0ffffh
+
+;--------------------------------------------------------------------
+
+p8str "I2OSOSM"  ; Intelligent I/O Storage, i960 with IRTOS
+;  V  1044  Adaptec (Formerly: Distributed Processing Technology (DPT))
+;  D  A501  I2O SmartRAID V Controller
+;  O   1044  I2O SmartRAID V Controller
+;  S    C001  I2O RAID PM1554U2 Ultra2 Single Channel
+;  S    C002  I2O RAID PM1654U2 Ultra2 Single Channel
+;  S    C003  I2O RAID PM1564U3 Ultra3 Single Channel
+;  S    C004  I2O RAID PM1564U3 Ultra3 Dual Channel
+;  S    C005  I2O RAID PM1554U2 Ultra2 Single Channel (NON ACPI)
+;  S    C00A  I2O RAID PM2554U2 Ultra2 Single Channel
+;  S    C00B  I2O RAID PM2654U2 Ultra2 Single Channel
+;  S    C00C  I2O RAID PM2664U3 Ultra3 Single Channel
+;  S    C00D  I2O RAID PM2664U3 Ultra3 Dual Channel
+;  S    C00E  I2O RAID PM2554U2 Ultra2 Single Channel (NON ACPI)
+;  S    C00F  I2O RAID PM2654U2 Ultra2 Single Channel (NON ACPI)
+;  S    C014  I2O RAID PM3754U2 Ultra2 Single Channel (NON ACPI)
+;  S    C015  I2O RAID PM3755U2B Ultra2 Single Channel (NON ACPI)
+;  S    C016  I2O RAID PM3755F Fibre Channel (NON ACPI)
+;  S    C01E  I2O RAID PM3757U2 Ultra2 Single Channel
+;  S    C01F  I2O RAID PM3757U2 Ultra2 Dual Channel
+;  S    C020  I2O RAID PM3767U3 Ultra3 Dual Channel
+;  S    C021  I2O RAID PM3767U3 Ultra3 Quad Channel
+;  S    C028  I2O RAID PM2865U3 Ultra3 Single Channel
+;  S    C029  I2O RAID PM2865U3 Ultra3 Dual Channel
+;  S    C02A  I2O RAID PM2865F Fibre Channel
+;  S    C03C  I2O RAID 2000S Ultra3 Single Channel
+;  S    C03D  I2O RAID 2000S Ultra3 Dual Channel
+;  S    C03E  I2O RAID 2000F Fibre Channel
+;  S    C046  I2O RAID 3000S Ultra3 Single Channel
+;  S    C047  I2O RAID 3000S Ultra3 Dual Channel
+;  S    C048  I2O RAID 3000F Fibre Channel
+;  S    C050  I2O RAID 5000S Ultra3 Single Channel
+;  S    C051  I2O RAID 5000S Ultra3 Dual Channel
+;  S    C052  I2O RAID 5000F Fibre Channel
+;  S    C064  I2O RAID 3010S Ultra3 Dual Channel
+;  S    C065  I2O RAID 3010S Ultra3 Four Channel
+;  S    C066  I2O RAID 2110S Ultra3
+;  D   A511  SmartRAID V Controller
+
+db 1 ; Treiber:
+   dw 01044h, 0a501h,0ff0fh ; 1044:A5x1
+
+;--------------------------------------------------------------------
+
+p8str "DAC960"   ; Mylex DAC960E/LB/M/P/PD/PDU/PE/PG/PJ/PL/S/SU/SX
+;  V  1069  Mylex Corp
+;  D  0001  DAC960P Wide-SCSI RAID Controller
+;  D  0002  DAC960PD RAID Controller
+;  D  0010  DAC960PG/PJ/PR/PT/PTL1/PRL RAID Controller
+;  O   1069  DAC960PG/PJ/PR/PT/PTL1/PRL RAID Controller
+;  S    0010  DAC960PG/PJ/PR/PT/PTL1/PRL RAID Controller
+
+db 3 ; Treiber:
+   dw 01069h, 00001h,0ffffh
+   dw 01069h, 00002h,0ffffh
+   dw 01069h, 00010h,0ffffh
+
+;--------------------------------------------------------------------
+
+p8str "QL40OS2"  ; QLogic QLA4xx
+db 0 ; ISA, EISA, VL, PCMCIA (PC Card), no detection
+
+;--------------------------------------------------------------------
+
+p8str "QL510"    ; QLogic QLA510, AMD AM53C974/A, PM79C974 chips
+;  V  1022  Advanced Micro Devices (AMD)
+;  D  2020  AM53C974 SCSI Bridge (AKA Qlogic Fast!SCSI Basic, Tekram DC-390)
+;  D  2040  AM79C974 Ethernet & SCSI Bridge
+
+;  V  1DE1  Tekram Technology
+;  D  2020  DC-390 SCSI Controller
+
+db 3 ; aus dem Treiber:
+   dw 01022h, 02020h,0ffffh
+   dw 01022h, 02040h,0ffffh
+   dw 01de1h, 02020h,0ffffh
+
+;--------------------------------------------------------------------
+
+p8str "QL10OS2"  ; QLogic QLA910/940/100x/102x/104x
+;  V  1077  Qlogic
+;  D  1020  ISP1020A Fast-Wide-SCSI "Fast!SCSI IQ" Host Adapter
+
+db 1 ; aus dem Treiber:
+   dw 01077h, 01020h,0ffffh
+
+;--------------------------------------------------------------------
+
+p8str "SYM8XX"   ; Symbios/LSI F-U2W 81x/825/860/87x/885/895 chips
+db 10 ; aus dem Treiber:
+   dw 01000h, 00001h,0ffffh ; ?
+   dw 01000h, 00002h,0ffffh ; 53C820 820 Fast-Wide-SCSI Adapter
+   dw 01000h, 00003h,0ffffh ; LSI53C825/A/AE PCI to SCSI I/O Processor (Fast Wide)
+   dw 01000h, 00004h,0ffffh ; 53C815 815X Fast-SCSI Adapter
+   dw 01000h, 00006h,0ffffh ; LSI53C860/E PCI to Ultra SCSI I/O Processor
+   dw 01000h, 0000ch,0ffffh ; LSI53C895 PCI to Ultra2 SCSI I/O Processor with LVD Link
+   dw 01000h, 0000dh,0ffffh ; 53C885 23800 SCSI Adapter
+   dw 01000h, 0000fh,0ffffh ; LSI53C875/E,LSI53C876/E PCI to Ultra SCSI I/O Processor
+   dw 01000h, 00013h,0ffffh ; LSI53C875A PCI to Ultra SCSI Controller
+   dw 01000h, 01000h,0ffffh ; 53C815 Fast-SCSI ; probably wrong user report (= vendor ID), OEM?
+
+;  dw 01000h, 00012h,0ffffh ; LSI53C895A PCI to Ultra2 SCSI Controller ; moved to SYM_HI
+
+;  V  1000  LSI Logic (Was: Symbios Logic, NCR)
+;  D  0001  LSI53C810/A/AE PCI-SCSI I/O Processor
+;  R     01  LSI53C810 PCI to SCSI I/O Processor
+;  R     02  LSI53C810 PCI to SCSI I/O Processor
+;  R     14  LSI53C810A PCI to SCSI I/O Processor
+;  R     3   LSI53C810AE PCI to SCSI I/O Processor
+;  R     26  LSI53C810AE PCI to SCSI I/O Processor
+;  O   1000  LSI53C810AE PCI to SCSI I/O Processor
+;  S    1000  LSI53C810AE PCI to SCSI I/O Processor
+;  D  0002  53C820 820 Fast-Wide-SCSI Adapter
+;  D  0003  LSI53C825/A/AE PCI to SCSI I/O Processor (Fast Wide)
+;  R     14  LSI53C825A PCI to SCSI I/O Processor (Ultra Wide)
+;  R     26  LSI53C825AE PCI to SCSI I/O Processor (Ultra Wide)
+;  O   1000  LSI53C825AE PCI to SCSI I/O Processor (Ultra Wide)
+;  S    1000  LSI53C825AE PCI to SCSI I/O Processor (Ultra Wide)
+;  D  0004  53C815 815X Fast-SCSI Adapter
+;  D  0005  53C810AP,810ASP, 2081X Fast/Ultra/Wide SCSI Adapter
+;  D  0006  LSI53C860/E PCI to Ultra SCSI I/O Processor
+;  R     13  LSI53C860E PCI to Ultra SCSI I/O Processor
+;  O   1000  LSI53C860E PCI to Ultra SCSI I/O Processor
+;  S    1000  LSI53C860E PCI to Ultra SCSI I/O Processor
+;! D  000A  LSI53C1510 PCI to Dual Channel Wide Ultra2 SCSI Controller (Nonintelligent mode)
+;! O   1000  LSI53C1510 PCI to Dual Channel Wide Ultra2 SCSI Controller (Nonintelligent mode)
+;! S    1000  LSI53C1510 PCI to Dual Channel Wide Ultra2 SCSI Controller (Nonintelligent mode)
+;  D  000C  LSI53C895 PCI to Ultra2 SCSI I/O Processor with LVD Link
+;  O   1000  LSI53C895 PCI to Ultra2 SCSI I/O Processor with LVD Link
+;  S    1010  LSI8951U PCI to Ultra2 SCSI host adapter
+;  S    1020  LSI8952U PCI to Ultra2 SCSI host adapter
+;  O   1DE1  DC-390U2 Series SCSI Controller
+;  S    3906  DC-390U2B SCSI Controller
+;  S    3907  DC-390U2W SCSI Controller
+;  O   DC93  DC-2980U2W SCSI3 Host Adapter
+;  S    2980  DC-2980U2W SCSI3 Host Adapter
+;  D  000D  53C885 23800 SCSI Adapter
+;  D  000F  LSI53C875/E,LSI53C876/E PCI to Ultra SCSI I/O Processor
+;  R     00  LSI53C875 PCI to Ultra SCSI I/O Processor
+;  R     04  LSI53C875 PCI to Ultra SCSI I/O Processor
+;  R     26  LSI53C875E PCI to Ultra SCSI I/O Processor
+;  R     37  LSI53C876/E PCI to Dual Channel SCSI Multifunction Controller
+;  O   0E11  Embedded Ultra Wide SCSI Controller
+;  S    7004  Embedded Ultra Wide SCSI Controller
+;  O   1000  LSI53C876/E PCI to Dual Channel SCSI Multifunction Controller
+;  S    1000  LSI53C876/E PCI to Dual Channel SCSI Multifunction Controller
+;  S    1010  LSI22801 PCI to Dual Channel Ultra SCSI host adapter
+;  S    1020  LSI22802 PCI to Dual Channel Ultra SCSI host adapter
+;! O   1092  FirePort 40 Dual PCI SCSI Controller
+;! S    8760  FirePort 40 Dual PCI SCSI Controller
+;  O   1DE1  DC390F/U Ultra Wide SCSI Controller
+;  S    3904  DC390F/U Ultra Wide SCSI Controller
+;  S    0010 53c895
+;! D  0010  LSI53C1510 I2O-Ready PCI RAID Ultra2 SCSI Controller (Intelligent mode)
+;! O   0E11  Integrated Array Controller
+;! S    4040  Integrated Array Controller
+;! O   1000  LSI53C1510 I2O-Ready PCI RAID Ultra2 SCSI Controller (Intelligent mode)
+;! S    1000  LSI53C1510 I2O-Ready PCI RAID Ultra2 SCSI Controller (Intelligent mode)
+;  D  0012  LSI53C895A PCI to Ultra2 SCSI Controller
+;  O   1000  LSI53C895A PCI to Ultra2 SCSI Controller
+;  S    1000  LSI53C895A PCI to Ultra2 SCSI Controller
+;  D  0013  LSI53C875A PCI to Ultra SCSI Controller
+;  O   1000  LSI53C875A PCI to Ultra SCSI Controller
+;  S    1000  LSI53C875A PCI to Ultra SCSI Controller
+;! D  008F  53C875J SCSI Controller
+;! O   1092  FirePort 40 PCI SCSI Controller
+;! S    8000  FirePort 40 PCI SCSI Controller
+;! S    8760  FirePort 40 Dual PCI SCSI Host Adapter
+;! D  0621  LSIFC909 Fibre Channel I/O Processor
+;! D  0622  LSIFC929 Dual Channel Fibre Channel I/O Processor (1st Channel)
+;! D  0623  LSIFC929 Dual Channel Fibre Channel I/O Processor (2nd Channel)
+;! D  0624  LSIFC919 Fibre Channel I/O Processor (1st Channel)
+;! D  0625  LSIFC919 Fibre Channel I/O Processor (2nd Channel)
+;! D  0630  LSIFC920 Fibre Channel I/O Processor
+;! D  0701  53C885 NT50 DigitalScape Fast Ethernet Adapter
+;! D  0702  Yellowfin G-NIC Gigabit Ethernet Adapter
+;! O   1318  PEI100X Gigabit Ethernet Adapter
+;! S    0000  PEI100X Gigabit Ethernet Adapter
+;! D  0901  61C102 USB Controller
+;  D  1000  53C815 Fast-SCSI
+
+;--------------------------------------------------------------------
+
+p8str "SYM_HI"   ; Symbios/LSI U2W/U160 895A/896/1000/1010 chips
+;  V  1000  LSI Logic (Was: Symbios Logic, NCR)
+;  D  000B  LSI53C896/7 PCI to Dual Channel Ultra2 SCSI Multifunction Controller
+;  O   1000  LSI53C896/7 PCI to Dual Channel Ultra2 SCSI Multifunction Controller
+;  S    1000  LSI53C896/7 PCI to Dual Channel Ultra2 SCSI Multifunction Controller
+;  S    1010  LSI22910 PCI to Dual Channel Ultra2 SCSI host adapter
+;  S    1020  LSI21002 PCI to Dual Channel Ultra2 SCSI host adapter
+;  D  0012  LSI53C895A PCI to Ultra2 SCSI Controller
+;  O   1000  LSI53C895A PCI to Ultra2 SCSI Controller
+;  S    1000  LSI53C895A PCI to Ultra2 SCSI Controller
+;  D  0020  LSI53C1010-33 PCI to Dual Channel Ultra160 SCSI Multifunction Controller
+;  O   1000  LSI53C1010-33 PCI to Dual Channel Ultra160 SCSI Multifunction Controller
+;  S    1000  LSI53C1010-33 PCI to Dual Channel Ultra160 SCSI Multifunction Controller
+;  D  0021  LSI53C1000/1000R/1010R/1010-66 PCI to Ultra160 SCSI Controller
+;  O   1000  LSI53C1000/1000R/1010R/1010-66 PCI to Ultra160 SCSI Controller
+;  S    1000  LSI53C1000/1000R/1010R/1010-66 PCI to Ultra160 SCSI Controller
+
+db 4 ; aus dem Treiber:
+   dw 01000h, 0000bh,0ffffh ; LSI53C896/7
+   dw 01000h, 00012h,0ffffh ; LSI53C895A ; supported by SYM8XX as well
+   dw 01000h, 00020h,0ffffh ; LSI53C1010-33
+   dw 01000h, 00021h,0ffffh ; LSI53C1000/1000R/1010R/1010-66
+
+;--------------------------------------------------------------------
+
+; Symbios/LSI U320 1020/1030 chips
+; *** driver not released yet! *** maybe support integrated into SYM_HI
+; 53C1035? RAID-only?
+;  V  1000  LSI Logic (Was: Symbios Logic, NCR)
+;! D  0030  LSI53C1020/1030 PCI-X to Ultra320 SCSI Controller
+;! X     80000000  LSI53C1020/1030 PCI-X to Ultra320 SCSI Controller
+;! O   1000  LSI53C1020/1030 PCI-X to Ultra320 SCSI Controller
+;! S    1000  LSI53C1020/1030 PCI-X to Ultra320 SCSI Controller
+;! S    9000  LSI53C1020/1030 PCI-X to Ultra320 SCSI Controller
+;! D  0031  53C1030ZC PCI-X SCSI Controller
+;! D  0035  53C1035 PCI-X SCSI Controller
+;! D  0040  53C1035
+
+;  dw 01000h, 00030h,0ffffh ; LSI53C1020/1030 PCI-X to Ultra320 SCSI Controller
+;  dw 01000h, 00031h,0ffffh ; 53C1030ZC PCI-X SCSI Controller
+
+;--------------------------------------------------------------------
+
+p8str "TMSCSIW"  ; Tekram DC-310/U, DC-390F/U/U2B/U2W/W
+db 0 ; no detection, company did not allow to ship driver; vendor/device ID will be handled by SYM8XX
+
+;--------------------------------------------------------------------
+
+p8str "TRM3X5"   ; Tekram DC-305/315/395
+; company did not allow to ship driver
+;  V  10E1  Tekram Technology Corp Ltd
+;  D  0391  TRM-S1040 DC-315U Ultra SCSI Controller
+;  O   1DE1  TRM-S1040 DC-315U Ultra SCSI Controller
+;  S    0391  TRM-S1040 DC-315U Ultra SCSI Controller
+
+db 1
+   dw 01de1h, 00391h,0ffffh ; im Treiber selbst = "315/U"
+
+;***************************************************************************
+

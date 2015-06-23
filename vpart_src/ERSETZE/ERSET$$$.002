@@ -1,0 +1,15 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_titelzeil2  :^string;
+  textz_hilfezeile1  :^string;
+  textz_hilfezeile2  :^string;
+  textz_welcher_dateiname  :^string;
+  textz_Fehler_beim_oeffnen_der_Datei  :^string;
+  textz_zu_ersetzende_Zeichenkette  :^string;
+  textz_z_punk_b_punk_doppelpunkt  :^string;
+  textz_Zeichenkette_nicht_gefunden  :^string;
+  textz_Zeichekette_mal_gefunden_a  :^string;
+  textz_Zeichekette_mal_gefunden_b  :^string;
+  textz_Ersetzen_durch  :^string;
+  textz_die_zeichenketten_muessen_gleiche_laenge_haben  :^string;

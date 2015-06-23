@@ -1,0 +1,71 @@
+; Ausschalten einer PCMCIA/Cardbus-Karte
+; 2000.07.21 Veit Kannegieser
+
+                        .586p
+			.model small
+			.stack 16000
+
+;####################################################################
+
+code16iopl              segment word public 'CODE' use16
+
+ausschalten             proc far
+
+                        or al,002h
+
+                        out dx,al
+                        inc dx
+                          xchg al,ah
+                            in al,dx
+                          xchg al,ah
+                        dec dx
+
+                        and ah,0ffh-010h
+
+                        out dx,al
+                        inc dx
+                          xchg al,ah
+                            out dx,al
+                          xchg al,ah
+                        dec dx
+
+                        ret
+ausschalten             endp
+
+code16iopl		ends
+
+;####################################################################
+
+extern DOSEXIT:far
+
+code16			segment word public 'CODE' use16
+
+start                   proc far
+
+                        mov dx,003e0h
+
+                        mov al,000h
+                        call ausschalten
+
+                        mov al,040h
+                        call ausschalten
+
+                        mov al,080h
+                        call ausschalten
+
+                        mov al,0c0h
+                        call ausschalten
+
+                        push 0
+			push 0
+			call DOSEXIT
+		
+
+start                   endp
+
+code16                  ends
+
+;####################################################################
+
+end			start
+

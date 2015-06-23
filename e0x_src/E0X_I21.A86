@@ -1,0 +1,27 @@
+int_21_handler:
+                pushf
+                  mov b cs:[indos_max],0
+                  call suche_arbeit
+
+                  cmp ah,001
+                  jz mit_nachbehandlung
+                  cmp ah,006
+                  jz mit_nachbehandlung
+                  cmp ah,007
+                  jz mit_nachbehandlung
+                  cmp ah,008
+                  jz mit_nachbehandlung
+                  cmp ah,00a
+                  jz mit_nachbehandlung
+
+                popf
+                jmp d cs:[orgint21]
+
+mit_nachbehandlung:
+                popf
+                pushf
+                  call d cs:[orgint21]
+
+                mov b cs:[indos_max],0
+                call suche_arbeit
+                jmp iret_flags          ; iret

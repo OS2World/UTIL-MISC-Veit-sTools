@@ -1,0 +1,23 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_hilfe_text  :^string;
+  textz_Schreibfehler_INT_26  :^string;
+  textz_Lesefehler_INT_25  :^string;
+  textz_nicht_12_16_BIT_FAT_mit_128_512_1024_2048_Byte_je_Sektor  :^string;
+  textz_AEnderung_schreiben_  :^string;
+  textz__J_a  :^string;
+  textz__N_ein  :^string;
+  textz__I_mmer  :^string;
+  textz_ni_e_  :^string;
+  textz__A_bbruch  :^string;
+  textz_geloescht  :^string;
+  textz_auf_Datentraegerbezeichnung_zurueckgesetzt  :^string;
+  textz_auf_normales_Verzeichnis_zurueckgesetzt  :^string;
+  textz_Zeitkorrektur_  :^string;
+  textz_Monat  :^string;
+  textz_Tag  :^string;
+  textz_Stunden  :^string;
+  textz_Minuten  :^string;
+  textz_Sekunden  :^string;
+  textz_ungueltiger_Bootsktor  :^string;

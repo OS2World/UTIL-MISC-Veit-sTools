@@ -1,0 +1,29 @@
+;TYP2.EXE->TYP2DLL.DLL Starter
+
+                        .386p
+DGROUP		        GROUP DATA32
+                        .model flat
+                        .stack 2000000
+                        
+;####################################################################
+
+data32                  segment word public 'DATA' use32
+data32                  ends
+
+;####################################################################
+
+code32                  segment word public 'CODE' use32
+			assume ds: data32
+	
+extrn 			EXE_TYP2:near
+
+aufruf                  proc near
+			jmp EXE_TYP2
+aufruf                  endp
+
+code32                  ends
+
+;####################################################################
+
+end aufruf
+

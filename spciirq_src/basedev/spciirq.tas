@@ -1,0 +1,1895 @@
+Title           Set PCI IRQ (DOS,OS/2)
+
+; Veit Kannegieser 2002.03.20
+
+                        .386p
+                        locals @@
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+
+pirt_entry              Struc ; PCI IRQ routing table entry
+  bus_device_reverse    dw ?
+  int_a_link            db ?
+  int_a_connect_bitmap  dw ?
+  int_b_link            db ?
+  int_b_connect_bitmap  dw ?
+  int_c_link            db ?
+  int_c_connect_bitmap  dw ?
+  int_d_link            db ?
+  int_d_connect_bitmap  dw ?
+  device_slot_number    db ?
+                        db ?
+pirt_entry              EndS
+
+
+dpir_header             Struc
+  dpir_signature        dd '$PIR'       ; signature "$PIR"
+  dpir_version          dw ?            ; version (0100h for v1.0)
+  dpir_size             dw ?            ; table size in bytes
+  dpir_router_addr_rvs  dw ?            ; PCI Interrupt Router bus(lo) device/function(hi)
+  dpir_pci_exclusive_irq dw ?           ; bitmap of PCI-exclusive IRQs (bit 0 = IRQ0, etc.)
+  dpir_compatible_id    dd ?            ; PCI vendor(lo)/device(hi) ID for compatible PCI Interrupt Router
+  dpir_miniport_data    dd ?            ; ?
+  dpir_reserved         db 11 dup (?)
+  dpir_negchecksum      db ?            ; checksum (set to make 8-bit sum of bytes in entire structure equal 00h)
+dpir_header             EndS
+
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+
+                        include devcmd.inc
+                        include devhdr.inc
+                        include devhlp.inc
+
+IFDEF OS2
+data16                  Segment 'DATA' Public Use16
+                        entrypoint equ <>
+ELSE
+code16                  Segment 'CODE' Public Use16
+                        entrypoint equ <dos_exe_entrypoint>
+ENDIF
+
+
+                        dd -1
+                        dw DEV_CHAR_DEV+DEVLEV_3
+IFDEF OS2
+                        dw Offset setpciirq_strategy
+                        dw -1                           ; no IDC, we do not keep the driver loaded
+ELSE
+                        dw Offset setpciirq_prepare
+                        dw Offset setpciirq_strategy
+ENDIF
+                        db 'SPCIIRQ$'
+                        dw 4 dup (?)
+                        dd 0
+
+
+IFDEF DOS
+packet_ptr              dd ?
+                        Public packet_ptr
+ENDIF
+
+                        include def1.inc
+
+IFDEF OS2
+
+Device_Help             dd ?
+                        Public Device_Help
+
+Int15Entrypoint         dd 0000Ffe6eh   ; for 100% compatible PC
+  BIOS_Selector         equ word ptr Int15Entrypoint+2
+                        Public Int15Entrypoint, BIOS_Selector
+endif
+
+
+                        include loadmsg.inc
+
+messagestring           Message_cmdline_error   , 'SPCIIRQ Parameter error.'
+messagestring           pci_error_59            , 'PCI Error 59: buffer too small.'
+messagestring           pci_error_81            , 'PCI Error 81: function not implemented.'
+messagestring           pci_error_88            , 'PCI Error 88: set failed.'
+messagestring           pci_error_unknown       , 'Unknown PCI error 00.'
+ifdef OS2
+messagestring           AllocGDTSelector_failed , 'AllocGDTSelector failed.'
+messagestring           PhysToGDTSel_failed     , 'PhysToGDTSel failed.'
+endif
+messagestring           Message_bad_link_val    , 'Link value in routing table is invalid or was not found.'
+messagestring           no_supported_irq_router_found, 'No supported IRQ router was found.'
+messagestring           link_value_is_out_of_supported_bounds, 'The link value is out of supported bounds.'
+messagestring           warning_invalid_busdevfunc,   'SPCIIRQ warning: at the specified bus/device/function does not seem to exist a device!'
+messagestring           warning_invalid_pin_0,        'SPCIIRQ warning: the pin read from the specified bus/device/function address seems not to use interrupt pin A#..D#!'
+messagestring           warning_invalid_pin_different,'SPCIIRQ warning: the pin read from the specified bus/device/function address does not match with specified pin parameter!'
+
+IFDEF OS2
+messagestring           error_bad_snooplevel    , 'SPCIIRQ.SYS error: SPCIIRQ.SNP has not run, set hardware detection to full!'
+ENDIF
+
+;                           1  2  3  4   5  6  7  8
+ATI_link_translation    db  0, 1, 2, 3,  9,10,11,12
+
+; LINE         0 1 2 3 4 5 6 7 8 9 a b c d e f
+; ALI M1533    0 0 0 2 4 5 7 6 0 1 3 9 b 0 d f
+; ALi MAGiK 1  0 8 0 2 4 5 7 6 0 1 3 9 b 0 d f
+ali_irq_translate_table db 0,8,0,2,4,5,7,6,0,1,3,9,0bh,0,0dh,0fh
+
+ali_link_register       db 048h,048h,049h,049h,04dh,074h,04bh,04bh
+ali_link_shift          db   0 ,  4 ,  0 ,  4 ,  0 ,  0 ,  0 ,  4
+
+
+; VIA                   ;  55 56 57
+via555657_rol           db  4, 0, 4 ; the second($56) is unsure (0/4)
+
+;-                        ;   1    2    3    4(?) 5    6(?)
+;-via1235_rol             db  4  , 0  , 4  , 0  , 4  , 0
+;-via1235_index           db 056h,056h,057h,057h,055h,055h
+
+empty_translation       db 0
+
+                        include via_bios.inc
+
+special_device_table_start label word
+                        ; AMD
+                        dw 07443h ; AMD-768 ACPI Controller
+                        dw 01022h ; Advanced Micro Devices (AMD)
+
+                        dw 07413h ; AMD-766 Power Management Controller
+                        dw 01022h ; Advanced Micro Devices (AMD)
+
+                        dw 0746Bh ; AMD-8111 ACPI System Management Controller
+                        dw 01022h ; Advanced Micro Devices (AMD)
+
+                        ; Nvidia
+                        dw 010DEh ; Nvidia Corp
+                    ; not: 001E0h ; nForce2 AGP Controller
+                        dw 00060h ; nForce2 ISA Bridge
+
+                        dw 010DEh ; Nvidia Corp
+                    ; not: 000E1h ; nforce3 CPU to PCI Bridge
+                        dw 000E0h ; nForce3 CPU to ISA Bridge
+
+                     ;?    00050h ; nForce4 PCI to ISA Bridge
+
+                        ; Intel
+                        ; (invalid address 0/7/0) (asus machine)
+                        dw 08086h ; Intel Corporation
+                        dw 02641h ; 82801FBM ICH6M LPC Interface Bridge
+
+
+                        ; Acer
+                        ; (invalid address 255/31/7)
+                        dw 010B9h ; Acer Labs Incorporated (ALi)
+                        dw 01533h ; ALI M1533 Aladdin IV ISA Bridge *)
+
+special_device_table_end label word
+
+
+ifdef OS2               ; for snooper mode
+
+snoop_index             dw 0
+ConfigParmsLen          dw ?
+ConfigParms             db 80 dup (?)
+ConfigFileSpec          db 'SPCIIRQ.SYS',0
+                        public snoop_index, ConfigParmsLen, ConfigParms, ConfigFileSpec
+
+endif ; OS2
+
+align 2
+
+errormessage            dw ?
+                        Public errormessage
+
+BusDeviceFunction       dw ?
+PIN                     db ?
+IRQ                     db ?
+link_value              db ?
+                        Public BusDeviceFunction, PIN, IRQ, link_value
+
+align 2
+
+pci_read_result         dd ?
+                        Public pci_read_result
+
+
+IRQ_routing_table_size  equ (4*32)*(Size pirt_entry) ; only bus 0: 32, x4 to be safe
+
+IFDEF OS2
+                        include datum.inc
+                        include resmgrd.inc
+                        include resmgrdi.inc
+
+SnoopLevel              dw SNP_WARP_RISK
+                        Public SnoopLevel
+
+name_previous_dat       db 'previous.dat',0
+                        Public name_previous_dat
+
+FileOpen_record         dw 8                    ; length of imbedded fle system operation structure
+                        dd name_previous_dat    ; 16 16 pointer to ASCIZ pathname
+                        dd ?                    ; returned size of file
+                        Public FileOpen_record
+
+FileReadAt_record       dw 12                   ; length of imbedded fle system operation structure
+                        dd SnoopLevel           ; 16 16 pointer to input buffer
+                        dd 2                    ; length of data to read
+                        dd 0 ; 2?               ; starting position relative to the beginning of the file
+                        Public FileReadAt_record
+
+FileClose_record        dw 2                    ; length of imbedded fle system operation structure
+                        dw ?                    ; reserved
+                        Public FileClose_record
+
+ENDIF ; OS2
+
+
+IFDEF OS2
+data16                  EndS
+ELSE
+code16                  EndS
+ENDIF
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+code16                  Segment 'CODE' Public Use16
+                        assume cs:code16
+IFDEF OS2
+                        assume ds:data16
+ELSE
+                        assume ds:code16
+ENDIF
+
+                        db 0cch
+
+                        include mac1.inc
+IFDEF OS2
+                        include rmcall.inc
+                        include rmcdrvr.inc
+ENDIF ; OS2
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+ifdef DOS
+
+a_proc                  setpciirq_prepare
+                        mov cs:packet_ptr.offs,bx
+                        mov cs:packet_ptr.sel ,es
+                        retf
+a_endp                  setpciirq_prepare
+
+endif ; DOS
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  read_number
+                        push dx
+                        push cx
+
+                          sub dx,dx
+                          mov cx,10
+                          mov ah,0
+  @@loop:
+                          mov al,fs:[si]
+                          cmp al,' '
+                          jbe @@exit
+
+                          inc si
+
+                          cmp al,'$'
+                          jne @@nicht_hex
+                          cmp ah,0
+                          jne @@error
+                          mov cx,16
+                          jmp @@loop
+  @@nicht_hex:
+                          cmp al,'0'
+                          jb @@error
+                          cmp al,'9'
+                          ja @@not_read_number_decicmaldigit
+
+                          sub al,'0'
+                          jmp @@add_digit
+
+  @@not_read_number_decicmaldigit:
+                          or al,'a'-'A'
+                          cmp al,'a'
+                          jb @@error
+                          cmp al,'f'
+                          ja @@error
+                          add al,10-'a'
+  @@add_digit:
+                          cmp al,cl
+                          ja @@error
+
+                          push ax
+                            mov ax,cx
+                            mul dx
+                            mov dx,ax
+                          pop ax
+                          add dl,al
+                          adc dh,0
+                          mov ah,1
+                          jmp @@loop
+  @@error:
+                          mov ah,0
+  @@exit:
+                          cmp ah,0
+                          clc
+                          jne @@ret
+                          stc
+  @@ret:
+                          mov ax,dx
+                        pop cx
+                        pop dx
+                        ret
+a_endp                  read_number
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  find_skip_blank
+                        push ax
+  @@loop:
+                          mov al,fs:[si]
+                          cmp al,9
+                          je @@skip_blank
+                          cmp al,' '
+                          je @@skip_blank
+                          jb @@exit
+                          inc si
+                          jmp @@loop
+  @@skip_blank:
+                          mov al,fs:[si]
+                          inc si
+                          cmp al,9
+                          je @@skip_blank
+                          cmp al,' '
+                          je @@skip_blank
+
+                          dec si
+  @@exit:
+                        pop ax
+                        ret
+a_endp                  find_skip_blank
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        include outputme.inc
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  pci_bios
+                        push ds
+                        push fs
+
+                          push ds
+                          pop fs
+IFDEF DOS
+                          push 0f000h
+                          pop ds
+                          int 01ah
+ENDIF
+IFDEF OS2
+                          mov ds,BIOS_Selector
+                          pushf
+                          call fs:[Int15Entrypoint]
+ENDIF
+                        pop fs
+                        pop ds
+                        ret
+a_endp                  pci_bios
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  pci_read_byte
+                        pushad
+                          mov ax,0b108h
+                          call pci_bios
+                          mov Byte Ptr pci_read_result,cl
+                        popad
+                        mov cl,Byte Ptr pci_read_result
+                        ret
+a_endp                  pci_read_byte
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  pci_read_dword
+                        pushad
+                          mov ax,0b10ah
+                          call pci_bios
+                          mov pci_read_result,ecx
+                        popad
+                        mov ecx,pci_read_result
+                        ret
+a_endp                  pci_read_dword
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  pci_write_byte
+                        pushad
+                          mov ax,0b10bh
+                          call pci_bios
+                        popad
+                        ret
+a_endp                  pci_write_byte
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; ah=and
+                        ; al=or
+a_proc                  pci_and_or_byte
+                        push cx
+                          call pci_read_byte
+                          and cl,ah
+                          or  cl,al
+                          call pci_write_byte
+                        pop cx
+                        ret
+a_endp                  pci_and_or_byte
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; ds:si search string
+                        ; es=F000 selector
+                        ; -> cf=1=not found
+                        ;    cf=0=found
+a_proc                  search_bios
+                        pusha
+
+
+                          sub di,di
+                          mov cx,0fff0h
+                          cld
+                          mov dh,0
+                          mov dl,Byte Ptr ds:[si]
+
+                          test dx,dx            ; empty string?
+                          clc
+                          jz @@exit
+
+                          inc si
+                          lodsb                 ; may not be '?'
+                          dec dx                ; one char less
+
+  @@loop:
+                          test cx,cx
+                          stc
+                          jz @@exit
+
+                          repnz scasb
+
+                          test cx,cx
+                          stc
+                          jz @@exit
+
+                          pusha
+                            mov cx,dx
+
+                            test cx,cx
+                            clc
+                            jz @@compare_done
+  @@compare_loop:
+                            lodsb
+                            mov ah,es:[di]
+                            inc di
+                            cmp al,ah
+                            je @@compare_next
+                            cmp al,'?'
+                            stc
+                            jne @@compare_done
+  @@compare_next:
+                            loop @@compare_loop
+                            clc
+  @@compare_done:
+                          popa
+                          ; have clc=equal stc=differnt
+                          jc @@loop
+  @@exit:
+                        ; have clc=found stc=not found
+
+                        popa
+                        ret
+a_endp                  search_bios
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; -> si
+
+a_proc                  search_via_translation
+                        push di
+
+                          mov di,Offset via_bios_string_table_begin
+  @@loop:
+                          mov si,Word Ptr ds:[di+0]     ; searchstring #1
+                          call search_bios
+                          jc @@next
+
+                          mov si,Word Ptr ds:[di+2]     ; searchstring #2
+                          call search_bios
+
+                          mov si,Word Ptr ds:[di+4]     ; translation string
+                          jnc @@found
+  @@next:
+                          add di,2+2+2
+                          cmp di,Offset via_bios_string_table_end
+                          jne @@loop
+
+                          mov si,Offset empty_translation
+
+  @@found:
+
+                        pop di
+                        ret
+a_endp                  search_via_translation
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; bx=router
+                        ; ecx=vendor/device (or compatible)
+
+a_proc                  program_routing_hardware2
+                        pushad
+
+                          mov dl,[link_value]
+                          mov dh,[IRQ]
+
+                          mov eax,ecx
+                          shr eax,16
+
+
+                          ;=== Intel ================================
+                          cmp cx,08086h
+                          jne @@nicht_router_intel
+
+                          ; 5TCU-A23.BIN
+                          cmp dl,1
+                          jb @@done_bad_link_value
+                          cmp dl,4
+                          ja @@nicht_router_intel_1_4
+
+                          add dl,060h-1
+  @@nicht_router_intel_1_4:
+                          cmp dl,5
+                          jb @@done_bad_link_value
+                          cmp dl,8
+                          ja @@nicht_router_intel_5_8
+
+                          add dl,068h-5
+  @@nicht_router_intel_5_8:
+                          ; could compare ax=7110/122e/2480 etc for 60..63
+                          ; and           ax=24d0/...       etc for 60..63,68..6b
+                          ; simply assume that intel allways uses link value = byte index
+                          cmp dl,060h
+                          jb @@done_bad_link_value
+                          cmp dl,06bh
+                          ja @@done_bad_link_value
+                          mov al,dl
+                          and al,(not 3)
+                          cmp al,064h
+                          je @@done_bad_link_value
+
+                          movzx di,dl   ; link=register index
+                          mov cl,dh     ; value=line
+                          call pci_write_byte
+                          jmp @@done
+  @@nicht_router_intel:
+                          ;=== VIA / AMD ============================
+                          cmp cx,01106h
+                          je @@router_via_amd
+                          cmp cx,01022h
+                          jne @@nicht_router_via_amd
+  @@router_via_amd:
+                          cmp ax,00586h         ; VIA VT82C586/A/B                PCI to ISA Bridge
+                          je @@known_router_via_amd
+                          cmp ax,00596h         ; VIA VT82C596/A/B "Mobile South" PCI to ISA Bridge
+                          je @@known_router_via_amd
+                          cmp ax,00686h         ; VT82C686/A/B "Super South"      PCI to ISA Bridge
+                          je @@known_router_via_amd
+                          cmp ax,00696h
+                          je @@known_router_via_amd
+
+                          cmp ax,03074h         ;?VIA VT8233  PCI to ISA Bridge
+                          je @@known_router_via_amd
+                          cmp ax,03109h         ;?VIA VT8233C PCI to ISA Bridge
+                          je @@known_router_via_amd
+                          cmp ax,03147h         ;?VIA VT8233A PCI to ISA Bridge
+                          je @@known_router_via_amd
+                          cmp ax,03177h         ; VIA VT8235  PCI to ISA Bridge
+                          je @@known_router_via_amd
+                          cmp ax,03227h         ; VIA VT8237  PCI to ISA Bridge
+                          je @@known_router_via_amd
+                          cmp ax,08231h         ;?VIA VT8231  PCI to ISA Bridge
+                          je @@known_router_via_amd
+
+                          cmp ax,07400h         ; AMD-755 (Cobra) PCI to ISA Bridge
+                          je @@known_router_via_amd
+                          cmp ax,07408h         ; AMD-756 (Viper) PCI to ISA Bridge
+                          je @@known_router_via_amd
+                  ; not:  cmp ax,07410h         ; AMD-766 PCI to ISA/LPC Bridge
+                          cmp ax,07413h         ; AMD-766 Power Management Controller
+                          je @@known_router_via_amd
+                  ; not:  cmp ax,07440h         ; AMD-768 PCI to ISA/LPC Bridge
+                          cmp ax,07443h         ; AMD-768 ACPI Controller
+                          je @@known_router_via_amd
+                  ; not:  cmp ax,07468h         ; AMD-8111 LPC Bridge
+                          cmp ax,0746Bh         ; AMD-8111 ACPI System Management Controller
+                          jne @@nicht_router_via_amd
+  @@known_router_via_amd:
+                          cmp dl,1
+                          jb  @@done_bad_link_value
+                          cmp dl,5
+                          jbe @@good_link_value_via_1235
+
+                          cmp dl,055h
+                          jb @@done_bad_link_value
+                          cmp dl,057h
+                          ja @@done_bad_link_value
+
+                          movzx di,dl
+                          mov cl,via555657_rol[di-055h]
+                          jmp @@good_link_value_via
+
+  @@good_link_value_via_1235:
+                          call search_via_translation
+                          movzx cx,Byte Ptr [si]
+                          inc si
+  @@loop_translate_via_value:
+                          cmp cx,3
+                          jb @@done_bad_link_value
+                          cmp Byte Ptr [si+0],dl        ; compare link value
+                          je @@found_via_translate_index
+                          add si,3
+                          sub cx,3
+                          jmp @@loop_translate_via_value
+  @@found_via_translate_index:
+                          movzx di,Byte Ptr [si+1]      ; index
+                          mov cl,Byte Ptr [si+2]        ; shift
+
+  @@good_link_value_via:
+                          mov ah,0f0h
+                          mov al,[IRQ]
+                          rol ah,cl
+                          rol al,cl
+                          call pci_and_or_byte
+                          cmp di,056h
+                          jb @@not_via_edge_level_5657
+                          cmp di,057h
+                          jb @@not_via_edge_level_5657
+
+  @@not_via_edge_level_5657:
+                          jmp @@done
+  @@nicht_router_via_amd:
+                          ;=== SiS ==================================
+                          cmp cx,01039h
+                          jne @@nicht_router_sis
+
+                          cmp ax,00008h
+                          jne @@nicht_router_sis_0008
+
+                          cmp dl,041h
+                          jb @@done_bad_link_value
+                          cmp dl,044h
+                          ja @@done_bad_link_value
+
+  @@known_router_sis_0008_0496_common:
+                          movzx di,dl   ; link=register index
+                          mov cl,dh     ; value=line
+                          or cl,080h
+                          call pci_write_byte
+                          jmp @@done
+
+  @@nicht_router_sis_0008:
+                          cmp ax,00496h
+                          jne @@nicht_router_sis_0496
+
+                          cmp dl,1
+                          jb @@done_bad_link_value
+                          cmp dl,4
+                          ja @@nicht_router_sis_0496_1_4
+                          add dl,0c0h-1
+  @@nicht_router_sis_0496_1_4:
+                          cmp dl,0c0h
+                          jb @@done_bad_link_value
+                          cmp dl,0c3h
+                          ja @@done_bad_link_value
+                          jmp @@known_router_sis_0008_0496_common
+
+  @@nicht_router_sis_0496:
+  @@nicht_router_sis:
+                          ;=== NVidia ===============================
+                          cmp cx,010deh
+                          jne @@nicht_router_nvidia
+
+                          ; must check device id, because of known bad tables
+                          ; but do not know the complete list
+
+                          ; known bad example
+                          cmp ax,001E0h ; nForce2 AGP Controller
+                          je @@nicht_router_nvidia
+                          cmp ax,000E1h ; nforce3 CPU to PCI Bridge
+                          je @@nicht_router_nvidia
+
+                          ; also most likely not the cpu-host controller at 0/0/0
+                          test bx,bx
+                          jz @@nicht_router_nvidia
+
+                          cmp dl,0fh
+                          jne @@nicht_nvidia_asus_15
+
+                          ; register 82, high 4 bits
+                          mov dl,(082h-07bh)*2
+                          jmp @@nvidia_asus_15
+
+  @@nicht_nvidia_asus_15:
+                          cmp dl,1
+                          jb @@done_bad_link_value
+                         ;cmp dl,4 ; BIOS: 8
+                          cmp dl,5 ; nForce3: 1..5, others
+                          ja @@done_bad_link_value
+  @@nvidia_asus_15:
+
+                          ; 1:7c shl 0
+                          ; 2:7c shl 4
+                          ; 3:7d shl 0
+                          ; 4:7d shl 4
+                          ; 5:7e shl 0
+; nForce3: GigaByte K8NSC939 does for all other (>5) based on address,
+; recorded in an non-publicl accessible table:
+;
+; where register shift
+; 009h  081h     0
+; 010h  084h     0
+; 011h  084h     4
+; 012h  081h     4
+; 028h  085h     0
+; 030h  086h     0
+; 031h  086h     4
+; 048h  083h     0
+; 048h  07Eh     4
+; 050h  083h     4
+; 050h  07Fh     0 <- seems to be error, but ignored
+;
+; error in the code: it does not clear before oring the interrupt value..
+
+                          ;
+                          ;15->14:82 shl 4 - ASUS
+
+                          dec dl
+                          movzx di,dl
+                          shr di,1
+                          add di,07ch   ; 7c/7c/7d/7d
+                          mov ah,0f0h
+                          mov al,[IRQ]
+                          and dl,1      ; 0/1/0/1
+                          shl dl,2      ; 0/4/0/4
+                          test dl,2
+                          mov cl,dl
+                          rol ah,cl     ; f0/0f/f0/0f
+                          rol al,cl
+                          call pci_and_or_byte
+                          jmp @@done
+  @@nicht_router_nvidia:
+                          ;=== ALI ==================================
+                          cmp cx,010b9h
+                          jne @@nicht_router_ali
+
+                          ; ax=1533 ALI M1533 Aladdin IV/V ISA South Bridge
+                          ; ax=???? ALi MAGiK 1
+                          cmp dl,1
+                          jb @@done_bad_link_value
+                          cmp dl,8 ; BIOS: 9 special?
+                          ja @@done_bad_link_value
+
+
+                          movzx di,[IRQ]
+                          mov ah,0f0h
+                          mov al,Byte Ptr ali_irq_translate_table[di]
+
+                          movzx di,dl
+                          mov   cl,ali_link_shift   [di-1] ; 1..8
+                          movzx di,ali_link_register[di-1] ; 1..8
+
+                          rol ah,cl
+                          rol al,cl
+                          call pci_and_or_byte
+                          jmp @@done
+
+  @@nicht_router_ali:
+                          ;=== Cyrix ================================
+                          cmp cx,01078h
+                          jne @@nicht_router_cyrix
+                          cmp ax,00000h
+                          je @@router_cx55x0
+                          cmp ax,00002h
+                          je @@router_cx55x0
+                          cmp ax,00100h
+                          jne @@nicht_router_cyrix
+  @@router_cx55x0:
+                          cmp dl,1
+                          jb @@done_bad_link_value
+                          cmp dl,4
+                          ja @@done_bad_link_value
+
+                          movzx di,dl
+                          dec di
+                          shr di,1
+                          add di,05ch
+
+                          mov ah,0f0h
+                          mov al,[IRQ]
+
+                          mov cl,dl     ; 1/2/3/4
+                          dec cl        ; 0/1/2/3
+                          and cl,1      ; 0/1/0/1
+                          shl cl,2      ; 0/4/0/4
+                          rol ah,cl
+                          rol al,cl
+
+                          call pci_and_or_byte
+                          jmp @@done
+  @@nicht_router_cyrix:
+                          ;=== ServerWorks ==========================
+                          cmp cx,01166h
+                          jne @@nicht_router_serverworks
+                          ; D 0200 OSB4 PCI to ISA Bridge   !
+                          ; D 0201 CSB5 PCI to ISA Bridge   !
+                          ; D 0203 CSB6 PCI to ISA Bridge   ?
+                          ; D 0230 PCI to ISA Bridge        ?
+
+                          mov al,dl
+                          mov dx,00c00h
+                          out dx,al
+                          mov al,[IRQ]
+                          inc dx
+                          out dx,al
+                          jmp @@done
+
+  @@nicht_router_serverworks:
+                          ;=== ATI ==================================
+                          cmp cx,01002
+                          jne @not_router_ATI
+
+                          ; D 4377 IXP SB400 PCI-ISA Bridge
+
+                          cmp dl,1
+                          jb @@done_bad_link_value
+                          cmp dl,8
+                          ja @@done_bad_link_value
+
+                          movzx di,dl
+                          mov al,ATI_link_translation[di-1] ; 1..8
+                          mov dx,00c00h
+                          out dx,al
+                          mov al,[IRQ]
+                          inc dx
+                          out dx,al
+                          jmp @@done
+
+  @not_router_ATI:
+                          ;=== unknown ==============================
+                          stc   ; unknown, search again
+                          jmp @@exit
+
+  @@done_bad_link_value:
+                          mov [errormessage],Offset link_value_is_out_of_supported_bounds
+
+  @@done:
+                          clc   ; do not search again
+
+  @@exit:
+
+                        popad
+                        ret
+a_endp                  program_routing_hardware2 endp
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  program_routing_hardware
+                        push es
+
+                          mov [errormessage],0
+
+                          ; prefered: find routing device data in '$PIR' record
+IFDEF DOS
+                          push 0f000h
+                          pop es
+ENDIF
+IFDEF OS2
+                          mov es,BIOS_Selector
+ENDIF
+                          mov di,-010h
+  @@search_dpir:
+                          add di,+010h
+                          cmp di,0ffe0h
+                          jae @@dpir_not_found
+                          cmp es:[di].dpir_signature,'RIP$'
+                          jne @@search_dpir
+
+                          mov cx,es:[di].dpir_size
+                          test cx,0c00fh ; to big or not multiple of 10h?
+                          jnz @@search_dpir
+                          cmp cx,Size dpir_header
+                          jb  @@search_dpir
+
+                          ; validate checksum
+                          pusha
+                            mov al,0
+  @@checksum_loop:
+                            add al,es:[di]
+                            inc di
+                            loop @@checksum_loop
+                            test al,al
+                          popa
+                          jnz @@search_dpir
+
+
+                          ; found valid entry, use it
+                          ; 1. use stored address, read real vendor/device ID
+                          mov bx,es:[di].dpir_router_addr_rvs
+                          xchg bl,bh
+                          push di
+                          sub di,di             ; vendor/device register
+                          call pci_read_dword
+                          pop di
+                          call program_routing_hardware2
+                          jnc @@exit
+
+                          ; 2. use stored address, used stored compatible ID
+
+                          mov ecx,es:[di].dpir_compatible_id
+                          call program_routing_hardware2
+                          jnc @@exit
+
+  @@dpir_not_found:
+                          ; 3. special device search
+                          mov di,Offset special_device_table_start
+  @@search_special_device_loop:
+                          mov ax,0b102h
+                          mov cx,[di+0]
+                          mov dx,[di+2]
+                          add di,2+2
+                          sub si,si
+                          call pci_bios
+                          jnc @@router_found
+                          cmp di,Offset special_device_table_end
+                          jne @@search_special_device_loop
+
+                          ; 4. search isa bridge
+                          mov ax,0b103h         ; find class code
+                          mov ecx,0060100h      ; bridge:pci->isa
+                          sub si,si
+                          call pci_bios
+                          cmp ah,0
+                          jne @@no_isa_bridge_found
+  @@router_found:
+                          sub di,di             ; vendor/device register
+                          call pci_read_dword
+                          call program_routing_hardware2
+                          jnc @@exit
+
+  @@no_isa_bridge_found:
+                          mov [errormessage],Offset no_supported_irq_router_found
+
+  @@exit:
+
+                          mov si,[errormessage]
+
+                        pop es
+                        ret
+a_endp                  program_routing_hardware
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  set_eisa_irq_edge_level
+                        pushf
+                        pushad
+
+IFDEF DOS
+                          ; register access not allowed in OS/2 vdm
+                          mov ah,030h
+                          int 021h
+                          cmp al,20
+                          jae @@exit
+ENDIF ; DOS
+
+                          cli
+
+                          in  al,[021h]
+                          push ax
+                          mov al,0ffh
+                          out [021h],al
+
+                          in  al,[0a1h]
+                          push ax
+                          mov al,0ffh
+                          out [0a1h],al
+
+                          mov dx,04d0h
+                          mov cl,[IRQ]
+                          mov ah,1
+                          rol ah,cl     ; does cl mod 8 rol
+                          shr cl,3
+                          add dl,cl
+                          in  al,dx
+                          or  al,ah
+                          out dx,al
+
+                          pop ax
+                          out [0a1h],al
+                          pop ax
+                          out [021h],al
+
+                          sti
+  @@exit:
+                        popad
+                        popf
+                        ret
+a_endp                  set_eisa_irq_edge_level
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  scan_routing_info_busses
+                        push es
+                        pusha
+
+                          ; clear table entries to false
+                          mov di,Offset have_routing_info_for_bus
+                          push ds
+                          pop es
+                          mov al,0
+                          mov cx,0100h
+                          cld
+                          rep stosb
+
+                          ; di:=begin, bp:=end of table
+                          mov di,Offset IRQ_routing_table
+                          mov bp,di
+                          add bp,Word Ptr DS:IRQ_routing_table_hdr
+                          jmp @@start
+  @@loop:
+                          movzx si,Byte Ptr [di].bus_device_reverse
+                          mov ds:have_routing_info_for_bus[si],1
+                          add di,Size pirt_entry
+  @@start:
+                          cmp di,bp
+                          jne @@loop
+
+                        popa
+                        pop es
+                        ret
+a_endp                  scan_routing_info_busses
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+; @@pin                 pin bit {1,2,3,4} set
+; @@bus_limit           for checks
+; @@addr_start..        \ addresses to process
+; ..@@addr_end          /
+
+p_proc                  update_devices
+
+                        Arg @@pin:byte,@@bus_limit:byte,@@addr_start:word,@@addr_end:word
+
+                        pushad
+
+                          mov bx,@@addr_start
+  @@loop:
+
+                          ;------------------------------------------
+                          ; ->si=translated pin value
+                          ; specification page 115:
+                          ; bridge[A#,B#,C#,D#]->device 00/04/08/../1c: [A#,B#,C#,D#]
+                          ;                    ->device 01/05/09/../1d: [B#,C#,D#,A#]
+                          ;                    ->device 02/06/0a/../1e: [C#,D#,A#,B#]
+                          ;                    ->device 03/07/0b/../1f: [D#,A#,B#,C#]
+                          mov cx,bx
+                          sub cx,@@addr_start
+                          shr cx,3              ; /8
+                          and cx,3              ; cl=device index mod 4
+
+                          movzx ax,@@pin        ; ax=0000-0000-000D-CBA0
+                          shr ax,1              ; ax=0000-0000-0000-DCBA
+                          mov ah,al             ; ax=0000-DCBA-0000-DCBA
+                          shl ah,4              ; ax=DCBA-0000-0000-DCBA
+                          ror ax,cl             ; ax=CBAD-CBA0-0000-000D (cl=3)
+                          shr ax,16-4           ; ax=0000-0000-0000-CBAD
+                          shl ax,1              ; ax=0000-0000-000C-BAD0
+
+                          ; example:
+                          ; if we looking for connecting a link that uses D# on the bridge,
+                          ; we may have a hit if we find device 3 behind the bridge is using A#.
+                          ; in the comment above the value D is set in bit 1 of ax.
+
+                          mov si,ax
+
+
+                          ; does function 0 exist?
+                          mov di,0 ; read vendor/device id register
+                          call pci_read_dword
+                          cmp ecx,-1
+                          jne @@function_exist
+
+                          ; does not exist.
+                          ; if function=0 then all functions do not exist, skip them
+                          test bx,7
+                          jz  @@done_function_or7
+                          jmp @@done_function_plus1
+  @@function_exist:
+
+                          ;===== is it a device (header type 0,1,2) with matching IRQ pin?
+
+                          mov di,03dh           ; int pin
+                          call pci_read_byte
+                          mov ch,0
+                          cmp cl,1
+                          jb  @@ignore_device_wrong_pin
+                          cmp cl,4
+                          ja  @@ignore_device_wrong_pin
+                          bt si,cx              ; pin ok? (cl index in si)
+                          jnc @@ignore_device_wrong_pin
+
+                          mov di,03ch           ; update config space
+                          mov cl,IRQ            ; with new int (line)
+                          call pci_write_byte
+
+  @@ignore_device_wrong_pin:
+
+                          ;===== could be a bridge device. check the header type
+
+                          mov di,0eh            ; header type
+                          call pci_read_byte
+                          and cl,07fh
+
+
+                          ;----------------------------------------------------
+                          ; PCI->PCI, for example ->AGP.
+                          ; update devices behind it
+                          cmp cl,1
+                          jne @@not_pci_pci_bridge
+
+  @@pci_or_cardbus_bridge_common:
+
+                          ; read secondary/subordinate bus number
+                          mov di,018h
+                          call pci_read_dword
+                          shr ecx,8 ; 1a/19-> ch/cl
+                          ; secondary bus number valid (>current?)
+                          cmp cl,bh
+                          jbe @@ignore_bridge
+                          ; subordinate>=secondary?
+                          cmp ch,cl
+                          jb @@ignore_bridge
+                          ; subordinate<=limit?
+                          cmp @@bus_limit,ch
+                          jb @@ignore_bridge
+
+                          ; secondary bus has any routing entry?
+                          push si
+                            movzx si,cl
+                            cmp have_routing_info_for_bus[si],1
+                          pop si
+                          ; then ignore it
+                          je @@ignore_bridge
+
+                          mov dx,si             ; translated @@pin
+
+                          mov di,03dh           ; int pin
+                          push cx
+                            call pci_read_byte
+                            movzx ax,cl
+                          pop cx
+                          cmp al,1
+                          jb @@assume_pins_passed_unchanged
+                          cmp al,4
+                          ja @@assume_pins_passed_unchanged
+
+                          bt dx,ax  ; pin ok? (al index in dx)
+                          jnc @@pins_not_passed
+
+                          ; example: second cardbus bridge function
+                          ; uses INTB#. any device pin behind it
+                          ; (network card with INTA#) use that link value.
+                          mov dx,(1 shl 1)+(1 shl 2)+(1 shl 3)+(1 shl 4)
+
+  @@assume_pins_passed_unchanged:
+                          ; recursivly call myself for the full secondary bus
+                          push dx               ; pin(s)
+                          ;   bus_limit:=subordinate
+                          movzx ax,ch
+                          push ax
+                          ;   addr_start:=secondary/0/0
+                          mov ah,cl
+                          mov al,0
+                          push ax
+                          ;   addr_end:=secondary/31/7
+                          mov al,0ffh
+                          push ax
+                          call update_devices
+  @@pins_not_passed:
+                          jmp @@recursive_call_done
+  @@not_pci_pci_bridge:
+                          ;
+                          ;----------------------------------------------------
+
+                          ; code above modifies cl, reread
+
+                          mov di,0eh            ; header type
+                          call pci_read_byte
+                          and cl,07fh
+
+                          ;----------------------------------------------------
+                          ; CardBus bridge. when enabled, and PCI routing,
+                          ; update device behind it
+
+                          cmp cl,2
+                          jne @@not_pci_cardbus_bridge
+
+                          ; ints routed by ExCa or by PCI?
+                          mov di,03eh
+                          call pci_read_byte
+
+                          test cl,080h
+                          jnz @@not_pci_cardbus_bridge
+
+                          jmp @@pci_or_cardbus_bridge_common
+
+  @@not_pci_cardbus_bridge:
+                          ;
+                          ;----------------------------------------------------
+
+  @@recursive_call_done:
+  @@ignore_bridge:
+
+
+                          ;====================================================
+  @@done_function:
+                          ; go next function, and current function exist.
+                          test bx,7
+                          jnz @@is_multifunction
+
+                          mov di,0eh            ; header type
+                          call pci_read_byte
+                          test cl,080h
+                          jnz @@is_multifunction
+  @@done_function_or7:
+                          or bx,7
+  @@done_function_plus1:
+  @@is_multifunction:
+                          inc bx
+                          jz  @@break
+                          cmp bx,@@addr_end
+                          jbe @@loop
+
+  @@break:
+
+                        popad
+                        ret
+a_endp                  update_devices
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+a_proc                  setpciirq_strategy
+                        nop                     ; << i n t 3
+                        pushad
+                        push es
+                        push fs
+
+IFDEF DOS
+                        push ds
+                          push cs
+                          pop ds
+                          les bx,packet_ptr
+ENDIF
+
+IFDEF OS2
+                          mov eax,es:RequestBlock[bx].Pointer_1
+                          mov Device_Help,eax
+ENDIF
+
+
+                          lfs si,es:RequestBlock[bx].Pointer_2
+
+                          ; need es:bx packet later
+                          push es
+                          push bx
+
+IFDEF OS2
+                          call RegisterResourceManager
+
+                          ; snooper has no command line - it takes it from
+                          ; basedev=spciirq.sys parameter lines
+                          ; SNP: 'SPCIIRQ.SNP'='SPCI'+'IRQ.'+'SNP'
+                          ; if we are running as basedev=spciirq.sys
+                          ; we do nothing than checking if spciirq.snp had a chance to run!
+
+                          mov eax,fs:[si+0]
+                          and eax,(not 020202020h)
+                          cmp eax,'ICPS'
+                          jne @@not_snooper
+                          mov eax,fs:[si+4]
+                          and eax,(not 000202020h)
+                          cmp eax,'.QRI'
+                          jne @@not_snooper
+                          mov eax,fs:[si+8]
+                          and eax,(not 000202020h)
+                          cmp eax,'PNS'
+                          jne @@not_snooper
+
+                          ; process all config.sys basedev=spciirq.sys lines
+  @@snooper_loop:
+                          push 0                  ; DDType: RM_CMD_BASE
+                          push [snoop_index]      ; Index, 0=first
+                          push ds
+                          push Offset ConfigParmsLen
+                          mov [ConfigParmsLen],Size ConfigParms
+                          push ds
+                          push Offset ConfigParms
+                          mov di,Offset ConfigParms
+                          mov cx,(Size ConfigParms)/4
+  @@clean_ConfigParms:
+                          mov DWord Ptr ds:[di],0
+                          add di,4
+                          loop @@clean_ConfigParms
+                          push ds
+                          push Offset ConfigFileSpec
+                          CallRM RMGetCommandLine
+                          add sp,2+2+4+4+4
+                          test ax,ax
+                          jnz @@done_snooper
+
+                          push ds
+                          pop fs
+                          mov si,Offset ConfigParms
+                          call setirq_proc
+
+                          inc [snoop_index]
+                          jmp @@snooper_loop
+
+  @@not_snooper:
+                          ; was spciirq.snp allowed to run?
+
+; the RMGetSnoopLevel call is not available for drivers, only via RMINFO.DLL.
+
+; read SnoopLevel from previous.dat..
+
+                          push es
+                            push ds
+                            pop es
+                            mov di,Offset FileOpen_record
+                            mov dl,DevHlp_OpenFile
+                            call [Device_Help]
+                          pop es
+                          ; file does not exist->assume full hardware detection
+                          jc @@spciirq_snp_has_possibly_run
+
+                          push es
+                            push ds
+                            pop es
+                            mov di,Offset FileReadAt_record
+                            mov dl,DevHlp_ReadFileAt
+                            call [Device_Help]
+
+                            mov di,Offset FileClose_record
+                            mov dl,DevHlp_CloseFile
+                            call [Device_Help]
+
+                          pop es
+
+                          cmp SnoopLevel,SNP_NO_RISK   ; "Vorige Hardware"
+                          je @@spciirq_snp_can_not_have_been_run
+                          cmp SnoopLevel,SNP_WARP_RISK ; "Keine Hardwareerkennung"
+                          jne @@spciirq_snp_has_possibly_run
+    @@spciirq_snp_can_not_have_been_run:
+                          push Offset error_bad_snooplevel
+                          call outputmessage
+
+    @@spciirq_snp_has_possibly_run:
+                          jmp @@done_snooper
+
+ENDIF ; OS2
+
+
+                          call setirq_proc
+    @@done_snooper:
+
+                          ; restore es:bx request packet
+                          pop bx
+                          pop es
+
+IFDEF OS2
+                          ; no code
+                          ; no data
+                          and dword ptr es:RequestBlock[bx].Pointer_1,0
+ELSE
+                          mov es:RequestBlock[bx].Pointer_1.offs,0
+                          mov es:RequestBlock[bx].Pointer_1.sel ,cs
+ENDIF
+                          ; error+done+noncritical
+                          mov word ptr es:RequestBlock[bx].Request_Packet_Status,08115h
+
+IFDEF DOS
+                        pop ds
+ENDIF
+
+                        pop fs
+                        pop es
+                        popad
+                        retf
+a_endp                  setpciirq_strategy
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+                        ; parameters at fs:si
+a_proc                  setirq_proc
+
+                        mov link_value,0 ; default to BIOS mode
+
+                        ; Bus 0..255 or 'LINK'
+                        call find_skip_blank
+  @@no_first_blank:
+                        mov eax,fs:[si]
+                        and eax,(not 020202020h)
+                        cmp eax,'KNIL'
+                        jne @@not_link_keyword
+
+                        call find_skip_blank
+
+                        ; read link value (1..255)
+                        call read_number
+                        jc @@parameter_error
+                        cmp ax,1
+                        jb @@parameter_error
+                        cmp ax,0ffh
+                        ja @@parameter_error
+
+                        mov link_value,al
+
+                        ; have 'LINK' mode, link value
+                        ; now read int line
+                        jmp @@read_int_line
+
+  @@not_link_keyword:
+                        ; really Bus 0..255
+                        call read_number
+                        jc @@parameter_error
+                        cmp ax,0ffh
+                        ja @@parameter_error
+                        mov bh,al
+
+                        ; Device 0..31
+                        call find_skip_blank
+                        call read_number
+                        jc @@parameter_error
+                        cmp ax,01fh
+                        ja @@parameter_error
+                        shl al,3
+                        mov bl,al
+
+                        ; function 0..7
+                        call find_skip_blank
+                        call read_number
+                        jc @@parameter_error
+                        cmp ax,007h
+                        ja @@parameter_error
+                        or bl,al
+                        mov BusDeviceFunction,bx
+
+
+                        ; PIN 1..4 or $a..$d or INTA#
+                        call find_skip_blank
+
+                        ; check for 'INT?#' ?={ABCD}
+                        mov eax,fs:[si]
+                        and eax,((not 020202020h) and 000ffffffh)
+                        cmp eax,'TNI'
+                        jne @@not_intx_param
+                        cmp Byte Ptr fs:[si+4],'#'
+                        jne @@not_intx_param
+                        mov al,Byte Ptr fs:[si+3]
+                        and al,(not 020h)
+                        cmp al,'A'
+                        jb @@not_intx_param
+                        cmp al,'D'
+                        jb @@not_intx_param
+
+                        sub al,'A'+0ah          ; -> $A..$D
+                        add si,5                ; Length('INT?#')
+                        jmp @@use_number_abcd
+  @@not_intx_param:
+                        ; 1..4 (no longer documented)
+                        call read_number
+                        jc @@parameter_error
+                        cmp ax,0
+                        je @@parameter_error
+                        cmp ax,4
+                        jnbe @@not_PIN1234
+                        add al,0ah-1
+  @@not_PIN1234:
+                        ; $A..$D (not documented, but used by install.cmd)
+                        cmp ax,00ah
+                        jb @@parameter_error
+                        cmp ax,00dh
+                        ja @@parameter_error
+  @@use_number_abcd:
+                        mov PIN,al
+
+  @@read_int_line:
+                        ; IRQ
+                        call find_skip_blank
+                        call read_number
+                        jc @@parameter_error
+
+                       ;cmp ax,0ffh
+                       ;je @@valid_irq
+                        cmp ax,01h
+                        jb @@parameter_error
+                        cmp ax,0fh
+                        jbe @@valid_irq
+  @@parameter_error:
+                        mov si,Offset Message_cmdline_error
+                        jmp @@display_error
+  @@valid_irq:
+                        mov IRQ,al
+
+                        ;--------------------------------------------
+
+IFDEF OS2
+                        push es
+                          push ds               ; es:di=@selector array
+                          pop es
+                          mov di,Offset BIOS_Selector
+                          mov cx,1              ; only one selector
+                          mov dl,DevHlp_AllocGDTSelector
+                          call [Device_Help]
+                        pop es
+                        mov si,Offset AllocGDTSelector_failed
+                        jc @@display_error
+
+                        mov eax,0000f0000h      ; physical f000:0000
+                        mov ecx,0ffffh          ; 64 KB
+                        mov si,BIOS_Selector
+                        mov dh,5                ; Ring 0, read+execute, 16 bit
+                        mov dl,DevHlp_PhysToGDTSel
+                        call [Device_Help]
+                        mov si,Offset PhysToGDTSel_failed
+                        jc @@display_error
+ENDIF ; OS/2
+
+
+                        ;--------------------------------------------
+                        ; parameters read; resources allocated
+                        ; some checks before calling the set function
+
+                        cmp link_value,0
+                        jne @@warning_done
+
+                        ; device exist?
+                        mov bx,BusDeviceFunction
+                        sub di,di
+                        call pci_read_dword
+
+                        mov si,Offset warning_invalid_busdevfunc
+                        cmp ecx,-1
+                        je @@warning_continue
+
+                        ; do not complain when pci->pci bridge is specified
+                        mov bx,BusDeviceFunction
+                        mov di,00eh
+                        call pci_read_byte
+                        and cl,7fh
+                        cmp cl,1
+                        je @@warning_done
+
+                        ; read irq pin and compare
+                        mov bx,BusDeviceFunction
+                        mov di,03dh
+                        call pci_read_byte
+
+                        mov si,Offset warning_invalid_pin_0
+                        cmp cl,1
+                        jb @@warning_continue
+                        cmp cl,4
+                        ja @@warning_continue
+
+                        mov ch,PIN
+                        add ch,(1-0ah)
+                        cmp cl,ch
+                        je @@warning_done
+
+                        mov si,Offset warning_invalid_pin_different
+  @@warning_continue:
+                        push si
+                        call outputmessage
+  @@warning_done:
+
+                        ;--------------------------------------------
+                        ; in normal mode, call the bios for bus/device/function
+                        ; else write to known hardware
+
+                        cmp link_value,0
+                        je @@use_bios_service
+
+                        call program_routing_hardware
+                        test si,si
+                        jnz @@display_error
+
+                        jmp @@get_routing_info
+
+  @@use_bios_service:
+                        mov ax,0b10fh
+                        mov bx,BusDeviceFunction
+                        mov ch,IRQ
+                        mov cl,PIN
+                        call pci_bios
+
+                        cmp ah,0
+                        jne @@pci_error_return
+
+
+  @@get_routing_info:
+
+;<<<<<<<<alternativ: burnin Tabelle<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+;<<<<<<<<alternativ: Datei lesen (devhelp)<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+;<<<<<<<<alternativ: ACPI<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+                        ; get copy of IRQ routing table
+                        mov ax,0b10eh
+                        sub bx,bx
+                        push ds
+                        pop es
+                        mov di,Offset IRQ_routing_table_hdr
+                        mov Word Ptr [di+4],ds       ; avoid any relocation (DOS .COM)
+                        call pci_bios
+                        cmp ah,0
+                        jne @@pci_error_return
+
+                        call scan_routing_info_busses
+
+                        ; di:=begin, bp:=end of table
+                        mov di,Offset IRQ_routing_table
+                        mov bp,di
+                        add bp,Word Ptr DS:IRQ_routing_table_hdr
+
+                        ; get link value
+                        mov bx,BusDeviceFunction
+                        and bx,not 7 ; ignore function bits
+                        xchg bl,bh   ; table has lo/hi byte reversed
+
+                        mov al,link_value
+                        ; already know link value? (BusDeviceFunction is invalid instead)
+                        cmp al,0
+                        jne @@have_link_value
+
+                        push di
+                        sub di,Size pirt_entry
+
+  @@get_link_next_entry:
+                        add di,Size pirt_entry
+                        cmp di,bp
+                        jae @@done_search_link
+                        cmp Word Ptr [di].bus_device_reverse,bx
+                        jne @@get_link_next_entry
+                        mov ah,3
+                        mov al,PIN
+                        mul ah
+                        lea si,[di].int_a_link-(3*0ah)
+                        add si,ax
+                        mov al,Byte Ptr [si] ; link
+  @@done_search_link:
+                        pop di
+
+  @@have_link_value:
+                        mov si,Offset Message_bad_link_val
+                        cmp al,0                ; 0=not found or no valid entry
+                        je @@display_error
+
+                        ;--------------------------------------------
+                        ; now search all use of that link value (al)
+                        sub di,Size pirt_entry
+  @@update_connected_loop:
+                        add di,Size pirt_entry          ; all entries
+                        cmp di,bp                       ; until end of table
+                        jae @@update_connected_done
+
+                        mov bx,[di].bus_device_reverse
+                        xchg bl,bh
+                        and bx,(not 7)
+                        lea si,[di].int_a_link
+                        mov dx,1 ; pin #A
+  @@check_all_pin_link_loop:                            ; each entry has 4 columns -- for each possible pin
+                        cmp Byte Ptr [si],al
+                        jne @@link_not_equal
+
+                        ; process this device, functions 0..7, and all devices bridged by it.
+                        push ax
+
+                          mov ax,1
+                          push cx
+                            mov cl,dl
+                            shl ax,cl
+                          pop cx
+                          push ax               ; pin to look for (bit 1/2/3/4)
+
+                          push 255              ; bus limit for checks
+
+                          push bx               ; address to start with
+                          mov ax,bx
+                          or ax,7               ; one device only
+                          push ax               ; address to end with
+
+                          call update_devices
+
+
+                        pop ax
+  @@link_not_equal:
+                        add si,3        ; int_b_link-int_a_link
+                        inc dx          ; next pin
+                        cmp dx,4
+                        jbe @@check_all_pin_link_loop
+                        jmp @@update_connected_loop
+
+  @@update_connected_done:
+
+                        call set_eisa_irq_edge_level
+
+                        jmp @@no_error
+
+  @@pci_error_return:
+                        mov si,Offset pci_error_59
+                        cmp ah,059h
+                        je @@display_error
+
+                        mov si,Offset pci_error_81
+                        cmp ah,081h
+                        je @@display_error
+
+                        mov si,Offset pci_error_88
+                        cmp ah,088h
+                        je @@display_error
+
+                        mov si,Offset pci_error_unknown
+                        push si
+  @@search_number_field:
+                          ; search '00'+'.' in the error message to overwrite '00'
+                          inc si
+                          cmp Byte Ptr ds:[si+2],'.'
+                          jne @@search_number_field
+
+                          mov al,ah
+                          and al,00fh
+                          cmp al,10
+                          sbb al,69h
+                          das
+                          mov ds:[si+1],al
+
+                          shr ax,(8+4)
+                          cmp al,10
+                          sbb al,69h
+                          das
+                          mov ds:[si],al
+
+                        pop si
+  @@display_error:
+                        push si
+                        call outputmessage
+  @@no_error:
+
+IFDEF OS2
+                        pushf
+                        pusha
+                        push es
+
+                          mov ax,BIOS_Selector
+                          mov dl,DevHlp_FreeGDTSelector
+                          test ax,ax
+                          if_nz <call [Device_Help]>
+
+                          push hDriver
+                          CallRM RMDestroyDriver
+                          add sp,4
+
+                        pop es
+                        popa
+                        popf
+ENDIF
+                        ret
+a_endp                  setirq_proc
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+IFDEF DOS
+
+CharArray128            Struc
+                        db 128 dup (?)
+CharArray128            EndS
+
+p_proc                  dos_exe_entrypoint
+
+                        Local @@Request         :RequestBlock
+                        Local @@commandline     :CharArray128
+
+                        push ss
+                        pop es
+                        lea bx,@@Request
+
+                        mov es:[bx].Length_of_Packet,Size RequestBlock
+                        mov es:[bx].Block_Device_Unit_Code,0
+                        mov es:[bx].Command_Code,CMDInit
+                        mov es:[bx].Request_Packet_Status,0
+                        mov es:[bx].Reserved,0
+                        mov es:[bx].Queue_Linkage,0
+                        mov es:[bx].Data_1,0
+                        mov es:[bx].Pointer_1,0
+                        lea di,@@commandline
+                        mov es:[bx].Pointer_2.offs,di
+                        mov es:[bx].Pointer_2.sel ,es
+                        mov es:[bx].Data_2,0
+
+                        ; dummy drivername
+                        mov DWord Ptr es:[di],' EXE'
+                        add di,4
+                        ; copy commandline from prefix segment
+                        mov si,081h
+                        cld
+  @@copy_cmdline:
+                        lodsb
+                        stosb
+                        cmp al,00dh
+                        ja @@copy_cmdline
+                        mov Byte Ptr es:[di-1],0
+
+                        push cs
+                        call setpciirq_prepare
+                        push cs
+                        call setpciirq_strategy
+
+                        mov ax,04c00h
+                        int 021h
+
+p_endp                  dos_exe_entrypoint
+
+
+ENDIF ; DOS
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+code16                  EndS
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+; large data blocks, not place zeroes into executable file
+
+IFDEF OS2
+data16                  Segment 'DATA' public Use16
+ELSE
+code16                  Segment 'CODE' public Use16
+ENDIF
+
+
+IRQ_routing_table_hdr   dw IRQ_routing_table_size
+                        dw Offset IRQ_routing_table
+                        dw ?                            ; updated with data segment
+                        Public IRQ_routing_table_hdr
+
+IRQ_routing_table       db IRQ_routing_table_size dup (?)
+                        Public IRQ_routing_table
+
+have_routing_info_for_bus db 0100h dup (?)
+                        Public have_routing_info_for_bus
+
+
+IFDEF OS2
+data16                  EndS
+ELSE
+code16                  EndS
+ENDIF
+
+
+IFDEF DOS
+stack                   Segment Para Stack 'STACK' use16
+                        db 4096 dup (?)
+stack                   EndS
+ENDIF ; DOS
+
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+
+                        End entrypoint
+

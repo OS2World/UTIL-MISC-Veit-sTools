@@ -1,0 +1,15 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_Abbruch_durch_den_Benutzer  :^string;
+  textz__Lesefehler_  :^string;
+  textz__Schreibfehler_  :^string;
+  textz__a_bbrechen  :^string;
+  textz__w_iederholen  :^string;
+  textz__i_gnorieren  :^string;
+  textz__e_wig_probieren  :^string;
+  textz_i_m_mer_ignorieren___  :^string;
+  textz_kann_datei_nicht_oeffen1  :^string;
+  textz_kann_datei_nicht_oeffen2  :^string;
+  textz_kann_datei_nicht_erzeugen1  :^string;
+  textz_kann_datei_nicht_erzeugen2  :^string;

@@ -1,0 +1,106 @@
+; Bildschirmkonfiguration retten bevor OS2BOOT den Bildschirm l”scht
+;--------------------------------------------------------------------
+; siehe auch ..\lader\typdef.a86
+bildschirm_sicherung:
+                        pusha
+                          push ds,es
+
+                            push 00040
+                            pop ds
+
+                            mov ax,[00013]      ; Hauptpeicher in KB
+                            sub ax,os2csm
+                            shl ax,6            ; 634->9e80
+                            mov es,ax
+                            sub di,di
+
+                            mov si,mcb
+                            mov cx,16/2
+                            cld
+                            push ds
+                              push cs
+                              pop ds
+                              rep movsw
+                            pop ds
+
+                            push di
+                              mov ax,0cccc
+                              mov cx,(os2csm*1024-16)/2
+                              rep stosw
+                            pop di
+
+                            mov al,[00084] ; Bildschirmzeilen-1
+                            inc ax
+                            stosb
+
+                            mov ah,003
+                            mov bh,000
+                            int 010
+
+                            mov ax,cx           ; Cursor-Form
+                            cld
+                            stosw
+                            mov ax,dx           ; Zeile+Spalte
+                            stosw
+
+                            ; Blinken
+                            mov al,b [0065]     ; Bit 5=Blinken
+                            shr al,5
+                            and al,1
+                            stosb
+
+
+                            ; Zeiger auf den Bildschrimkopie
+                            lea ax,[di+4]
+                            stosw
+                            mov ax,es
+                            stosw
+
+                            ; Inhalt kopieren
+                            mov cx,w [0004c]    ; Anzahl benutzter Byte Textspeicher
+                            shr cx,1
+
+                            mov ax,0b800        ; Bildschirmspeicher bei B800:0
+                            cmp b [00049],7
+                            if e mov ah,0b0
+                            mov ds,ax
+                            sub si,si
+                            rep movsw
+
+                          pop es,ds
+                        popa
+                        ret
+
+;--------------------------------------------------------------------
+speicher_reservierung:
+                        push ax,bx,ds
+
+                          ; Reserve Memory for OS2CSM
+                          push 00040
+                          pop ds
+                          sub w [00013],os2csm
+
+                          mov ax,[00013]
+                          shl ax,6            ; 634->9e80
+
+                          ; Entscheidung kopieren
+                          mov bl,b cs:[menu_parameter]
+                          mov ds,ax
+                          mov b [5],bl
+
+                        pop ds,bx,ax
+                        ret
+
+;--------------------------------------------------------------------
+
+mcb:                    db 'Z'                  ; 00 letzter Block
+                        dw 8                    ; 01 "SYSTEM"
+                        dw (os2csm*1024/16)-1
+                                                ; 03 PARA ohne MCB
+menu_parameter:         db 0                    ; 05
+                        db 0                    ; 06
+                        db 0                    ; 07
+                        db 'OS2CSM  '
+
+;--------------------------------------------------------------------
+

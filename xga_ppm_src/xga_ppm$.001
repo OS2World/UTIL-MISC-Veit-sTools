@@ -1,0 +1,14 @@
+(* nicht editieren! *)
+procedure sprach_modul;assembler;(*&FRAME-*) (*&USES NONE*) (*$S-*)
+  asm
+    db   7,'<SPRA2>'
+    db   4,'ENDE'
+    dw   3
+    db  56,'Convert save2dsk.xga (phoenix PHDISK) to portable pixmap'
+    db  66,'Wandelt save2dsk.xga (phoenix PHDISK) in portable pixmap-Form'
+    db     'at um'
+    db  44,'Usage: XGA_PPM <save2dsk.xga> <save2dsk.ppm>'
+    db  48,'Benutzung: XGA_PPM <save2dsk.xga> <save2dsk.ppm>'
+    db  35,'SAVE2DSK.XGA Signature not present.'
+    db  41,'SAVE2DSK.XGA-Dateikennum am Anfang fehlt.'
+  end;

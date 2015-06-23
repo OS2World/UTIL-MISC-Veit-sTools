@@ -1,0 +1,4 @@
+uram_funktion_laenge:   dw 1
+
+uram_funktion:
+                        retf

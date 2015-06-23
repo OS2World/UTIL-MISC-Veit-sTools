@@ -1,0 +1,4 @@
+Library MEMDISK
+Description '@#V.K:2009.01.07#@Memory emulated DASD adapter for system boot'
+ProtMode
+Stub None

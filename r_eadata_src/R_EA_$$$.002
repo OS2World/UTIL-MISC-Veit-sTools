@@ -1,0 +1,11 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_hilfe  :^string;
+  textz_kein_fat  :^string;
+  textz_kann_nicht_oeffnen  :^string;
+  textz_kann_nicht_sperren  :^string;
+  textz_kann_dateisystem_nicht_abmelden  :^string;
+  textz_Byte_je_Sektor_  :^string;
+  textz_Lesefehler  :^string;
+  textz_zweck  :^string;

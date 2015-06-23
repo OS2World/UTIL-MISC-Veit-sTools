@@ -1,0 +1,138 @@
+Title   UMC 891/892/886
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; port: pci
+;
+;        Schreibschutz
+; 005C.7 DC00
+;      6 D800
+;      5 D400
+;      4 D000
+;      3 CC00
+;      2 C800
+;      1 C400
+;      0 C000
+;
+;        Lesen
+; 005D.7 DC00
+;      6 D800
+;      5 D400
+;      4 D000
+;      3 CC00
+;      2 C800
+;      1 C400
+;      0 C000
+;
+; 005F.7 F000 Schreibschutz
+;      6 F000 RAM lesen
+;      5 ?
+;      4 ?
+;      3 E000 Schreibschutz
+;      2 E000 RAM lesen
+;      1 ?
+;      0 ?
+;
+; 09050.X ???
+;
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_umc_891_892_886           macro
+                                  mov di,#1     ; Segment
+                                  mov cx,#2     ; Index Lesen
+                                  mov bx,#3     ; Index Schreibschutz
+                                  ;mov dl,#4    ; Bit Lesen
+                                  ;mov dh,#5    ; Bit Schreibschutz
+                                  mov dx,#5*256+#4
+                                  call setze_umc_891_892_886_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_umc_891_892_886_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_umc_891_892_886_prozedur_fertig
+
+                                call ausschrift_segment
+
+                                ; Lesen
+                                push ax,bx,dx
+
+                                  and ah,001
+
+                                  mov bh,dl
+                                  mov bl,0ff
+                                  sub bl,bh
+
+                                  cmp ah,001
+                                  if ne mov bl,0 ; bit l봲chen
+
+                                  call bios_aufruf__prozedur_registeraenderung
+
+                                pop dx,bx,ax
+
+                                ; Schreiben
+                                and ah,002
+
+                                mov cx,bx   ; Index Schreibschutz
+
+                                mov bh,dh
+                                mov bl,0ff
+                                sub bl,bh
+
+                                cmp ah,002
+                                if e mov bl,0 ; Bit Schreibschutz l봲chen
+
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_umc_891_892_886_prozedur_fertig:
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_umc_891_892_886:
+                                ausschrift_xxxx_aehnliches_bios text_variante_umc_891_892_886
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+19+1]
+                                add ax,di
+                                add ax,19+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+24+1]
+                                add ax,di
+                                add ax,24+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_umc_89x
+
+umc89x_gemeinsam:
+
+                                setze_umc_891_892_886 'C0',0005d,0005c,Bit0,Bit0
+                                setze_umc_891_892_886 'C4',0005d,0005c,Bit1,Bit1
+                                setze_umc_891_892_886 'C8',0005d,0005c,Bit2,Bit2
+                                setze_umc_891_892_886 'CC',0005d,0005c,Bit3,Bit3
+
+                                setze_umc_891_892_886 'D0',0005d,0005c,Bit4,Bit4
+                                setze_umc_891_892_886 'D4',0005d,0005c,Bit5,Bit5
+                                setze_umc_891_892_886 'D8',0005d,0005c,Bit6,Bit6
+                                setze_umc_891_892_886 'DC',0005d,0005c,Bit7,Bit7
+
+                                setze_umc_891_892_886 'E0',0005f,0005f,Bit2,Bit3
+                                setze_umc_891_892_886 'F0',0005f,0005f,Bit6,Bit7
+
+                                jmp initialisieren
+;頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰
+; CX=Index
+; BX=Maske
+aenderung_umc_89x:
+                                call bios_aufruf__prozedur_registerlesen
+                                and al,bl
+                                or al,bh
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_umc89x:
+                                mov w [registeraenderung_emulation],aenderung_standard_pci
+                                jmp umc89x_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

@@ -1,0 +1,31 @@
+(* nicht editieren ! *)
+procedure sprach_modul;assembler;(*&FRAME-*) (*&USES NONE*) (*$S-*)
+  asm
+    db   7,'<SPRA2>'
+    db   4,'ENDE'
+    dw  12
+    db  13,'Abort by user'
+    db  26,'Abbruch durch den Benutzer'
+    db  14,' read error ! '
+    db  14,' Lesefehler ! '
+    db  15,' write error ! '
+    db  17,' Schreibfehler ! '
+    db   7,'[a]bort'
+    db  11,'[a]bbrechen'
+    db   7,'[r]etry'
+    db  13,'[w]iederholen'
+    db   8,'[i]gnore'
+    db  12,'[i]gnorieren'
+    db  13,'[e]ndless try'
+    db  16,'[e]wig probieren'
+    db  17,'a[l]way ignore ? '
+    db  21,'i[m]mer ignorieren ? '
+    db  18,'can not open file '
+    db  11,'Kann Datei '
+    db   2,' !'
+    db  15,' nicht ”ffnen !'
+    db  20,'can not create file '
+    db  11,'Kann Datei '
+    db   2,' !'
+    db  17,' nicht erzeugen !'
+  end;

@@ -1,0 +1,20 @@
+
+int_16_handler:
+                pushf
+                  mov b cs:[indos_max],0
+                  call suche_arbeit
+                  cmp ah,000
+                  jz extrabehandlung_int_16_0
+                popf
+                jmp d cs:[orgint16]
+
+extrabehandlung_int_16_0:
+                  mov ah,010
+                  call d cs:[orgint16]
+                pushf
+                  cmp al,0e0
+                  if z mov al,000
+                  call suche_arbeit
+                popf
+
+                jmp iret_flags

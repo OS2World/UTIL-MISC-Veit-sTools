@@ -1,0 +1,5 @@
+(* automatically generated, do not edit.. *)
+var
+  sprach_start2: Longint;
+  textz_OS2CSM_ERW,
+  textz_OS2CSM_ERW_MEMDISK  :^string;

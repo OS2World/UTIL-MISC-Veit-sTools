@@ -1,0 +1,14 @@
+; POEM_ROM * Modul zum Laden von ROM-Modulen
+; 2001.07.26 * Veit Kannegieser
+
+org 0 ; A000:000
+; ds=Ladesegment
+; es=Ladesegment
+			push cs
+			push weiter
+			push ds
+			push 3
+			retf
+weiter:		
+			mov ax,04c00
+			int 021

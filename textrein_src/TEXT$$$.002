@@ -1,0 +1,14 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_Eingabedatei_Ausgabedatei  :^string;
+  textz_beide_Namen_sollten_verschieden_sein  :^string;
+  textz_Ausgabedatei_existiert_schon  :^string;
+  textz_Fehler  :^string;
+  textz_beim_OEffnen_der_Eingabedatei  :^string;
+  textz_beim_OEffnen_der_Ausgabedatei  :^string;
+  textz_ist_keine_Textdatei_Abrruch  :^string;
+  textz_Bearbeite_Zeile  :^string;
+  textz_zu  :^string;
+  textz_Byte_umgewandelt_  :^string;
+  textz_Schreibfehler  :^string;

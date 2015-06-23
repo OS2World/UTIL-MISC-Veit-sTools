@@ -1,0 +1,9 @@
+mov ax,01500
+sub bx,bx
+int 02f
+mov ax,cx
+or bx,bx
+if z mov al,'Z'-'A'
+mov ah,04c
+int 021
+

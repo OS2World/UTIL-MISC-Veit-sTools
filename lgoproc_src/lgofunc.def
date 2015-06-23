@@ -1,0 +1,5 @@
+LIBRARY LGOPROC
+DESCRIPTION '@#Veit Kannegieser:2005.06.27#@OS2 Boot Logo image fileformat procedure'
+STUB NONE
+EXPORTS
+  IOProc_Entry = lgofunc@LGO_Proc_EntryF @1 

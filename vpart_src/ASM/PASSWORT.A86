@@ -1,0 +1,138 @@
+;*****************************************************************************
+; Pa·worteingabe und Vergleich
+;*****************************************************************************
+passwortabfrage_und_vergleich:
+                        ;--------------------------------------------
+                        ; Pa·worteingabe nîtig ?
+                        ;
+                        cmp passwortl,0
+                        je ret
+
+                        cmp b [text_oder_grafikmodus],'T'
+                        je passwort_promt_text
+
+passwort_promt_grafik:
+
+                        balken_grafik 200,200,640-200,480-200,farbe_hintergrund
+                        rechteck_grafik 200,200,640-200,480-200,farbe_rahmen,farbe_hintergrund
+
+                        ausschrift_grafik 200,200,passworttitel,farbe_titel_schrift,farbe_titel_hintergrund
+
+                        ausschrift_grafik 232,240,prompt,farbe_passprompt,farbe_hintergrund
+
+
+                        ; leeres Eingabefeld
+                        balken_grafik     240,240,240+20*8,240+15,farbe_passeingabe_hintergrund
+                        jmp short passwort_prompt_weiter
+
+passwort_promt_text:
+
+                        balken_text     25,10,79-25,24-10,farbe_hintergrund
+                        rechteck_text   25,10,79-25,24-10,farbe_rahmen,farbe_hintergrund
+                        ausschrift_text 25,10,passworttitel,farbe_titel_schrift,farbe_titel_hintergrund
+
+                        ausschrift_text 29,12,prompt,farbe_passprompt,farbe_hintergrund
+                        balken_text     30,12,30+20,12,farbe_passeingabe_hintergrund
+
+passwort_prompt_weiter:
+
+                        aufblenden
+
+passw_eingabe:
+                        cmp b [text_oder_grafikmodus],'T'
+                        jz passw_eingabe_text
+
+
+                        ; Eingabefeld
+                        balken_grafik     240,240,240+20*8,240+15,farbe_passeingabe_hintergrund
+
+                        ausschrift_grafik 240,240,eingabe_passwort,farbe_passeingabe_schrift,farbe_passeingabe_schrift
+                        jmp short passw_eingabe_weiter
+
+passw_eingabe_text:
+                        balken_text     30,12,30+20,12,farbe_passeingabe_hintergrund
+                        ausschrift_text 30,12,eingabe_passwort,farbe_passeingabe_schrift,farbe_passeingabe_schrift
+passw_eingabe_weiter:
+
+
+                        cld                     ; Vergleich
+                        mov si,passwort
+                        mov di,eingabe
+                        null cx
+                        mov cl,passwortl
+                        inc cx                  ; Gleiche LÑnge
+                        rep cmpsb
+                        jne passwort_ist_noch_nicht_richtig
+
+                        ;--------------------------------------------
+                        ; Eingabe des richtigen Pa·wortes erfolgt
+passwort_akzeptiert:
+                        ausblenden
+                        bildschirm_loeschen
+                        ret
+                        ;--------------------------------------------
+
+
+
+
+passwort_ist_noch_nicht_richtig:
+                        ; Eingabe nîtig
+
+                        call hole_taste_16_00   ;Taste holen
+
+                        cmp al,00               ;Funktiostasten haben keine Wirkung
+                        je jmp_passw_eingabe
+
+                        cmp al,0d               ;Enter hat keine Wirkung
+                        je jmp_passw_eingabe
+
+                        cmp ah,0e
+                        jne nicht_taste_rueckloesch
+
+                        ;--------------------------------------------
+                        ; das letzte Zeichen entfernen (wenn vorhanden)
+                        null bx
+                        mov bl,eingabel
+                        or bl,bl        ; LÑnge=0 ?
+                        je jmp_passw_eingabe
+
+                        lea di,[eingabe+bx-1]
+                        mov byte [di],0
+                        dec eingabel
+                        ;-jmp passw_eingabe
+                        ;--------------------------------------------
+
+  jmp_passw_eingabe:
+                        jmp passw_eingabe
+
+  nicht_taste_rueckloesch:
+                        cmp ah,01
+                        jne nicht_taste_esc
+
+                        ;--------------------------------------------
+                        ; Eingabe vollstÑndig lîschen
+                        mov di,eingabe
+                        null al
+                        cld
+                        mov cx,passwortmax
+                        rep stosb
+                        mov eingabel,0
+                        jmp short jmp_passw_eingabe
+                        ;--------------------------------------------
+
+  nicht_taste_esc:
+                        cmp eingabel,passwortmax         ;genug Zeichen ?
+                        je jmp_passw_eingabe
+
+                        ;--------------------------------------------
+                        ; ein Zeichen an die Zeichenkette anhÑngen
+                        null bx
+                        mov bl,eingabel
+                        lea di,[eingabe+bx]
+                        xor al,'„'   ; "VerschlÅsselung"
+                        stosb
+                        inc eingabel
+                        jmp short jmp_passw_eingabe
+                        ;--------------------------------------------
+
+;*****************************************************************************

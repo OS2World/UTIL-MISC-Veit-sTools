@@ -1,0 +1,229 @@
+; 11.03.1998 deencom neu
+; 11.07.1998 neu fr Pascal, ORG 0DC00
+; 24.07.1998 Optimierung
+; 04.08.1998 -> DC80
+
+
+org 0dc80
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;
+; record menukode_anfang in REB_MENU.PAS beachten !
+;
+anfang_menukode:
+                                db 090,090
+                                jmp short anfang
+
+menue_code_laenge:              dw ende_menukode-anfang_menukode
+org_reboot_ofs:                 dw ?
+org_word01:                     dw ?
+org_byte2:                      db ?
+xmm_handhabe:                   dw ?
+zusatz_lineare_adresse:         dd ?
+orgint15:                       dd ?
+
+
+anfang:
+                                cli
+                                ; Stack zu 0050:00FE setzen ???
+
+                                mov ds,cs
+                                mov es,cs
+
+
+                                ; "Enable Keyboard"
+                                mov al,020
+                                out 020,al
+
+
+                                call warte_auf_tastatur
+                                ; "Enable Keyboard"
+                                mov al,0ae
+                                out 064,al
+                                call warte_auf_tastatur
+
+
+                                ; "BE /REBOOT" (Norton) setzt [Strg]-[Alt]
+                                push 00040
+                                pop ds
+                                mov b [00017],0
+
+                                and b [00096],0fc ; Keyboard Mode/Type
+
+
+                                ; TaskMGR geladen ?
+                                mov ax,02700
+                                int 02f
+                                cmp al,0ff
+                                jne fastboot_aufrufen
+
+                                sti
+
+
+  schleife:
+
+                                ; Anzeige des Mens
+                                mov ax,01300
+                                mov bx,0004a ; Seite 0, Hintergrund 4,Vordergrund 10
+                                mov cx,text_reboot_menu_ende-text_reboot_menu
+                                sub dx,dx ; Zeile 0 Spalte 0
+                                mov bp,text_reboot_menu
+                                int 010
+
+                                ; Cursor setzen
+                                mov ah,2
+                                mov bh,0
+                                mov dx,00203 ; Zeile 2+1 Spalte 3+1
+                                int 010
+
+                                ; TaskMGR Men
+                                mov ax,02715
+                                int 02f
+
+                                ; auf Auswahl '1' oder '2' warten
+                                mov ah,0
+                                int 016
+
+                                push ax
+                                  ; Cursor 2 Zeilen tiefer Spalte 1
+                                  mov ah,2
+                                  mov bh,0
+                                  mov dx,00400 ; Zeile 4+1 Spalte 0+1
+                                  int 010
+                                pop ax
+
+
+                                cmp al,'1'
+                                je fastboot_aufrufen
+
+                                cmp al,'2'
+                                jne schleife
+
+  programm_abbruch:             ; "2"
+                                mov ax,04cff
+                                int 021
+                                jmp schleife
+
+
+  fastboot_aufrufen:            ; "1"
+
+                                cli
+                                sub ax,ax
+                                mov ss,ax
+                                mov sp,08000
+
+                                mov ds,cs
+                                mov es,cs
+
+                                ; Kopiere Erweiterten Speicher...
+
+                                ;1. 1K ->0000:0000
+                                mov si,0
+                                mov di,0
+                                mov cx,1
+                                call ext_kopiere
+
+                                ;2. 3K ->0000:8000
+                                mov si,1
+                                mov di,8
+                                mov cx,3
+                                call ext_kopiere
+
+                                ;3. 32K -> 0000:9000
+                                mov si,4
+                                mov di,9
+                                mov cx,32
+                                call ext_kopiere
+
+                                ;4. 32K -> 0001:1000
+                                mov si,4+32
+                                mov di,011
+                                mov cx,32
+                                call ext_kopiere
+
+                                jmp 0000:08000
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+gdt:
+                                db 16 dup 0
+
+                                dw 0ffff
+quelle_01:                      dw ?
+quelle_2:                       db ?
+                                db 093
+                                db 0
+quelle_3:                       db ?
+
+                                dw 0ffff
+ziel_01:                        dw ?
+ziel_2:                         db ?
+                                db 093
+                                db 0
+ziel_3:                         db ?
+
+                                db 18 dup 0
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; Kopiere "32" SI (1KB) -> "16" DI (4KB) , CX (1KB)
+; SI=4 meint $0000ø1000
+; DI=8 meint $0000:8000 oder $0800
+; CX=32 meint 32*1024
+
+ext_kopiere:
+                                ; Quelle
+                                mov ax,si
+                                mov dx,si
+                                shl ax,10 ; lo ; * 1024
+                                shr dx,6  ; hi
+                                add ax,w [zusatz_lineare_adresse+0]
+                                adc dx,w [zusatz_lineare_adresse+2]
+
+                                mov w [quelle_01],ax
+                                mov b [quelle_2],dl
+                                mov b [quelle_3],dh
+
+                                ; Ziel
+                                mov ax,di
+                                mov dx,di
+                                shl ax,12 ; lo ; * 4096
+                                shr dx,4  ; hi
+                                mov w [ziel_01],ax
+                                mov b [ziel_2],dl
+                                mov b [ziel_3],dh
+
+                                ; Anzahl
+                                shl cx,(10-1) ; *1024/2 (16Bit)
+
+                                mov ah,087
+                                mov si,gdt
+                                pushf
+                                call d [orgint15]
+                                ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+warte_auf_tastatur:
+                                sub cx,cx
+  warte_auf_tastatur_schleife:
+                                in al,064
+                                out 0e1,al
+                                and al,002
+                                loopne warte_auf_tastatur_schleife
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+text_reboot_menu:
+                                db 'ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿',00d,00a
+#if deutsch
+                                db '³ [1] Schnellstart      ³',00d,00a
+                                db '³ [2] Programm beenden  ³',00d,00a
+#else
+                                db '³ [1] fastboot          ³',00d,00a
+                                db '³ [2] terminate program ³',00d,00a
+#endif
+                                db 'ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ'
+text_reboot_menu_ende:
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+ende_menukode:
+

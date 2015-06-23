@@ -1,0 +1,72 @@
+; Erzeugen einer Kopie der "Video Parameter Table" im RAM
+; Veit Kannegieser
+;
+; Residenter Teil
+even 010
+;***************************************************************************
+
+int_10_org:
+int_10_org_o		dw ?
+int_10_org_s		dw ?
+
+int_10_neu:
+			pushf
+			  cs: mov b [vpt_neu+misc_output_register_values],063
+
+                          cmp ax,02000
+			  jnz weiter
+			  cmp bx,'VP'
+			  jnz weiter
+			  cmp cx,'TR'
+			  jnz weiter
+			  cmp dx,'AM'
+			  jnz weiter
+
+			popf
+			mov ax,cs
+			mov bx,residente_variablen
+			iret
+
+weiter:
+			popf
+			jmp d cs:[int_10_org]
+
+;***************************************************************************
+
+even 4
+
+residente_variablen:
+
+org_0040_00a8:					dd ?
+
+Video_Save_Override_Pointer_Table:
+  Video_Parameter_Table_pointer:                dd ?
+  Dynamic_Parameter_Save_Area_pointer_EGA_VGA:  dd ?
+  Alphanumeric_Character_Set_Override_pointer:  dd ?
+  Graphics_Character_Set_Override_pointer:      dd ?
+  Secondary_Save_Pointer_Table_pointer_VGA:     dd ?
+  reserviert14:                                 dd ?
+  reserviert18:                                 dd ?
+ende_Video_Save_Override_Pointer_Table:
+
+groesse_Video_Save_Override_Pointer_Table       equ ende_Video_Save_Override_Pointer_Table-Video_Save_Override_Pointer_Table
+
+
+Video_Parameter_Table_eintrag struc 
+  number_of_displayed_character_columns 	db ?            ; 00
+  number_of_displayed_screen_rows_minus_1       db ?            ; 01
+  character_matrix_height_in_points     	db ?            ; 02
+  video_buffer_size_in_bytes    		dw ?            ; 03
+  contents_of_sequencer_registers_1_4   	dd ?            ; 05
+  misc_output_register_values   		db ?            ; 09
+  contents_of_CRTC_registers_0_18h		db 25 dup ?     ; 0a 10
+  contents_of_attribute_controller_regs_0_13h   db 20 dup ?     ; 23 35
+  contents_of_graphics_controller_regs_0_8      db 9 dup ?      ; 37 55
+ends                                                            ; 40 64
+
+vpt_neu:
+db (256 * type Video_Parameter_Table_eintrag) dup 'þ'
+
+tsr_ende:
+
+;***************************************************************************

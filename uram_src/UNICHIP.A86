@@ -1,0 +1,61 @@
+Title   Unichip?
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_unichip                   macro
+                                  mov di,#1
+                                  mov dl,#2
+                                  mov cl,#3
+                                  call setze_unichip_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_unichip_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_unichip_prozedur_fertig
+
+                                call ausschrift_segment
+
+
+                                mov bl,ah
+                                and bl,Bit0+Bit1 ; Lesen,Schreiben
+                                mov bh,0ff-Bit0-Bit1
+                                rol bl,cl
+                                rol bh,cl
+
+                                mov al,dl
+                                call bios_aufruf__prozedur_registerlesen
+
+                                and al,bl
+                                or  al,bh
+                                mov ah,al
+
+                                mov al,dl
+                                call bios_aufruf__prozedur_registerschreiben
+
+setze_unichip_prozedur_fertig:
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_unichip:
+                                ausschrift_xxxx_aehnliches_bios text_variante_unichip
+
+                                setze_unichip 'C0',022,0
+                                setze_unichip 'C4',022,2
+                                setze_unichip 'C8',022,4
+                                setze_unichip 'CC',022,6
+
+                                setze_unichip 'D0',023,0
+                                setze_unichip 'D4',023,2
+                                setze_unichip 'D8',023,4
+                                setze_unichip 'DC',023,6
+
+                                setze_unichip 'E0',024,0
+                                setze_unichip 'E4',024,2
+                                setze_unichip 'E8',024,4
+                                setze_unichip 'EC',024,6
+
+                                setze_unichip 'F0',025,0
+
+
+                                jmp initialisieren
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

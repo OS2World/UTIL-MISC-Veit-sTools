@@ -1,0 +1,1773 @@
+; wird nach 08000:00100 geladen
+
+anzahl_sekt             equ 39          ; auch in _.bat und vpartein.pas „ndern
+laenge_plugin           equ 1024
+
+org 0100
+
+;şşşşşşşşşşşşşşşşşşşşşşş[ Anfang VPARTEIN ]şşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşş
+
+                        int 020
+                        jmp start
+                        include ..\datum.a86
+                        dw plugin
+                        dw laenge_plugin
+
+;**************************************************************************
+
+bildschirm_schoner_cx_zeit equ 3*18*60
+
+spalte_text_fx          equ 18+1+3
+spalte_text_titel       equ 18+1+3+1+2+2+2+1+2
+
+zeichenlaenge           equ 16
+fontlaenge              equ zeichenlaenge*256
+textbildschirm          equ 80*25*2
+
+y_normal_ungenutzt_anf  equ 0
+y_normal_leer_anf       equ 8
+y_normal_icon_anf       equ 8+8
+y_normal_text_anf       equ 8+8+8+2
+y_normal_leer_ende      equ 8+8+32+8
+y_normal_raster         equ 8+8+32+8+8
+
+
+y_kurz_leer_anf         equ 0
+y_kurz_icon_anf         equ 8
+y_kurz_text_anf         equ 8+8+2
+y_kurz_leer_ende        equ 8+32+8
+y_kurz_raster           equ 8+32
+
+
+rgb_stufen              equ 64 ; durch 2 teilbar, 64 ist sinnvolle Obergrenze (6 Bit)
+
+passwortmax             equ 20
+
+;**************************************************************************
+                        fuelle_bis 0150,'°'
+
+passwortl               db 0
+passwort:               db passwortmax dup 0
+
+anzahl_lw               dw 10 ; 0
+standard_lw             dw  1 ; 0
+
+bios_typ                dw biostyp_unbekannt
+
+tastenverzoegerung:     db 0
+tastenwiederholrate:    db 0
+
+eintrag_block_typ macro
+  off_Funktionstaste    equ 0
+                        pstr 'F? '
+
+  anf_ICON              equ 1+3
+  off_ICON              equ off_Funktionstaste+anf_ICON
+                        db 512 dup 'I'
+
+  anf_Titeltext         equ 512
+  off_Titeltext         equ off_ICON+anf_Titeltext
+                        duppstr 20,'T'
+
+  anf_Int13_CX          equ 1+20
+  off_Int13_CX          equ off_Titeltext+anf_Int13_CX
+                        dw 00001 ; 'CC'
+
+  and_Int13_DX          equ 2
+  off_Int13_DX          equ off_Int13_CX+and_Int13_DX
+                        dw 00080 ; 'DD'
+
+  anf_hidden            equ 2
+  off_hidden            equ off_Int13_DX+anf_hidden
+                        db 'HHHH' ; dd
+
+  anf_undokumentiert_LW equ 4
+  off_undokumentiert_LW equ off_hidden+anf_undokumentiert_LW
+                        db 'U'
+
+  anf_anderer_Bootcode  equ 1
+  off_anderer_Bootcode  equ off_undokumentiert_LW+anf_anderer_Bootcode
+                        db 'B'
+
+  anf_tastendruecke     equ 1
+  off_tastendruecke     equ off_anderer_Bootcode+anf_tastendruecke
+                        db (1+8*2) dup 'T'
+
+  anf_laufwerke_verstecken equ 1+8*2
+  off_laufwerke_verstecken equ off_tastendruecke+anf_laufwerke_verstecken
+                        db 8 dup 0
+                        ; Bit 76        nderung Partitionstyp 0=bleibt 1=verstecken 2=sichtbar
+                        ; Bit 5         nderung Buchstabe     0=bleibt 1=ja
+                        ; Bit 43210     Buchstabe-Ord('@')
+
+  anf_ende              equ 8
+  zeilenlaenge          equ off_laufwerke_verstecken+anf_ende
+#em
+
+zu_versteckende_partition struc
+  cx_reg                        dw ?
+  dx_reg                        dw ?
+  lba                           dd ?
+  partition_sichtbar            db ?
+  partitionstyp_unsichtbar      db ?
+  lvm_informationssektor        db ?
+  eintrag                       db ?
+  pt_anfang_cx                  dw ?
+ends
+
+partitionstabelleneintrag struc
+  part_e_boot_indicator        db ? ; 00/80
+  part_e_anfang_dh             db ?
+  part_e_anfang_cx             dw ?
+  part_e_system_indicator      db ?
+  part_e_ende_dh               db ?
+  part_e_ende_cx               dw ?
+  part_e_relativ               dd ?
+  part_e_anzahl                dd ?
+ends
+
+start_daten:
+                        eintrag_block_typ ; 1
+                        eintrag_block_typ ; 2
+                        eintrag_block_typ ; 3
+                        eintrag_block_typ ; 4
+                        eintrag_block_typ ; 5
+                        eintrag_block_typ ; 6
+                        eintrag_block_typ ; 7
+                        eintrag_block_typ ; 8
+                        eintrag_block_typ ; 9
+                        eintrag_block_typ ;10
+
+endzeit_lo              dw 200
+endzeit_hi              dw 000
+
+hauptspeicher           dw 640
+
+schlafzeit:             db '1234'
+
+text_oder_grafikmodus:  db 'T'                  ; T=Text
+                                                ; G=Grafik
+
+vpart_versteckt:        db '0'                  ; 0=normal
+                                                ; 1=versteckt
+
+maus_parameter:         dw 3                    ; 0=aus 3=PS/2
+
+farbtabelle:
+  konstant0             equ 000
+                        db 000
+  konstant1             equ 001
+                        db 001
+  konstant2             equ 002
+                        db 002
+  konstant3             equ 003
+                        db 003
+  konstant4             equ 004
+                        db 004
+  konstant5             equ 005
+                        db 005
+  konstant6             equ 006
+                        db 006
+  konstant7             equ 007
+                        db 007
+  konstant8             equ 008
+                        db 008
+  konstant9             equ 009
+                        db 009
+  konstantA             equ 00a
+                        db 00a
+  konstantB             equ 00b
+                        db 00b
+  konstantC             equ 00c
+                        db 00c
+  konstantD             equ 00d
+                        db 00d
+  konstantE             equ 00e
+                        db 00e
+  konstantF             equ 00f
+                        db 00f
+
+  farbe_hintergrund             equ 010
+                                db 009  ; hellblau
+
+  farbe_rahmen                  equ 011
+                                db 00f  ; hellweiá
+
+  farbe_titel_hintergrund       equ 012
+                                db 00f  ; hellweiá
+
+  farbe_titel_schrift           equ 013
+                                db 000  ; schwarz
+
+  farbe_eintrag_hintergrund     equ 014
+                                db 001  ; dunkelblau
+
+  farbe_eintrag_schrift_inaktiv equ 015
+                                db 00e  ; gelb
+
+  farbe_eintrag_schrift_aktiv   equ 016
+                                db 00f  ; hellweiá
+
+  farbe_passprompt              equ 017
+                                db 00e  ; gelb
+
+  farbe_passeingabe_schrift     equ 018
+                                db 00e  ; gelb
+
+  farbe_passeingabe_hintergrund equ 019
+                                db 001  ; blau
+
+  farbe_zeit_hintergrund        equ 01a
+                                db 000  ; schwarz
+
+  farbe_zeit_schrift            equ 01b
+                                db 008  ; grau
+
+  farbe_ico_hintergrund         equ 01c
+                                db 00f  ; hellweiá
+
+blendgeschwindigkeit:           db '2'
+
+benutze_apm:                    db 1
+
+fat_konfiguration_position_dl:          db 0 ; bios_typ=biostyp_FAT_cfg
+fat_konfiguration_position_log:         dd 0
+fat_konfiguration_sektoren_je_spur:     dw 63
+fat_konfiguration_anzahl_koepfe:        dw 254
+
+a20_abschalten:                 db 1
+
+zu_versteckende_partitionen:    db 8*type zu_versteckende_partition dup ?
+
+
+;şşşşşşşşşşşşşşşşşşşşşşş[ Ende VPARTEIN ]şşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşşş
+
+eingabe_passwort:
+eingabel                db 0
+eingabe:                db passwortmax dup 0
+
+system_aw_ein           db '0'
+
+#if deutsch
+passworttitel:          pstr '        Paáworteingabe        '
+#else
+passworttitel:          pstr '     please type password     '
+#endif
+
+prompt:                 pstr '¯'
+
+#if deutsch
+virus_titel:            pstr '       BIOS - Speicherklau      '
+virus_warnung1:         pstr 'Der Systemspeicher hat jetzt'
+virus_warnung2:         pstr '    die Gr”áe von 000 KB.   '
+#else
+virus_titel:            pstr '     WARNING: BIOS reports      '
+virus_warnung1:         pstr '      memory allocation     '
+virus_warnung2:         pstr '      size now  000 KB.     '
+#endif
+
+bios_sp_h               equ virus_warnung2+19
+bios_sp_z               equ virus_warnung2+20
+bios_sp_e               equ virus_warnung2+21
+
+#if deutsch
+virus_warnung3:         pstr '      Mit Esc weiter ...    '
+#else
+virus_warnung3:         pstr '        press Esc ...       '
+#endif
+
+#if deutsch
+award_setup_text:       pstr 'Entf=Award'
+#else
+award_setup_text:       pstr ' Del=Award'
+#endif
+
+#if deutsch
+ami_setup_text:         pstr '  Entf=AMI'
+#else
+ami_setup_text:         pstr '   Del=AMI'
+#endif
+
+#if deutsch
+uhrzeit:                pstr '__.__'
+#else
+uhrzeit:                pstr '__:__'
+#endif
+
+uhr_stunde_zehner       equ uhrzeit+1
+uhr_stunde_einer        equ uhrzeit+1+1
+uhr_minute_zehner       equ uhrzeit+1+1+1+1
+uhr_minute_einer        equ uhrzeit+1+1+1+1+1
+
+schoner_ist_ein_aus     db 'A' ; E/A
+
+linie_links:            db 16 dup 080
+                        db 16 dup 07F
+                        db 16 dup 0FF
+                        db 16 dup 000
+linie_rechts:           db 16 dup 001
+                        db 16 dup 0FE
+                        db 16 dup 0FF
+                        db 16 dup 000
+
+
+;**************************************************************************
+; Eingabe
+;   CX=1..10 Eintrag
+; Ausgabe
+;   SI=Anfang
+berechne_datenanfang:
+                        push ax,dx
+
+                          mov ax,zeilenlaenge
+                          mul cx
+                          add ax,start_daten-zeilenlaenge
+                          mov si,ax
+
+                        pop dx,ax
+
+                        ret
+;**************************************************************************
+
+prozedur_anfang         macro
+                          push bp
+                          mov bp,sp
+                        #em
+
+prozedur_ende           macro
+                          pop bp
+                          ret #1*2
+                        #em
+
+
+parameter1              equ [bp+00004]
+parameter2              equ [bp+00006]
+parameter3              equ [bp+00008]
+parameter4              equ [bp+0000a]
+parameter5              equ [bp+0000c]
+parameter6              equ [bp+0000e]
+
+;**************************************************************************
+setintvec_nummer        equ parameter1 ; db
+
+setintvec macro
+                        push #1
+                        ; <- DS:DX
+                        call setintvec_prozedur
+#em
+
+setintvec_prozedur:
+                        prozedur_anfang
+                          push bx
+                            push es
+                              null bx
+                              mov es,bx
+                              mov bl,setintvec_nummer
+                              ;null bh
+                              shl bx,2 ; *4
+                              mov es:[bx],dx
+                              add bx,2
+                              mov es:[bx],ds
+                            pop es
+                          pop bx
+                        prozedur_ende 1
+;**************************************************************************
+getintvec_nummer        equ parameter1 ; db
+
+getintvec macro
+                        push #1
+                        ; <- DS:DX
+                        call getintvec_prozedur
+                        ; -> DS:DX
+#em
+
+getintvec_prozedur:
+                        prozedur_anfang
+                          push bx
+                            push es
+                              null bx
+                              mov es,bx
+                              mov bl,setintvec_nummer
+                              ;null bh
+                              shl bx,2 ; *4
+                              lds dx,es:[bx]
+                            pop es
+                          pop bx
+                        prozedur_ende 1
+;**************************************************************************
+
+schon_gezeichnet macro
+                        cmp system_aw_ein,'1'
+#em
+
+;**************************************************************************
+
+sektor_ziel:
+                        cmp b cs:[dos_test],'D'
+                        jz sektor_ziel_dos
+
+                        push 0
+                        jmp short sektor_ziel_fertig
+sektor_ziel_dos:
+                        push cs
+sektor_ziel_fertig:
+
+                        pop es
+                        ret
+
+;**************************************************************************
+
+sektor_ziel_ax:
+                        cmp b cs:[dos_test],'D'
+                        mov ax,cs
+                        if ne sub ax,ax
+                        ret
+
+;**************************************************************************
+
+kopi_prozedur:
+                        cld
+                        shr cx,1
+                        rep movsw
+                        if c movsb
+                        ret
+
+;**************************************************************************
+include vga.a86
+;**************************************************************************
+
+einschlaefern:
+                        cmp al,0ff
+                        jz nicht_einschlaefern
+
+                        mov w [port],dx
+                        mov b [fplaufwerk],cl
+                        mov b [auszeit],al
+                        call festplatten_warten
+
+                        mov dx,w [port]
+                        add dx,6 ; Laufwerkswahl
+                        mov al,b [fplaufwerk]
+                        out dx,al
+                        call festplatten_warten
+
+                        mov dx,w [port]
+                        add dx,2 ; Sektor-Register
+                        mov al,b [auszeit]
+                        out dx,al
+                        call festplatten_warten
+
+                        mov dx,w [port]
+                        add dx,7 ; Befehlsregister
+                        mov al,097 ; Sleep1
+                        out dx,al
+                        call festplatten_warten
+
+                        mov dx,w [port]
+                        add dx,7 ; Befehlsregister
+                        mov al,0e3 ; Sleep2
+                        out dx,al
+                        call festplatten_warten
+
+nicht_einschlaefern:
+                        ret
+
+;###### Hilfsprozedur
+
+festplatten_warten:
+
+                        mov dx,w [port]
+                        add dx,7     ; Statusregister
+                        in al,dx
+                        cmp al,0ff
+                        jz os2_nicht_einschlafen
+                        and al,080
+                        jnz festplatten_warten
+                        ret
+
+os2_nicht_einschlafen:
+                        pop ax ; call rckg„ngig
+                        ret
+
+;**************************************************************************
+teste_dos_aktiv macro
+                        cmp b cs:[dos_test],'D'
+#em
+;**************************************************************************
+; viele Register ver„ndert !
+lies_standard_bootsektor:
+                        mov es,cs
+                        mov ds,cs
+
+                        ; Berechnung ADDR CX,DX
+                        mov cx,standard_lw
+                        call berechne_datenanfang
+
+                        push si
+                          lea si,[si+off_Int13_CX]
+                          mov di,boot_cx
+                          mov cx,2+2+4+1+1
+                          cld
+                          rep movsb
+                        pop si
+
+                        mov ax,[si+off_hidden+0]
+                        mov dx,[si+off_hidden+2]
+                        mov [disk_address_packet_starting_absolute_block_number+0],ax
+                        mov [disk_address_packet_starting_absolute_block_number+2],dx
+
+                        call sektor_ziel_ax
+                        mov [disk_address_packet_transferbuffer+2],ax
+
+                        cmp b [boot_dx],0ff
+                        je lies_standard_bootsektor_cdrom
+
+                        mov b [lese_versuch],7 ; damit Jost sich nicht beschwert
+
+                        ; Zylinder > 1023 ?
+                        cmp w [boot_cx],-1
+                        je bootsektor_lesen_erweitert
+
+bootsektor_lesen:
+                        mov es,cs
+                        mov ds,cs
+
+                        dec b [lese_versuch]
+                        jz lies_standard_bootsektor_ende_fehler
+
+                        ; Bootsektor lesen
+                        mov ax,00201
+                        mov bx,07c00
+                        call sektor_ziel
+                        mov cx,w [boot_cx]
+                        mov dx,w [boot_dx]
+                        int 013
+                        jnc lies_standard_bootsektor_ende_fehlerfrei
+
+                        null ah ; Disk Reset
+                        mov dx,w [boot_dx]
+                        int 013
+                        jmp bootsektor_lesen
+
+lies_standard_bootsektor_ende_fehlerfrei:
+                        mov ds,cs
+                        mov es,cs
+                        clc
+                        ret
+
+lies_standard_bootsektor_cdrom:
+                        call sektor_ziel
+                        cld
+                        mov di,07c00
+
+                        mov al,0e9 ; jmp        ; 000
+                        stosb
+                        mov ax,505-3            ; 001
+                        stosw
+
+                        mov cx,(505-003)/2      ; 003
+                        mov ax,0cccc
+                        rep stosw
+
+                        mov al,0ea              ; 505
+                        stosb
+                        mov ax,cd_start         ; 506
+                        stosw
+                        mov ax,cs               ; 508
+                        stosw
+                        mov ax,0aa55            ; 510
+                        stosw
+                                                ; 512
+                        jmp short lies_standard_bootsektor_ende_fehlerfrei
+
+
+
+lies_standard_bootsektor_ende_fehler:
+
+                        mov ds,cs
+                        mov es,cs
+                        stc ; FEHLER !
+                        ret
+
+                        ;----------- INT 13/42
+bootsektor_lesen_erweitert:
+                        dec b [lese_versuch]
+                        jz lies_standard_bootsektor_ende_fehler
+
+                        mov ah,042
+                        mov dx,w [boot_dx]
+                        mov si,disk_address_packet
+                        ; mov ds,ds
+                        mov w [disk_address_packet_number_of_blocks],1
+                        stc
+                        int 013
+                        jc bootsektor_lesen_erweitert
+
+                        ; FDISK.COM OS/2 4.0 FP 14 (MBR)
+                        teste_dos_aktiv
+                        je kein_i13x_bei_3000_0000
+
+                        push ds
+                          push 03000
+                          pop ds
+                          ; 'I' '1' '3' 'X'
+                          mov w [0],'1I'
+                          mov w [2],'X3'
+                        pop ds
+
+kein_i13x_bei_3000_0000:
+                        clc
+                        ret
+
+disk_address_packet:
+                        db 010          ; Paketgr”áe
+                        db 0            ; reserviert
+disk_address_packet_number_of_blocks:
+                        dw 1            ; 1 Sektor
+disk_address_packet_transferbuffer:
+                        dd 07c00
+disk_address_packet_starting_absolute_block_number:
+                        dd 0
+                        dd 0
+
+;**************************************************************************
+kopiere_itab_kopie:
+                        push ds,es
+                          pusha
+
+                            mov ds,cs
+
+                            ; Problem bei DEVICE=EMM386.EXE /INCLUDE=B000-B7FF
+                            ; mov si,itab_kopie
+                            ; mov di,80*60*2 ; unter Zeile 60
+                            ; push 0b000
+                            ; pop es
+                            ; mov cx,(256*4+4)/2
+                            ; cld
+                            ; rep movsw
+
+                            mov si,itab_kopie
+                            mov di,80*60*2 ; unter Zeile 60
+                            push 0b800
+                            pop es
+                            mov cx,(256*4+4)/2
+                            cld
+                            rep movsw
+
+                          popa
+                        pop es,ds
+                        ret
+
+;**************************************************************************
+
+plugin_aufruf:
+                        push ds,es
+                          pusha
+
+                            push cs
+                            pop es
+
+                            push ax
+                              cmp al,1
+                              jne plugin_aufruf_2
+                              call lies_standardwert_vom_cmos
+                              call apmb_einschalten
+                              jmp short plugin_aufruf_weiter
+  plugin_aufruf_2:
+                              call apmb_ausschalten
+                              call schreibe_standardwert_ins_cmos
+  plugin_aufruf_weiter:
+                            pop ax
+
+                            mov cx,[standard_lw]
+                            call plugin
+                          popa
+                        pop es,ds
+                        ret
+
+;ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+                        ; db 0e8,'??'
+suchfolge_ami:          db 0fb
+                        db 033,0c0
+                        db 08e,0d8
+                        db 08c,0c8
+                        db 03b,006,042,000
+                        db 075 ; 031
+                        ; db 0cd,011
+suchfolge_ami_ende:
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+start:
+                        ;--------------------------------------------
+                        ; Einrichten
+                        cli
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+                        mov ss,ax
+                        mov sp,stack_ende
+                        sti
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; ax=cs<>8000 wenn TEST.COM geladen wird
+                        ;
+                        cmp ax,08000
+                        ; BIOS
+                        mov al,'B'
+                        je dos_oder_bios_bestimmt
+
+                        #if afd_bios
+                        ; AFD
+                        push ds
+                          push 0
+                          pop ds
+                          cmp [1*4],065ef
+                          if e cmp [3*4],065e8
+                        pop ds
+                        je dos_oder_bios_bestimmt
+                        #endif
+
+                        ; DOS
+                        mov al,'D'
+  dos_oder_bios_bestimmt:
+                        mov b [dos_test],al
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Font fr Grafikmodus:
+                        ; * normal
+                        ; * invers
+                        ; * 0
+                        ; * 1
+                        mov ax,01130            ;Font-INFO
+                        mov bh,006              ;16*8 ROM
+                        int 010
+
+                        mov ds,es               ; ES:BP=FONT
+                        mov si,bp
+                        mov es,cs
+                        mov di,rom_16x8p
+                        mov cx,fontlaenge
+                        call kopi_prozedur
+
+                        ; bleibt hier damit sich der Anfang nicht „ndert..
+                        mov bp,sp
+
+                        mov ds,cs
+                        mov si,rom_16x8p
+                        mov di,rom_16x8n
+                        mov cx,fontlaenge
+          negativ_font:
+                        lodsb
+                        not al
+                        stosb
+                        loop negativ_font
+
+                        mov di,rom_16x8l
+                        mov cx,fontlaenge/2
+                        null ax
+                        rep stosw
+
+                        mov di,rom_16x8v
+                        mov cx,fontlaenge/2
+                        dec ax ; ax:=$ffff
+                        rep stosw
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        mov ax,00305 ; set typematic rate/delay
+                        mov bh,b [tastenverzoegerung]
+                        mov bl,b [tastenwiederholrate]
+                        cmp bh,4
+                        if ne int 016
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; externe Erweiterungen
+                        mov al,1
+                        call plugin_aufruf
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Kopie der Interrupttabelle fr FB_MENU
+                        push ds
+                          null si
+                          mov ds,si             ; 0:0 ->
+
+                          mov di,itab_kopie     ; cs:itab_kopie
+
+                          mov cx,256*4/2
+                          cld
+                          rep movsw
+                        pop ds
+
+                        mov [di],'TI'           ; itab_signatur
+                        mov [di+2],'KV'
+                        ;
+                        ;--------------------------------------------
+
+
+
+                        ;--------------------------------------------
+                        ; OS/2 2.x Erkennung
+                        ;-> Vermeidung privilegierter Operationen
+                        push ds
+                          push 0
+                          pop ds
+                          lds si,[6*4]
+                          null ax
+                          cmp b ds:[si],063 ; arpl ...
+                          if e inc ax
+                        pop ds
+                        mov b [os2_laeuft],al
+                        ;
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; wenn VPart fr den Grafikmodus eingerichtet ist
+                        ; und in einem OS/2 Fenster l„uft wird besser
+                        ; der Textmodus verwendet
+                        cmp al,1
+                        jne kein_os2_fenster
+
+                        ; \os2\mdos\iswindow.com ...
+                        mov dx,003d6
+                        mov al,082
+                        out dx,al
+                        in al,dx
+
+                        cmp al,0
+                        jne kein_os2_fenster
+
+                        mov b [text_oder_grafikmodus],'T'
+  kein_os2_fenster:
+                        ;
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Festplatten einschl„fern, aber nur beim ersten Druchlauf
+                        ;
+                        mov si,schlafzeit
+                        mov al,0ff
+                        xchg al,[si+0]
+                        mov dx,001f0
+                        mov cl,0a0
+                        call einschlaefern
+
+                        mov al,0ff
+                        xchg al,[si+1]
+                        mov dx,001f0
+                        mov cl,0b0
+                        call einschlaefern
+
+                        mov al,0ff
+                        xchg al,[si+2]
+                        mov dx,00170
+                        mov cl,0a0
+                        call einschlaefern
+
+                        mov al,0ff
+                        xchg al,[si+3]
+                        mov dx,00170
+                        mov cl,0b0
+                        call einschlaefern
+                        ;
+                        ;--------------------------------------------
+
+                        call installiere_ps_maus
+
+                        ;--------------------------------------------
+                        ; Award-Bios-E81F
+                        mov b [bios_setup_gefunden],'U'
+                        push ds
+                          ; AMI-"Hi-Flex"
+                          push es
+                            null di
+                            mov ax,0f000
+                            mov es,ax
+                            mov al,b [suchfolge_ami]
+                            mov cx,0ff00
+ami_setup_suchschleife:
+                            repnz scasb
+                            jcxz kein_ami_setup_gefunden
+
+                            push cx,di
+                              mov si,suchfolge_ami+1
+                              mov cx,suchfolge_ami_ende-(suchfolge_ami+1)
+                              rep cmpsb
+                            pop di,cx
+                            jnz ami_setup_suchschleife
+  ami_setup_gefunden:
+                            sub di,(suchfolge_ami_ende-suchfolge_ami)+3
+                            mov ax,w es:[di+1]
+                            add di,3
+                            add ax,di
+                            mov w [setup_bios_einsprung_o],di
+                            mov b [bios_setup_gefunden],'I'
+                            mov w [setup_text],ami_setup_text
+
+  kein_ami_setup_gefunden:
+                          pop es
+
+                          lds si,cs:[setup_bios_einsprung]
+                          cmp b [si],0e8
+                          jnz kein_award_setup_e81f
+                          cmp b [si+3],0cb
+                          jnz kein_award_setup_e81f
+
+                          mov b cs:[bios_setup_gefunden],'A'
+                          mov w cs:[setup_text],award_setup_text
+                          ;--jmp short kein_award_setup_xxxx
+
+          kein_award_setup_e81f:
+;--------------------------------------
+; ASUS/Jost
+;                         mov w cs:[setup_bios_einsprung_o],0e7a0
+;                         lds si,cs:[setup_bios_einsprung]
+;                         cmp b [si],0e8
+;                         jnz kein_award_setup_e7a0
+;                         cmp b [si+3],0cb
+;                         jnz kein_award_setup_e7a0
+;
+;                         mov b cs:[bios_setup_gefunden],'A'
+;                         mov w [setup_text],award_setup_text
+;                         jmp short kein_award_setup_xxxx
+;
+;         kein_award_setup_e7a0:
+;--------------------------------------
+kein_award_setup_xxxx:
+
+                        pop ds
+                        ; Ende Suche nach BIOS-Setup
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Sichern der VGA Palette als Berechnungsgrundlage
+                        ;Hole RGB
+                        mov ax,01017
+                        mov bx,0
+                        mov cx,64
+                        mov dx,rgb0
+                        int 010
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Test auf Bootsektorviren ..
+                        ;
+                        ; Hauptspeicher=999 ...
+                        int 012
+                        cmp hauptspeicher,999
+                        if z mov hauptspeicher,ax
+
+
+                        ; Vortest fr verstecktes VPART
+                        ; Speichertest
+                        cmp b [vpart_versteckt],'1'
+                        jnz versteckt_vortest_fertig
+
+
+                        ; Strg/Alt/Umschalt/...
+                        mov ah,002
+                        int 016
+                        and al,004 ; nur STRG beachten
+                        jnz versteckt_vortest_umschalten_auf_sichtbar ; Nutzer wnscht VPART
+
+                        ; Speichertest : Bootvirus ?
+                        int 012
+                        cmp hauptspeicher,ax
+                        jnz versteckt_vortest_umschalten_auf_sichtbar ; da ist ein Problem ...
+
+                        call lies_standard_bootsektor
+                        jc versteckt_vortest_umschalten_auf_sichtbar
+
+                        ; Paáworteingabe n”tig ?
+                        cmp passwortl,0
+                        jnz versteckt_vortest_umschalten_auf_sichtbar
+
+
+                        ; alles lief gut .. Sprung zum Bootsektor vorbereiten
+                        jmp versteckt_bootsektor_behandeln_und_ausfuehren
+                        ;--------------------------------------------
+
+
+                        ;--------------------------------------------
+                        ; Abdunkeln und Umschalten
+                        ;
+versteckt_vortest_umschalten_auf_sichtbar:
+                        mov b [vpart_versteckt],'0'       ; sichtbar
+
+versteckt_vortest_fertig:
+                        ausblenden
+
+                        ; Text+Farben
+
+                        push segment_0b800
+                        pop ds
+                        null si
+                        mov es,cs
+                        mov di,farbtext
+                        mov cx,textbildschirm
+                        call kopi_prozedur
+                        push cs
+                        pop ds
+
+                        ; Cursor retten
+                        mov ah,003
+                        null bh
+                        int 010
+                        mov w [cursor_position],dx
+                        mov w [cursor_groesse],cx
+
+
+grafik_umschalten:
+
+                        ; GRAFIK umschalten
+                        mov ax,012
+
+                        cmp b [text_oder_grafikmodus],'T'
+                        if e mov al,003
+
+                        call modus_setzen
+
+                        duster
+
+                        ; diesmal nur Zeit einstellen
+                        mov schoner_ist_ein_aus,'A'
+                        call bildschirmschoner_aus
+                        ;--------------------------------------------
+
+                        call passwortabfrage_und_vergleich
+
+                        call pruefe_haupspeichergroesse
+
+                        ; Bereche oben/unten Rahmen und ICO-Start
+
+                        ; Grafik ...
+                        mov ax,y_normal_raster
+                        cmp anzahl_lw,6
+                        if a mov ax,y_kurz_raster
+                        mov cx,anzahl_lw
+                        mul cx
+                        add ax,16/2
+                        and ax,-16 ;Vielfaches von 16
+                        mov bx,ax
+                        shr ax,1 ; /2
+                        mov dx,480/2
+                        cmp anzahl_lw,6
+                        if a add dx,8
+                        add ax,dx
+                        sub ax,bx
+                        and ax,-8 ; runden auf 8 Punkte genau
+                        mov w [ico_start_y_grafik],ax
+                        add bx,ax      ; ist schon auf 8 Punkte gerundet
+                        sub ax,3*8
+                        add bx,3*8
+                        mov w [rahmen_unten_grafik],bx
+                        mov w [rahmen_oben_grafik ],ax
+
+                        ; Text ...
+                        mov ax,3
+                        cmp anzahl_lw,6
+                        if a mov ax,2
+                        mov cx,anzahl_lw
+                        mul cx
+                        mov bx,ax
+                        shr ax,1 ; /2
+                        add ax,12
+                        mov cx,ax
+                        inc cx   ; Unterer Rand
+                        mov w [rahmen_unten_text],cx
+                        sub ax,bx
+                        mov w [ico_start_y_text],ax
+                        dec ax,2 ; Oberer Rand
+                        mov w [rahmen_oben_text],ax
+
+                        cmp b [text_oder_grafikmodus],'T'
+                        jz zeichen_rahmen_text
+
+
+                        balken_grafik   120,w [rahmen_oben_grafik],640-120,w [rahmen_unten_grafik],             farbe_hintergrund
+                        rechteck_grafik 120,w [rahmen_oben_grafik],640-120,w [rahmen_unten_grafik],farbe_rahmen,farbe_hintergrund
+
+                        cmp b [bios_setup_gefunden],'U'
+                        jz short zeichen_rahmen_fertig
+
+                        ausschrift_grafik 640-(8*10),480-16,w [setup_text],farbe_zeit_schrift,farbe_zeit_hintergrund
+                        jmp short zeichen_rahmen_fertig
+
+zeichen_rahmen_text:
+
+                        balken_text   17,w [rahmen_oben_text],79-17,w [rahmen_unten_text],farbe_hintergrund
+                        rechteck_text 17,w [rahmen_oben_text],79-17,w [rahmen_unten_text],farbe_rahmen,farbe_hintergrund
+
+                        cmp b [bios_setup_gefunden],'U'
+                        jz short zeichen_rahmen_fertig
+
+                        ausschrift_text 80-10,24,w [setup_text],farbe_zeit_schrift,farbe_zeit_hintergrund
+
+zeichen_rahmen_fertig:
+
+                        ; Zeitgrenze
+                        call hole_zeit_dx_cx
+                        add endzeit_lo,cx
+                        adc endzeit_hi,dx
+
+;**************************************************************************
+systemauswahl_lang:
+
+                        null cx
+
+zeilenanzeige_schleife:
+
+                        cmp cx,[anzahl_lw]
+                        if e jmp zeilenanzeige_ende
+
+                        inc cx
+
+                        call berechne_datenanfang
+
+                        cmp b [text_oder_grafikmodus],'T'
+                        if z jmp zeilenanzeige_schleife_text
+
+                        cmp anzahl_lw,6
+                        if a jmp zeilenanzeige_schleife_text_verkuerzt
+
+
+                        ; Berechnung Bildschirmzeile
+                        mov ax,y_normal_raster
+                        dec cl
+                        mul cx
+                        inc cl
+                        add ax,w [ico_start_y_grafik]
+
+                        mov di,ax
+
+                        ; Taste-Balken
+                        lea ax,[di+y_normal_leer_anf]
+                        lea bx,[di+y_normal_leer_ende]
+                        schon_gezeichnet
+                        if nz balken_grafik       152,ax,200,bx,farbe_eintrag_hintergrund
+
+                        ; Taste-Text
+                        lea ax,[di+y_normal_text_anf]
+                        mov bl,farbe_eintrag_schrift_inaktiv
+                        cmp cx,standard_lw
+                        if e mov bl,farbe_eintrag_schrift_aktiv
+                        ausschrift_grafik   168,ax,si,bx,farbe_eintrag_hintergrund
+
+                        ; ICO-Balken
+                        lea ax,[di+y_normal_leer_anf]
+                        lea bx,[di+y_normal_leer_ende]
+                        schon_gezeichnet
+                        if nz balken_grafik       224,ax,272,bx,farbe_ico_hintergrund
+
+                        ; ICO-Daten
+                        add si,anf_ICON
+                        lea ax,[di+y_normal_icon_anf]
+                        schon_gezeichnet
+                        if nz ico_anzeigen 232,ax,si
+
+                        ; Beschreibung-Balken
+                        lea ax,[di+y_normal_leer_anf]
+                        lea bx,[di+y_normal_leer_ende]
+                        schon_gezeichnet
+                        if nz balken_grafik       296,ax,496,bx,farbe_eintrag_hintergrund
+
+                        ; Beschreibung-Text
+                        add si,anf_Titeltext
+                        lea ax,[di+y_normal_text_anf]
+                        mov bl,farbe_eintrag_schrift_inaktiv
+                        cmp cx,standard_lw
+                        if e mov bl,farbe_eintrag_schrift_aktiv
+                        ausschrift_grafik   320,ax,si,bx,farbe_eintrag_hintergrund
+                        jmp zeilenanzeige_schleife
+
+                        ;***********************************************
+
+zeilenanzeige_schleife_text_verkuerzt:
+                        ; Berechnung Bildschirmzeile
+                        mov ax,y_kurz_raster
+                        dec cl
+                        mul cx
+                        inc cl
+                        add ax,w [ico_start_y_grafik]
+
+                        mov di,ax
+
+                        ; Taste-Balken
+                        lea ax,[di+y_kurz_leer_anf]
+                        lea bx,[di+y_kurz_leer_ende]
+
+                        schon_gezeichnet
+                        if nz balken_grafik       152,ax,200,bx,farbe_eintrag_hintergrund
+
+                        ; Taste-Text
+                        lea ax,[di+y_kurz_text_anf]
+                        mov bl,farbe_eintrag_schrift_inaktiv
+                        cmp cx,standard_lw
+                        if z mov bl,farbe_eintrag_schrift_aktiv
+                        ausschrift_grafik   168,ax,si,bx,farbe_eintrag_hintergrund
+
+                        ; ICO-Balken
+                        lea ax,[di+y_kurz_leer_anf]
+                        lea bx,[di+y_kurz_leer_ende]
+                        schon_gezeichnet
+                        if nz balken_grafik       224,ax,272,bx,farbe_ico_hintergrund
+
+                        ; ICO-Daten
+                        add si,anf_ICON
+                        lea ax,[di+y_kurz_icon_anf]
+                        schon_gezeichnet
+                        if nz ico_anzeigen 232,ax,si
+
+                        ; Beschreibung-Balken
+                        lea ax,[di+y_kurz_leer_anf]
+                        schon_gezeichnet
+                        if nz balken_grafik       296,ax,496,bx,farbe_eintrag_hintergrund
+
+                        ; Beschreibung-Text
+                        add si,anf_Titeltext
+                        lea ax,[di+y_kurz_text_anf]
+                        mov bl,farbe_eintrag_schrift_inaktiv
+                        cmp cx,standard_lw
+                        if z mov bl,farbe_eintrag_schrift_aktiv
+                        ausschrift_grafik   320,ax,si,bx,farbe_eintrag_hintergrund
+
+                        jmp zeilenanzeige_schleife
+                        ;***********************************************
+zeilenanzeige_schleife_text:
+
+                        mov di,farbe_eintrag_schrift_inaktiv
+                        cmp cx,standard_lw
+                        if z mov di,farbe_eintrag_schrift_aktiv
+
+
+                        mov al,3 ; 3 Zeilen pro Eintrag
+                        cmp anzahl_lw,6
+                        if a dec al ; nur 2 Zeilen
+                        dec cx
+                        mul cl
+                        inc cx
+                        add ax,w [ico_start_y_text]
+                        mov dx,ax
+                        inc dx
+                        mov bx,dx
+                        cmp anzahl_lw,6
+                        if na inc bx
+                        ; ax=Zeile Ûßßßßßß
+                        ; dx=Zeile Û
+                        ; bx=Zeile ÛÜÜÜÜÜÜ
+
+                        schon_gezeichnet
+                        if nz rechteck_text spalte_text_fx  ,ax  ,spalte_text_fx+1+2+2+2+1-1  ,bx  ,farbe_hintergrund,farbe_eintrag_hintergrund
+
+                        schon_gezeichnet
+                        if nz balken_text   spalte_text_fx+1,dx  ,spalte_text_fx+1+2+2+2+1-1-1,dx  ,farbe_eintrag_hintergrund
+
+                        ; F1
+                        ausschrift_text spalte_text_fx+1+2,dx,si,di,farbe_eintrag_hintergrund
+
+                        schon_gezeichnet
+                        if nz rechteck_text spalte_text_titel  ,ax  ,spalte_text_titel + 1+2+20+2+1-1  ,bx  ,farbe_hintergrund,farbe_eintrag_hintergrund
+
+                        schon_gezeichnet
+                        if nz balken_text   spalte_text_titel+1,dx  ,spalte_text_titel + 1+2+20+2+1-1-1,dx  ,farbe_eintrag_hintergrund
+
+                        add si,anf_ICON+anf_Titeltext
+                        ausschrift_text spalte_text_titel+1+2,dx,si,di,farbe_eintrag_hintergrund
+
+                        jmp zeilenanzeige_schleife
+
+
+zeilenanzeige_ende:
+
+                        schon_gezeichnet
+                        if nz aufblenden
+                        mov system_aw_ein,'1'
+                        call bildschirmschoner_aus
+
+systemauswahl_kurz:
+                        call hole_zeit_dx_cx
+
+                        cmp endzeit_lo,cx
+                        if e cmp endzeit_hi,dx
+                        if e jmp sys_enter
+
+                        call hole_taste_16_01
+                        je systemauswahl_kurz
+
+
+                        ; Taste->Zeitprfung aus (gemerktes dx,cx)
+                        dec dx
+                        mov endzeit_lo,cx
+                        mov endzeit_hi,dx
+
+                        call hole_taste_16_00
+
+                        ;--------------------------------------------
+                        ; Rechner anhalten ?
+                        cmp al,'h'
+                        jne nicht_anhalten
+                        mov cx,3
+                        call apm_aufruf
+                        jmp systemauswahl_kurz
+  nicht_anhalten:
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Rechner in Bereitschaftsmodus versetzen
+                        cmp al,'s'
+                        jne nicht_standby
+                        mov cx,2
+                        call apm_aufruf
+                        jmp systemauswahl_kurz
+  nicht_standby:
+                        ;--------------------------------------------
+
+
+                        ;--------------------------------------------
+                        ; Taste "Enter"
+                        cmp ax,01c0d
+                        je jmp_sys_enter
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Leertaste
+                        cmp ax,03920
+                        je jmp_sys_enter
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Taste "Pos1"
+                        cmp ax,04700
+                        jne nicht_nach_pos1
+
+                        mov w standard_lw,1
+                        jmp short jmp_systemauswahl_lang
+                        ;--------------------------------------------
+  nicht_nach_pos1:
+
+                        ;--------------------------------------------
+                        ; Taste "hoch"
+                        cmp ax,04800
+                        jne nicht_nach_oben
+
+                        dec w standard_lw
+                        cmp w standard_lw,0
+                        if e mov w standard_lw,w anzahl_lw
+                        jmp short jmp_systemauswahl_lang
+                        ;--------------------------------------------
+
+  nicht_nach_oben:
+                        ;--------------------------------------------
+                        ; Taste "runter"
+                        cmp ax,05000
+                        jne nicht_nach_unten
+
+                        mov bx,anzahl_lw
+                        inc w standard_lw
+                        cmp w standard_lw,bx
+                        if a mov standard_lw,1
+                        jmp short jmp_systemauswahl_lang
+                        ;--------------------------------------------
+
+  nicht_nach_unten:
+                        ;--------------------------------------------
+                        ; Taste "Ende"
+                        cmp ax,04f00
+                        jne nicht_nach_ende
+
+                        mov standard_lw,[anzahl_lw]
+                        jmp short jmp_systemauswahl_lang
+                        ;--------------------------------------------
+
+  nicht_nach_ende:
+                        ;--------------------------------------------
+                        ; Taste "Entfernen"
+                        cmp ax,05300
+                        if e jmp setup_aufruf
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; Funktionstasten F1..F10
+                        cmp al,00
+                        jne zifferntasten
+
+                        xchg al,ah
+                        cmp al,03b
+                        jnge jmp_systemauswahl_kurz
+                        sub al,03a
+                        cmp anzahl_lw,ax
+                        jnge jmp_systemauswahl_kurz
+                        mov standard_lw,ax
+                        ;-> sys_enter
+                        ;--------------------------------------------
+
+  jmp_sys_enter:
+                        jmp short sys_enter
+
+  jmp_systemauswahl_kurz:
+                        jmp systemauswahl_kurz
+
+  jmp_systemauswahl_lang:
+                        jmp systemauswahl_lang
+
+
+zifferntasten:
+                        ;--------------------------------------------
+                        ; Eingabe von '1'..'9','0'
+                        ;
+                        ; 0->10
+                        cmp al,'0'
+                        if e mov al,'9'+1
+
+                        cmp al,'1'
+                        jnge jmp_systemauswahl_kurz
+                        sub al,'0'
+                        null ah
+                        cmp anzahl_lw,ax
+
+                        jnge jmp_systemauswahl_kurz
+                        mov standard_lw,ax
+                        ;-> sys_enter
+                        ;--------------------------------------------
+
+sys_enter:
+                        ;--------------------------------------------
+                        ; Auswahl erfolgt,
+                        ; jetzt Bootsektor laden,anpassen und aufrufen
+                        ;
+                        call lies_standard_bootsektor
+                        if c jmp systemauswahl_lang
+
+                        call bildschirm_restaurieren
+
+versteckt_bootsektor_behandeln_und_ausfuehren:
+                        mov system_aw_ein,'0'
+
+                        ; ES: = Segment des Sektors
+                        call sektor_ziel
+
+                        mov dl,b [boot_dx]
+                        cmp dl,1
+                        je laufwerk_tauschen
+
+                        ; Anzahl der Sektoren vor dem Startsektor
+                        mov bx,w [boot_hidden_lo]
+                        mov cx,w [boot_hidden_hi]
+
+                        ; Physikalische Laufwerksbuchsnummer
+                        ;mov dl,dl
+
+                        ; Logischer Laufwerksbuchstabe
+                        mov al,b [boot_undok_lw]
+
+                        ; kompatibler Startsektor ?
+                        mov di,07c00
+                        ;--------------------------------------------
+                        ; FAT, HPFS
+                        ; bei [$1c].longint Anzahl Sektoren davor
+                        ; bei [$24].byte Physikalische Laufwerksnummer
+                        ; bei [$25].byte Laufwerksbuchstabe
+                        ; bei [$26].byte die Kennung $29/$28
+                        mov si,024
+                        cmp b es:[di+026],029 ; FAT
+                        je anpassen
+                        cmp b es:[di+026],028 ; HPFS
+                        je anpassen
+
+                        ;--------------------------------------------
+                        ; FAT32
+                        ; bei [$1c].longint Anzahl Sektoren davor
+                        ; bei [$40].byte Physikalische Laufwerksnummer
+                        ; bei [$41].byte Laufwerksbuchstabe ?
+                        ; bei [$42].byte die Kennung $29
+                        mov si,040
+                        cmp b es:[di+042],029 ; FAT32
+                        jne nicht_anpassen_fat32
+                        cmp w es:[di+052+0],'AF'
+                        jne nicht_anpassen_fat32
+                        cmp w es:[di+052+2],'3T'
+                        jne nicht_anpassen_fat32
+
+  anpassen:
+                        mov es:w [di+01c+0],bx  ; Versteckte Sektoren ..
+                        mov es:w [di+01c+2],cx  ; ..
+
+                        add di,si
+                        mov es:b [di],dl        ; physikalisches Laufwerk
+
+                        inc di
+                        or al,al
+                        if nz mov es:b [di],al  ; "reserved", Laufwerksbuchstabe
+
+  nicht_anpassen_fat32:
+                        jmp short anpassen_fertig
+                        ;
+                        ;--------------------------------------------
+
+                        ;--------------------------------------------
+                        ; A:/B: Tauscher einh„ngen
+laufwerk_tauschen:
+
+                        ; neu: Laufwerk-Swap
+                        teste_dos_aktiv
+                        je anpassen_fertig
+
+                        push ds
+                          push segment_00040
+                          pop ds
+                          dec w [00013]
+                          mov ax,[00013]
+                        pop ds
+
+                        shl ax,6
+
+                        mov ds,cs
+                        mov si,tauscher
+                        mov es,ax
+                        null di
+                        mov cx,tauscher_ende-tauscher
+                        call kopi_prozedur
+
+                        push ds
+                          mov ds,ax
+                          push segment_00000
+                          pop es
+
+                          mov ax,neuint13-tauscher
+                          mov dx,ds
+                          xchg ax,es:[4*00013]    ; set/getintvec(13)
+                          xchg dx,es:[4*00013+2]  ;
+                          mov [orgint13_o-tauscher],ax
+                          mov [orgint13_s-tauscher],dx
+                        pop ds
+                        xor b [boot_dx],1
+                        ;
+                        ;--------------------------------------------
+anpassen_fertig:
+
+                        call entferne_ps_maus
+                        call maustasten_loeschen
+
+
+                        ;--------------------------------------------
+                        teste_dos_aktiv
+                        je keine_a20_aenderung
+
+                        cmp b [os2_laeuft],1
+                        je keine_a20_aenderung
+
+                        cmp b [a20_abschalten],1
+                        jne keine_a20_aenderung
+
+                        call schalte_a20_ab
+  keine_a20_aenderung:
+                        ;--------------------------------------------
+
+
+                        call kopiere_itab_kopie
+                        call kopiere_fastboot_romhandler
+
+                        mov al,b [boot_patch]
+                        null ah
+
+                        call sektor_ziel
+                        mov di,07c00
+                        call boosektorcode_austauschen
+
+                        call versteckte_partitionen
+
+                        mov al,2
+                        call plugin_aufruf
+
+                        mov cx,standard_lw
+                        call berechne_datenanfang
+                        add si,off_tastendruecke
+                        sub ax,ax
+                        cld
+                        lodsb
+                        mov cx,ax
+                        jcxz tasten_schleife_ende
+  tasten_schleife:
+                        push cx
+                          lodsw
+                          mov cx,ax
+                          mov ah,005
+                          int 016
+                        pop cx
+                        loop tasten_schleife
+  tasten_schleife_ende:
+
+
+                        teste_dos_aktiv
+                        je dos_ende
+
+                        mov dx,w [boot_dx]
+                        mov cx,w [boot_cx]
+                        mov bx,07c00 ; nach :BX
+                        mov bp,bx
+                        mov si,bx
+                        mov di,bx
+                        null ax
+                        mov ds,ax
+                        mov es,ax
+                        cli
+                        mov ss,ax
+                        mov sp,bx
+                        sti
+                        mov ax,1 ; 1 Sektor gelesen
+
+                        jmp 00000:07C00
+
+dos_ende:
+
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+                        mov ax,standard_lw
+                        mov ah,04c
+                        int 021
+                        ;--------------------------------------------
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+setup_aufruf:
+
+                        cmp b cs:[bios_setup_gefunden],'A'
+                        jz award_setup_aufruf
+                        cmp b cs:[bios_setup_gefunden],'I'
+                        jz ami_setup_aufruf
+                        jmp systemauswahl_lang
+award_setup_aufruf:
+
+                        call bildschirm_restaurieren
+
+                        mov b cs:[putkeyzaehler],255
+
+                        cld
+                        mov si,tastenschlange_start
+putkey_schleife:
+                        cmp si,tastenschlange_ende
+                        jz putkey_schleife_ende
+                        lodsw
+                        mov cx,ax
+                        mov ah,005
+                        int 016
+                        jmp putkey_schleife
+putkey_schleife_ende:
+
+
+                        getintvec 016
+                        mov w cs:[orgi16_off],dx
+                        mov w cs:[orgi16_seg],ds
+
+                        mov ds,cs
+                        mov dx,neui16handler
+                        setintvec 016
+
+                        ; 1.Durchlauf
+                        mov al,0
+                        call d cs:[setup_bios_einsprung]
+
+                        sub sp,4+2+00200
+                        mov bp,sp
+
+                        ; 2.Durchlauf
+                        mov al,0aa
+                        call d cs:[setup_bios_einsprung]
+
+                        mov dx,w cs:[orgi16_off]
+                        mov ds,w cs:[orgi16_seg]
+                        setintvec 016
+
+                        ; Zurck ...
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+                        mov system_aw_ein,'0'
+                        jmp grafik_umschalten
+
+;-----------------------------------------------------
+
+ami_setup_aufruf:
+                        call bildschirm_restaurieren
+                        call d cs:[setup_bios_einsprung]
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+                        mov system_aw_ein,'0'
+                        jmp grafik_umschalten
+
+setup_bios_einsprung:
+setup_bios_einsprung_o: dw 0e81f
+setup_bios_einsprung_s: dw 0f000
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+funktion_16_00:
+                        popf
+                        mov ax,w [merker]
+                        mov w [merker],00000
+                        iret
+funktion_16_01:
+                        popf
+                        mov ax,w [merker]
+                        cmp ax,0 ; ZF=0
+                        iret
+funktion_16_05:
+                        popf
+                        cmp cl,0e0
+                        if z mov cl,0
+                        mov w [merker],cx
+                        mov al,000
+                        iret
+
+
+orgi16:
+orgi16_off: dw ?
+orgi16_seg: dw ?
+
+putkeyzaehler:          db 0
+merker:                 dw 0
+
+neui16handler:
+                        pushf
+                          cmp b cs:[putkeyzaehler],0
+                          jz weiter
+
+                          dec b cs:[putkeyzaehler]
+
+                          cmp ah,005
+                          jz funktion_16_05
+                          cmp w [merker],0
+                          jz weiter
+                          cmp ah,000
+                          jz funktion_16_00
+                          cmp ah,001
+                          jz funktion_16_01
+                          cmp ah,010
+                          jz funktion_16_00
+                          cmp ah,011
+                          jz funktion_16_01
+
+weiter:
+                        popf
+                        jmp d cs:[orgi16]
+
+enter_taste             equ 01c0d
+esc_taste               equ 0011b
+
+tastenschlange_start:
+                        dw esc_taste
+                        dw 'yy'
+                        dw enter_taste
+                        dw 'nn'
+                        dw '%%'
+                        dw '(('
+                        dw '::'
+                        ; dw enter_taste
+tastenschlange_ende:
+

@@ -1,0 +1,50 @@
+Got NEC USB 2.0 Card working, tested only with an Mouse..
+
+howto:
+
+  1) install cbenable, using PCI IRQ routing
+  
+  2) copy files and change (with an binary editor) OEMHLP$ to OEMHL2$.
+     You should find the files in \os2\boot\
+     hcimonit.exe -> hcimonit2.exe
+     usbehcd.sys  -> usbehcd2.sys 
+     usbohcd.sys  -> usbohcd2.sys 
+     usbuhcd.sys  -> usbuhcd2.sys
+     
+  3) run hcimonit2.exe. 
+     Example output:
+  
+      You have 2 PCI USB OHCI host controller(s)
+      You have 1 PCI USB UHCI host controller(s)
+      You have 1 PCI USB EHCI host controller(s)
+      
+     the UHCI is an onboard device, and the 2 OHCI and 1 EHCI
+     is from the card.
+
+  4) add more host controller drivers to config.sys
+  
+      BaseDev=cbenable.sys ....
+      BaseDev=oemhlp2.sys
+      ....
+      BaseDev=USBUHCD.SYS/V
+        that lines were already present
+        
+      BaseDev=USBOHCD2.SYS /V
+      BaseDev=USBOHCD2.SYS /V
+      BaseDev=USBEHCD2.sys /V
+        added lines
+      
+      BaseDev=USBD.SYS /V
+      BaseDev=USBHID.SYS /V
+      ...
+        that lines were already present      
+      
+  5) reboot and attach devices. NEVER remove the USB card,
+     before compleded shutdown, else the system will likely hang!
+
+
+Warning:
+  - during development a USB card got unusable (EPROM damage?),
+    reason unknown.
+  - do not remove or disable the card, the USB(U|O|E)HCD.SYS driver
+    can not handle the case of an suddenly unavailable controller.

@@ -1,0 +1,4 @@
+DGCP_PAT 16. 1.1999
+
+Fehlerbebung in Programmen die mit Watcom compilert wurden
+und die Funktion dos_get_code_page_ benutzen

@@ -1,0 +1,311 @@
+Title   Warn for memory usage below 640-4 KiB and offer hard disk init
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                include mbrlvm.inc
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+geom_cylinders          dd ?
+geom_heads              dd ?
+geom_sector_per_track   dd ?
+
+warning_9e00box         db warning_9e00box1
+                        db warning_9e00box2
+                        db warning_9e00box3
+                        db warning_9e00box4
+warning_9e00box_rows    equ 4
+warning_9e00box_columns equ ($-Offset warning_9e00box)/warning_9e00box_rows
+
+question_init_hd1       db msg_question_init_hd1,0
+question_init_hd2       db msg_question_init_hd2,0
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                ; OS2KRNL allows 8KiB of memory usage below 640KiB
+                ; in Int13 MiniVDM creation
+                ; this procedure checks that problem condition and
+                ;  - displays a message+short delay
+                ;  - checks all harddisks for not initialized partition tables
+                ;    + creates a dummy extended partition+ LVM info sector
+                ;      in that case.
+                ; ax=code segment for installation
+a_proc          check_problem_9e00
+                push es
+                pushad
+
+                  mov dx,Offset resident_code_mapped_for_minivdm
+                  shr dx,4
+                  add ax,dx
+
+                  cmp ax,09e00h
+                  jae exit_check_problem_9e00
+                 ;jae no_problem_9e00_init_hd
+
+
+;-                mov si,Offset warning_9e00
+;-                call ausschrift
+;-
+;-                mov ah,086h                   ; wait function
+;-wait_delay      equ 10*1024*1024
+;-                mov cx,(wait_delay shr 16)
+;-                mov dx,(wait_delay and 0ffffh)
+;-                int 015h
+
+
+                  mov si,Offset key_box_menu
+                  mov [si].mn_columns,warning_9e00box_columns
+                  mov [si].mn_first_menu_column,1
+                  mov [si].mn_last_menu_column,1
+                  mov [si].mn_rows,warning_9e00box_rows
+                  mov [si].mn_menu_image,Offset warning_9e00box
+                  mov [si].mn_waittime,30 ; 1/2 minute
+                  mov [si].mn_attribute_for_frame,error_TextAttr
+                 ;mov [si].mn_attribute_for_selection,error_TextAttr
+                  call show_menu
+
+
+
+  no_problem_9e00_init_hd:
+
+                  mov dx,00080h-1 ; check all HDs
+
+  initialize_all_hd_loop:
+                  cmp dx,000ffh
+                  je initialize_all_hd_break
+                  inc dx
+
+                  mov ax,00201h                 ; read 1 sector
+                  push cs
+                  pop es
+                  mov bx,Offset temp_sector
+                  mov DWord Ptr es:[bx+512-2],'%%%%'
+                  mov cx,00001h                 ; first sector in cylinder 0
+                 ;mov dx,dx
+                  call int_13
+                  test ah,ah
+                  jnz initialize_all_hd_loop    ; load failed
+
+                  cmp Word Ptr [bx+512],'%%'    ; Sector size >512 (CD-ROM)
+                  jne initialize_all_hd_loop
+
+                  ; valid?
+                  cmp [bx].ibm_sig,0aa55h
+                  je initialize_all_hd_loop
+
+                  mov ah,008h                   ; query driver parameters
+                  push dx
+                  push es
+                  call int_13
+                  pushf
+                  push eax
+                    movzx eax,dh
+                    inc eax
+                    mov geom_heads,eax
+                    mov al,cl
+                    and eax,03fh
+                    mov geom_sector_per_track,eax
+                    mov al,ch
+                    mov ah,cl
+                    shr ah,6
+                    inc eax
+                    mov geom_cylinders,eax
+                  pop eax
+                  popf
+                  pop es
+                  pop dx
+                  test ah,ah
+                  jnz initialize_all_hd_loop
+                  test ah,ah
+                  jnz initialize_all_hd_loop
+
+                  pushad
+                    mov ah,048h
+                    sub sp,01ah
+                    mov si,sp
+                    push ds
+                      push ss
+                      pop ds
+                      mov Word Ptr [si+0],01ah
+                      call int_13
+                    pop ds
+                    test ah,ah
+                    jnz geom_f48_not_useable
+
+                    mov eax,ss:[si+ 4] ; number of physical cylinders on drive
+                    mov geom_cylinders,eax
+                    mov eax,ss:[si+ 8] ; number of physical heads on drive
+                    mov geom_heads,eax
+                    mov eax,ss:[si+12] ; number of sectors per track
+                    mov geom_sector_per_track,eax
+
+  geom_f48_not_useable:
+                    add sp,01ah
+                  popad
+
+                  ; must have >=2 sectors per tract to be usable
+                  cmp geom_cylinders,2
+                  jb initialize_all_hd_loop
+
+
+  initialize_all_hd_ask_again:
+                  mov si,Offset question_init_hd1
+                  call ausschrift
+                  mov al,dl
+                  call ausschrift_al_hex
+                  mov si,Offset question_init_hd2
+                  call ausschrift
+                  call tastendruck_lowercase
+                  call ausschrift_zeichen
+                  call ausschrift_zeichen_CRLF
+                  cmp al,key_edit_save_changes_no
+                  je initialize_all_hd_loop
+                  cmp al,key_edit_save_changes_yes
+                  jne initialize_all_hd_ask_again
+
+                  ; use IBM MBR code, empty partition table
+                  cld
+                  mov di,Offset temp_sector
+                  mov si,Offset ibm_lvm_mbr_begin
+                  mov cx,Offset ibm_lvm_mbr_end-Offset ibm_lvm_mbr_begin
+                  rep movsb
+                  sub ax,ax
+                  mov cx,512-(Offset ibm_lvm_mbr_end-Offset ibm_lvm_mbr_begin)
+                  cld
+                  rep stosb
+                  mov di,Offset temp_sector
+                  ; sector 1 on second HD (search for bootmanager)
+                  mov Byte Ptr [di+01b6h],1
+                  ; special signature
+                  mov Word Ptr [di+01bch],0cc33h
+                  ; valid bootable sector signature
+                  mov [di].ibm_sig,0aa55h
+
+                  ; create dummy extended partition, one track
+                  mov di,Offset temp_sector.partition1
+                  mov [di].boot_indicator,0
+                  mov [di].begin_head,0
+                  mov [di].begin_sector,1
+                  mov [di].begin_cylinder,1
+                  mov [di].system_indicator,5
+                  mov eax,geom_heads
+                  dec eax
+                  mov [di].end_head,al
+                  mov al,Byte Ptr geom_sector_per_track
+                  mov [di].end_sector,al
+                  mov [di].end_cylinder,1
+                  push dx
+                    mov eax,geom_heads
+                    mul geom_sector_per_track
+                  pop dx
+                  mov [di].rel_sectors,eax
+                  mov [di].num_sectors,eax
+
+                  mov cx,00001h                 ; first sector in cylinder 0
+                 ;mov dx,dx
+                  call write_temp_sector
+                  jnz initialize_all_hd_loop    ; write failed
+
+
+                  ; create empty extended partition table
+                  cld
+                  mov di,Offset temp_sector
+                  mov cx,(512-2)/2
+                  sub ax,ax
+                  rep stosw
+                  mov ax,0aa55h
+                  stosw
+
+                  mov cx,00101h                 ; first sector in cylinder 1
+                 ;mov dx,dx
+                  call write_temp_sector
+                  jnz initialize_all_hd_loop    ; write failed
+
+
+                  ; prepare LVM info sector
+                  cld
+                  mov di,Offset temp_sector
+                  mov cx,512/2
+                  sub ax,ax
+                  rep stosw
+
+                  mov si,Offset temp_sector
+                  ; db 002,'RMBPMFD'
+                  mov dword ptr [si].lvm_beschreibungstabelle_typ.DLA_Signature+0,DLA_Signature_lo
+                  mov dword ptr [si].lvm_beschreibungstabelle_typ.DLA_Signature+4,DLA_Signature_hi
+
+                  push ds
+                    push bios0040
+                    pop ds
+                    mov eax,ds:[daily_timer_counter]
+                  pop ds
+                  add eax,'DSer'
+                  mov [si].lvm_beschreibungstabelle_typ.Disk_Serial_Number,eax
+                  add eax,'BSer'-'DSer'
+                  mov [si].lvm_beschreibungstabelle_typ.Boot_Disk_Serial_Number,eax
+                  mov eax,geom_cylinders
+                  mov [si].lvm_beschreibungstabelle_typ.Cylinders,eax
+                  mov eax,geom_heads
+                  mov [si].lvm_beschreibungstabelle_typ.Heads_Per_Cylinder,eax
+                  mov eax,geom_sector_per_track
+                  mov [si].lvm_beschreibungstabelle_typ.Sectors_Per_Track,eax
+                  ; '[ re''name'' me ''- HD''8''1'' ]' ]
+                  mov DWord Ptr [si].lvm_beschreibungstabelle_typ.Disk_Name+ 0,'er ['
+                  mov DWord Ptr [si].lvm_beschreibungstabelle_typ.Disk_Name+ 4,'eman'
+                  mov DWord Ptr [si].lvm_beschreibungstabelle_typ.Disk_Name+ 8,' em '
+                  mov DWord Ptr [si].lvm_beschreibungstabelle_typ.Disk_Name+12,'DH -'
+                  mov al,dl
+                  shr al,4
+                  call al_hex
+                  mov Byte  Ptr [si].lvm_beschreibungstabelle_typ.Disk_Name+16,al
+                  mov al,dl
+                  call al_hex
+                  mov Byte  Ptr [si].lvm_beschreibungstabelle_typ.Disk_Name+17,al
+                  mov Word  Ptr [si].lvm_beschreibungstabelle_typ.Disk_Name+18,'] '
+
+                 ;and [si].lvm_beschreibungstabelle_typ.DLA_CRC,0
+
+                  ; es:si,cx
+                  mov cx,512
+                  call init_crc32
+                  call calculate_crc32
+                  call free_crc32
+                  not eax
+                  mov [si].lvm_beschreibungstabelle_typ.DLA_CRC,eax
+
+
+                  mov ch,000h                   ; last sector in cylinder 0
+                  mov cl,Byte Ptr geom_sector_per_track
+                 ;mov dx,dx
+                  call write_temp_sector
+                  jnz initialize_all_hd_loop    ; write failed
+
+                  ; done, ok.
+                  jmp initialize_all_hd_loop
+
+
+  initialize_all_hd_break:
+
+
+  exit_check_problem_9e00:
+
+                popad
+                pop es
+                ret
+a_endp          check_problem_9e00
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                ; cx/dx
+                ; es=cs
+                ; ->ZF=0=no error
+a_proc          write_temp_sector
+                pusha
+                  mov ax,00301h                 ; write 1 sector
+                  mov bx,Offset temp_sector
+                  call int_13
+                  test ah,ah
+                popa
+                ret
+a_endp          write_temp_sector
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

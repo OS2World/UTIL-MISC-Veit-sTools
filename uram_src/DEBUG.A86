@@ -1,0 +1,913 @@
+Title   Auswerden von BIOS-Prozeduren
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+debug_cursor:                   dw ?
+
+_eax:                           dd ?
+_ecx:                           dd ?
+_edx:                           dd ?
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+ausschrift_zeichen_debug:
+                                cmp b cs:[einzelschrittmodus],'1'
+                                jne ret
+
+                                push ax
+                                  mov ah,00a
+                                  cld
+                                  mov di,cs:[debug_cursor]
+                                  stosw
+                                  mov cs:[debug_cursor],di
+                                pop ax
+                                ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift_byte_debug:
+                                cmp b cs:[einzelschrittmodus],'1'
+                                jne ret
+
+                                push ax,dx
+                                  null ah
+                                  aam 010
+                                  add  ax,'00'
+                                  cmp al,'9'
+                                  if a add al,'A'-'9'-1
+                                  xchg al,ah
+                                  cmp al,'9'
+                                  if a add al,'A'-'9'-1
+                                  mov dx,ax
+                                  call ausschrift_zeichen_debug
+                                  xchg al,dh
+                                  call ausschrift_zeichen_debug
+                                pop dx,ax
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift_word_debug:          xchg al,ah
+                                call ausschrift_byte_debug
+                                xchg al,ah
+                                call ausschrift_byte_debug
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift_dword_debug:         xchg ax,dx
+                                call ausschrift_word_debug
+                                xchg ax,dx
+                                call ausschrift_word_debug
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+                                ; pushf         ; [bp+6]
+                                ; push cs       ; [bp+4]
+                                ; push ip       ; [bp+2]
+int1_behandlung:
+                                push bp         ; [bp+0]
+                                  mov bp,sp
+
+                                  db 066
+                                  pusha
+                                    push ds,es
+
+                                      db 066
+                                      mov [_eax],ax
+                                      db 066
+                                      mov [_ecx],cx
+                                      db 066
+                                      mov [_edx],dx
+
+                                      ;--wrde fr GW2000 kein Code erzeugen
+                                      ;--mov ax,cs
+                                      ;--cmp [bp+4],ax
+                                      ;--if e jmp keine_behandlung
+
+                                      push 00040
+                                      pop ds
+
+                                      mov al,80*2
+                                      mul b [00050+1] ; Zeile Cursor
+                                      mov w cs:[debug_cursor],ax
+
+                                      push 0b800
+                                      pop es
+
+                                      cld
+                                      mov ax,[bp+4] ; CS
+                                      call ausschrift_word_debug
+                                      mov al,':'
+                                      call ausschrift_zeichen_debug
+                                      mov ax,[bp+2] ; IP
+                                      call ausschrift_word_debug
+
+                                      mov al,' '
+                                      call ausschrift_zeichen_debug
+                                      call ausschrift_zeichen_debug
+
+                                      lds si,[bp+2]
+
+                                      cmp w [si],0300f ; wrmsr
+                                      if e jmp debug_wrmsr
+
+                                      null cx
+
+                                      cmp b [si],0ec   ; in al,dx
+                                      je debug_in_08
+                                      cmp b [si],0ed   ; in ax,dx
+                                      je debug_in_16
+                                      cmp w [si],0ed66 ; in eax,dx
+                                      je debug_in_32
+
+                                      cmp b [si],0ee   ; out dx,al
+                                      if e jmp debug_out_08
+                                      cmp b [si],0ef   ; out dx,ax
+                                      if e jmp debug_out_16
+                                      cmp w [si],0ef66 ; out dx,eax
+                                      if e jmp debug_out_32
+
+                                      null dx
+                                      mov dl,[si+1]
+                                      cmp b [si],066
+                                      if e mov dl,[si+2]
+                                      mov w cs:[_edx],dx
+
+                                      cmp b [si],0e4   ; in al,[__]
+                                      je debug_in_08
+                                      cmp b [si],0e5   ; in ax,[__]
+                                      je debug_in_16
+                                      cmp w [si],0e566 ; in eax,[__]
+                                      je debug_in_32
+
+                                      cmp b [si],0e6   ; out [__],al
+                                      if e jmp debug_out_08
+                                      cmp b [si],0e7   ; out [__],ax
+                                      if e jmp debug_out_16
+                                      cmp w [si],0e766 ; out [__],eax
+                                      if e jmp debug_out_32
+
+
+                                      jmp debug_kein_io
+
+debug_in_32:
+                                      add cl,32-16
+debug_in_16:
+                                      add cl,   16-8
+debug_in_08:
+                                      add cl,      8
+
+                                      call vergiss_eax_cache_bits
+
+                                      mov al,'('
+                                      call ausschrift_zeichen_debug
+                                      mov ax,cx
+                                      call ausschrift_byte_debug
+                                      mov al,')'
+                                      call ausschrift_zeichen_debug
+
+                                      mov al,'<'
+                                      call ausschrift_zeichen_debug
+                                      mov al,'-'
+                                      call ausschrift_zeichen_debug
+
+                                      mov ax,w cs:[_edx]
+                                      call ausschrift_word_debug
+
+                                      ; "mov dx,zahl"
+                                      mov ax,w cs:[_edx]
+                                      call erzeuge_code_mov_dx_xxxx
+
+                                      mov al,066
+                                      cmp cl,32
+                                      if e call erzeuge_code_byte
+
+                                      mov al,0ed  ; in word/dword
+                                      cmp cl,8
+                                      if e mov al,0ec ; in byte
+                                      call erzeuge_code_byte
+
+                                      jmp debug_kein_io
+
+debug_wrmsr:
+                                      mov al,'M'
+                                      call ausschrift_zeichen_debug
+                                      mov al,'S'
+                                      call ausschrift_zeichen_debug
+                                      mov al,'R'
+                                      call ausschrift_zeichen_debug
+                                      mov al,'['
+                                      call ausschrift_zeichen_debug
+
+                                      mov ax,[_ecx+0]
+                                      mov dx,[_ecx+2]
+                                      call ausschrift_dword_debug
+
+                                      mov al,']'
+                                      call ausschrift_zeichen_debug
+                                      mov al,'='
+                                      call ausschrift_zeichen_debug
+
+                                      mov ax,[_edx+0]
+                                      mov dx,[_edx+2]
+                                      call ausschrift_dword_debug
+                                      mov ax,[_eax+0]
+                                      mov dx,[_eax+2]
+                                      call ausschrift_dword_debug
+
+                                      ; mov edx,'????'
+                                      ; mov eax,'????'
+                                      ; mov ecx,'????'
+                                      ; wrmsr
+
+                                      mov ax,[_edx+0]
+                                      mov dx,[_edx+2]
+                                      call erzeuge_code_mov_edx_xxxxxxxx
+                                      mov ax,[_eax+0]
+                                      mov dx,[_eax+2]
+                                      call erzeuge_code_mov_eax_xxxxxxxx
+                                      mov ax,[_ecx+0]
+                                      mov dx,[_ecx+2]
+                                      call erzeuge_code_mov_ecx_xxxxxxxx
+                                      mov ax,0300f
+                                      call erzeuge_code_word
+
+                                      jmp debug_kein_io
+
+debug_out_32:
+                                      add cl,32-16
+                                      mov ax,w cs:[_eax+2] ; eax(31..16)
+                                      call ausschrift_word_debug
+debug_out_16:
+                                      add cl,16-8
+                                      mov al,b cs:[_eax+1] ; ah
+                                      call ausschrift_byte_debug
+debug_out_08:
+                                      add cl,8
+                                      mov al,b cs:[_eax  ] ; al
+                                      call ausschrift_byte_debug
+
+
+                                      mov al,'-'
+                                      call ausschrift_zeichen_debug
+                                      mov al,'>'
+                                      call ausschrift_zeichen_debug
+                                      mov ax,w cs:[_edx]
+                                      call ausschrift_word_debug
+
+                                      ; "mov dx,zahl"
+                                      mov ax,w cs:[_edx] ; dx
+                                      call erzeuge_code_mov_dx_xxxx
+
+                                      cmp cl,32
+                                      jne nicht_out_32
+
+                                      ; mov eax,zahl
+                                      ; out dx,eax
+                                      mov ax,w cs:[_eax+0]
+                                      mov dx,w cs:[_eax+2]
+                                      call erzeuge_code_mov_eax_xxxxxxxx
+                                      mov al,066
+                                      call erzeuge_code_byte
+                                      mov al,0ef
+                                      call erzeuge_code_byte
+
+                            nicht_out_32:
+                                      cmp cl,16
+                                      jne nicht_out_16
+
+                                      ; mov ax,zahl
+                                      ; out dx,ax
+                                      mov ax,w cs:[_eax]
+                                      call erzeuge_code_mov_ax_xxxx
+                                      mov al,0ef
+                                      call erzeuge_code_byte
+
+                            nicht_out_16:
+                                      cmp cl,08
+                                      jne nicht_out_08
+
+                                      ; mov al,zahl
+                                      ; out dx,al
+                                      mov al,b cs:[_eax]
+                                      call erzeuge_code_mov_al_xx
+                                      mov al,0ee
+                                      call erzeuge_code_byte
+
+                            nicht_out_08:
+
+
+debug_kein_io:
+                                      ; keine Bildschirmverschiebungen wenn
+                                      ; URAMMIN erzeugt wird
+                                      cmp b cs:[einzelschrittmodus],'1'
+                                      jne keine_behandlung
+
+                                      push es
+                                      pop ds
+
+                                      mov si,80*2     ; Zeile 2
+                                      mov di,0        ; Zeile 1
+                                      mov cx,24*80*2/2
+                                      cld
+                                      rep movsw
+
+                                      mov ax,00700
+                                      mov cx,1*80*2/2
+                                      rep stosw
+
+                                      push 00040
+                                      pop ds
+
+                                      sti
+                                      mov cx,4 ; 4/18
+warte_schleife0:
+                                      mov ax,[0006c]
+warte_schleife1:
+                                      cmp ax,[0006c]
+                                      je warte_schleife1
+                                      loop warte_schleife0
+
+keine_behandlung:
+
+                                    pop es,ds
+                                  db 066
+                                  popa
+                                pop bp
+
+                                iret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+orgint1:                        dd ?
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+anfang_trace:                   db '¯',00d,00a,'$'
+
+installiere_tracer_prozedur:
+                                cmp b [generiere_uram_min],'0'
+                                jne installiere_tracer_prozedur_ja
+
+                                cmp b [einzelschrittmodus],'1'
+                                jne ret
+
+  installiere_tracer_prozedur_ja:
+
+                                push ax,bx,dx,ds,es
+
+                                  mov ax,03501
+                                  int 021
+                                  mov cs:[orgint1+0],bx
+                                  mov cs:[orgint1+2],es
+
+                                  mov ax,02501
+                                  push cs
+                                  pop ds
+                                  mov dx,int1_behandlung
+                                  int 021
+
+                                  cmp b [einzelschrittmodus],'1'
+                                  if e ausschrift_a anfang_trace
+
+                                  pushf
+                                  pop ax
+                                  or ax,Bit8
+                                  push ax
+                                  popf
+
+                                pop es,ds,dx,bx,ax
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ende_trace:                     db '®',00d,00a,'$'
+
+entferne_tracer_prozedur:
+                                cmp b [generiere_uram_min],'0'
+                                jne entferne_tracer_prozedur_ja
+
+                                cmp b [einzelschrittmodus],'1'
+                                jne ret
+
+  entferne_tracer_prozedur_ja:
+
+                                push ax,dx,ds
+
+                                  pushf
+                                  pop ax
+                                  and ax,0ffff-Bit8
+                                  push ax
+                                  popf
+
+                                  cmp b [einzelschrittmodus],'1'
+                                  if e ausschrift_a ende_trace
+
+                                  mov ax,02501
+                                  lds dx,cs:[orgint1]
+                                  int 021
+
+                                pop ds,dx,ax
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; AX
+erzeuge_code_word:
+                                call erzeuge_code_byte
+                                xchg al,ah
+                                call erzeuge_code_byte
+                                xchg al,ah
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; AL
+erzeuge_code_byte:
+                                push si,di
+                                  mov si,uram_min_puffer_gefuellt
+                                  mov di,uram_min_puffer
+                                  add di,w cs:[si]
+                                  mov b cs:[di],al
+                                  inc w cs:[si]
+                                pop di,si
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+vergessen_eax_bits_00_07        equ 1
+vergessen_eax_bits_08_15        equ 2
+vergessen_eax_bits_16_31        equ 4
+
+eax_cache_vergessen:            db vergessen_eax_bits_00_07+vergessen_eax_bits_08_15+vergessen_eax_bits_16_31
+eax_cache:                      dd 0
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; DX:AX|AX|AL=Wert
+
+erzeuge_code_mov_eax_xxxxxxxx:
+                                push bx
+                                  ; noch etwas im Cache ?
+                                  mov bl,b cs:[eax_cache_vergessen]
+                                  and bl,vergessen_eax_bits_00_07+vergessen_eax_bits_08_15+vergessen_eax_bits_16_31
+
+                                  ; Bits 0..7 gleich geblieben ?
+                                  cmp b cs:[eax_cache+0],al
+                                  if ne or bl,vergessen_eax_bits_00_07
+
+                                  ; Bits 8..15 gleich geblieben ?
+                                  cmp b cs:[eax_cache+1],ah
+                                  if ne or bl,vergessen_eax_bits_08_15
+
+                                  ; Bits 16..31 gleich geblieben ?
+                                  cmp w cs:[eax_cache+2],dx
+                                  if ne or bl,vergessen_eax_bits_16_31
+
+
+                                  ; nichts neues ?
+                                  cmp bl,0
+                                  je erzeuge_code_mov_eax_xxxxxxxx_weiter
+
+                                  ; Bits 16..31 neu ?
+                                  test bl,vergessen_eax_bits_16_31
+                                  jnz erzeuge_code_mov_eax_xxxxxxxx_lang
+
+                                  ; AX / AH / AL
+                                  call erzeuge_code_mov_ax_xxxx
+                                  jmp short erzeuge_code_mov_eax_xxxxxxxx_weiter
+
+
+  erzeuge_code_mov_eax_xxxxxxxx_lang:
+                                  ; MOV EAX,'????'
+                                  push ax
+                                    mov al,066
+                                    call erzeuge_code_byte
+                                    mov al,0b8
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  call erzeuge_code_word
+                                  xchg dx,ax
+                                  call erzeuge_code_word
+                                  xchg dx,ax
+                                  ; Merken
+                                  and b cs:[eax_cache_vergessen],0ff-vergessen_eax_bits_00_07-vergessen_eax_bits_08_15-vergessen_eax_bits_16_31
+                                  mov w cs:[eax_cache+0],ax
+                                  mov w cs:[eax_cache+2],dx
+                                  ;jmp short erzeuge_code_mov_eax_xxxxxxxx_weiter
+
+
+  erzeuge_code_mov_eax_xxxxxxxx_weiter:
+                                pop bx
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+erzeuge_code_mov_ax_xxxx:
+                                push bx
+                                  ; noch etwas im Cache ?
+                                  mov bl,b cs:[eax_cache_vergessen]
+                                  and bl,vergessen_eax_bits_00_07+vergessen_eax_bits_08_15
+
+                                  ; Bits 0..7 gleich geblieben ?
+                                  cmp b cs:[eax_cache+0],al
+                                  if ne or bl,vergessen_eax_bits_00_07
+
+                                  ; Bits 8..15 gleich geblieben ?
+                                  cmp b cs:[eax_cache+1],ah
+                                  if ne or bl,vergessen_eax_bits_08_15
+
+                                  ; nichts neues ?
+                                  cmp bl,0
+                                  je erzeuge_code_mov_ax_xxxx_weiter
+
+                                  ; AX ?
+                                  cmp bl,vergessen_eax_bits_00_07+vergessen_eax_bits_08_15
+                                  je erzeuge_code_mov_ax_xxxx_lang
+
+                                  ; AH oder AL
+                                  push ax
+                                    mov al,0b0 ; "MOV AL,'?'"
+                                    cmp bl,vergessen_eax_bits_08_15
+                                    if e mov al,0b4 ; "MOV AH,'?'"
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  push ax
+                                    cmp bl,vergessen_eax_bits_08_15
+                                    if e xchg al,ah
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  ; Merken
+                                  and b cs:[eax_cache_vergessen],0ff-vergessen_eax_bits_00_07-vergessen_eax_bits_08_15
+                                  mov w cs:[eax_cache],ax
+                                  jmp short erzeuge_code_mov_ax_xxxx_weiter
+
+  erzeuge_code_mov_ax_xxxx_lang:
+                                  ; MOV AX,'??'
+                                  push ax
+                                    mov al,0b8
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  call erzeuge_code_word
+                                  ; Merken
+                                  and b cs:[eax_cache_vergessen],0ff-vergessen_eax_bits_00_07-vergessen_eax_bits_08_15
+                                  mov w cs:[eax_cache],ax
+                                  ;jmp short erzeuge_code_mov_ax_xxxx_weiter
+
+  erzeuge_code_mov_ax_xxxx_weiter:
+                                pop bx
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+erzeuge_code_mov_al_xx:
+                                push bx
+                                  ; noch etwas im Cache ?
+                                  mov bl,b cs:[eax_cache_vergessen]
+                                  and bl,vergessen_eax_bits_00_07
+                                  jnz erzeuge_code_mov_al_xx_lang
+
+                                  ; Inhalt gleich ?
+                                  cmp b cs:[eax_cache],al
+                                  ; keine Kode zu generieren
+                                  je short erzeuge_code_mov_al_xx_weiter
+
+  erzeuge_code_mov_al_xx_lang:
+
+                                  ; MOV AL,'?'
+                                  push ax
+                                    mov al,0b0
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  call erzeuge_code_byte
+                                  ; Merken
+                                  and b cs:[eax_cache_vergessen],0ff-vergessen_eax_bits_00_07
+                                  mov b cs:[eax_cache],al
+                                  ;jmp short erzeuge_code_mov_al_xx_weiter
+
+  erzeuge_code_mov_al_xx_weiter:
+                                pop bx
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; CL=Bits
+vergiss_eax_cache_bits:
+                                cmp cl,32
+                                if e or b cs:[eax_cache_vergessen],vergessen_eax_bits_00_07+vergessen_eax_bits_08_15+vergessen_eax_bits_16_31
+
+                                cmp cl,16
+                                if e or b cs:[eax_cache_vergessen],vergessen_eax_bits_00_07+vergessen_eax_bits_08_15
+
+                                cmp cl,08
+                                if e or b cs:[eax_cache_vergessen],vergessen_eax_bits_00_07
+
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+vergessen_ecx_bits_00_07        equ 1
+vergessen_ecx_bits_08_15        equ 2
+vergessen_ecx_bits_16_31        equ 4
+
+ecx_cache_vergessen:            db vergessen_ecx_bits_00_07+vergessen_ecx_bits_08_15+vergessen_ecx_bits_16_31
+ecx_cache:                      dd 0
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; DX:AX|AX|AL=Wert
+
+erzeuge_code_mov_ecx_xxxxxxxx:
+                                push bx
+                                  ; noch etwas im Cache ?
+                                  mov bl,b cs:[ecx_cache_vergessen]
+                                  and bl,vergessen_ecx_bits_00_07+vergessen_ecx_bits_08_15+vergessen_ecx_bits_16_31
+
+                                  ; Bits 0..7 gleich geblieben ?
+                                  cmp b cs:[ecx_cache+0],al
+                                  if ne or bl,vergessen_ecx_bits_00_07
+
+                                  ; Bits 8..15 gleich geblieben ?
+                                  cmp b cs:[ecx_cache+1],ah
+                                  if ne or bl,vergessen_ecx_bits_08_15
+
+                                  ; Bits 16..31 gleich geblieben ?
+                                  cmp w cs:[ecx_cache+2],dx
+                                  if ne or bl,vergessen_ecx_bits_16_31
+
+
+                                  ; nichts neues ?
+                                  cmp bl,0
+                                  je erzeuge_code_mov_ecx_xxxxxxxx_weiter
+
+                                  ; Bits 16..31 neu ?
+                                  test bl,vergessen_ecx_bits_16_31
+                                  jnz erzeuge_code_mov_ecx_xxxxxxxx_lang
+
+                                  ; AX / AH / AL
+                                  call erzeuge_code_mov_cx_xxxx
+                                  jmp short erzeuge_code_mov_ecx_xxxxxxxx_weiter
+
+
+  erzeuge_code_mov_ecx_xxxxxxxx_lang:
+                                  ; MOV ECX,'????'
+                                  push ax
+                                    mov al,066
+                                    call erzeuge_code_byte
+                                    mov al,0b9
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  call erzeuge_code_word
+                                  xchg dx,ax
+                                  call erzeuge_code_word
+                                  xchg dx,ax
+                                  ; Merken
+                                  and b cs:[ecx_cache_vergessen],0ff-vergessen_ecx_bits_00_07-vergessen_ecx_bits_08_15-vergessen_ecx_bits_16_31
+                                  mov w cs:[ecx_cache+0],ax
+                                  mov w cs:[ecx_cache+2],dx
+                                  ;jmp short erzeuge_code_mov_ecx_xxxxxxxx_weiter
+
+
+  erzeuge_code_mov_ecx_xxxxxxxx_weiter:
+                                pop bx
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+erzeuge_code_mov_cx_xxxx:
+                                push bx
+                                  ; noch etwas im Cache ?
+                                  mov bl,b cs:[ecx_cache_vergessen]
+                                  and bl,vergessen_ecx_bits_00_07+vergessen_ecx_bits_08_15
+
+                                  ; Bits 0..7 gleich geblieben ?
+                                  cmp b cs:[ecx_cache+0],al
+                                  if ne or bl,vergessen_ecx_bits_00_07
+
+                                  ; Bits 8..15 gleich geblieben ?
+                                  cmp b cs:[ecx_cache+1],ah
+                                  if ne or bl,vergessen_ecx_bits_08_15
+
+                                  ; nichts neues ?
+                                  cmp bl,0
+                                  je erzeuge_code_mov_cx_xxxx_weiter
+
+                                  ; AX ?
+                                  cmp bl,vergessen_ecx_bits_00_07+vergessen_ecx_bits_08_15
+                                  je erzeuge_code_mov_cx_xxxx_lang
+
+                                  ; AH oder AL
+                                  push ax
+                                    mov al,0b1 ; "MOV CL,'?'"
+                                    cmp bl,vergessen_ecx_bits_08_15
+                                    if e mov al,0b5 ; "MOV CH,'?'"
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  push ax
+                                    cmp bl,vergessen_ecx_bits_08_15
+                                    if e xchg al,ah
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  ; Merken
+                                  and b cs:[ecx_cache_vergessen],0ff-vergessen_ecx_bits_00_07-vergessen_ecx_bits_08_15
+                                  mov w cs:[ecx_cache],ax
+                                  jmp short erzeuge_code_mov_cx_xxxx_weiter
+
+  erzeuge_code_mov_cx_xxxx_lang:
+                                  ; MOV CX,'??'
+                                  push ax
+                                    mov al,0b9
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  call erzeuge_code_word
+                                  ; Merken
+                                  and b cs:[ecx_cache_vergessen],0ff-vergessen_ecx_bits_00_07-vergessen_ecx_bits_08_15
+                                  mov w cs:[ecx_cache],ax
+                                  ;jmp short erzeuge_code_mov_cx_xxxx_weiter
+
+  erzeuge_code_mov_cx_xxxx_weiter:
+                                pop bx
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;;erzeuge_code_mov_cl_xx:
+;;                                push bx
+;;                                  ; noch etwas im Cache ?
+;;                                  mov bl,b cs:[ecx_cache_vergessen]
+;;                                  and bl,vergessen_ecx_bits_00_07
+;;                                  jnz erzeuge_code_mov_cl_xx_lang
+;;
+;;                                  ; Inhalt gleich ?
+;;                                  cmp b cs:[ecx_cache],al
+;;                                  ; keine Kode zu generieren
+;;                                  je short erzeuge_code_mov_cl_xx_weiter
+;;
+;;  erzeuge_code_mov_cl_xx_lang:
+;;
+;;                                  ; MOV CL,'?'
+;;                                  push ax
+;;                                    mov al,0b1
+;;                                    call erzeuge_code_byte
+;;                                  pop ax
+;;                                  call erzeuge_code_byte
+;;                                  ; Merken
+;;                                  and b cs:[ecx_cache_vergessen],0ff-vergessen_ecx_bits_00_07
+;;                                  mov b cs:[ecx_cache],al
+;;                                  ;jmp short erzeuge_code_mov_cl_xx_weiter
+;;
+;;  erzeuge_code_mov_cl_xx_weiter:
+;;                                pop bx
+;;                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+vergessen_edx_bits_00_07        equ 1
+vergessen_edx_bits_08_15        equ 2
+vergessen_edx_bits_16_31        equ 4
+
+edx_cache_vergessen:            db vergessen_edx_bits_00_07+vergessen_edx_bits_08_15+vergessen_edx_bits_16_31
+edx_cache:                      dd 0
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; DX:AX|AX|AL=Wert
+
+erzeuge_code_mov_edx_xxxxxxxx:
+                                push bx
+                                  ; noch etwas im Cache ?
+                                  mov bl,b cs:[edx_cache_vergessen]
+                                  and bl,vergessen_edx_bits_00_07+vergessen_edx_bits_08_15+vergessen_edx_bits_16_31
+
+                                  ; Bits 0..7 gleich geblieben ?
+                                  cmp b cs:[edx_cache+0],al
+                                  if ne or bl,vergessen_edx_bits_00_07
+
+                                  ; Bits 8..15 gleich geblieben ?
+                                  cmp b cs:[edx_cache+1],ah
+                                  if ne or bl,vergessen_edx_bits_08_15
+
+                                  ; Bits 16..31 gleich geblieben ?
+                                  cmp w cs:[edx_cache+2],dx
+                                  if ne or bl,vergessen_edx_bits_16_31
+
+
+                                  ; nichts neues ?
+                                  cmp bl,0
+                                  je erzeuge_code_mov_edx_xxxxxxxx_weiter
+
+                                  ; Bits 16..31 neu ?
+                                  test bl,vergessen_edx_bits_16_31
+                                  jnz erzeuge_code_mov_edx_xxxxxxxx_lang
+
+                                  ; AX / AH / AL
+                                  call erzeuge_code_mov_dx_xxxx
+                                  jmp short erzeuge_code_mov_edx_xxxxxxxx_weiter
+
+
+  erzeuge_code_mov_edx_xxxxxxxx_lang:
+                                  ; MOV EDX,'????'
+                                  push ax
+                                    mov al,066
+                                    call erzeuge_code_byte
+                                    mov al,0ba
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  call erzeuge_code_word
+                                  xchg dx,ax
+                                  call erzeuge_code_word
+                                  xchg dx,ax
+                                  ; Merken
+                                  and b cs:[edx_cache_vergessen],0ff-vergessen_edx_bits_00_07-vergessen_edx_bits_08_15-vergessen_edx_bits_16_31
+                                  mov w cs:[edx_cache+0],ax
+                                  mov w cs:[edx_cache+2],dx
+                                  ;jmp short erzeuge_code_mov_edx_xxxxxxxx_weiter
+
+
+  erzeuge_code_mov_edx_xxxxxxxx_weiter:
+                                pop bx
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+erzeuge_code_mov_dx_xxxx:
+                                push bx
+                                  ; noch etwas im Cache ?
+                                  mov bl,b cs:[edx_cache_vergessen]
+                                  and bl,vergessen_edx_bits_00_07+vergessen_edx_bits_08_15
+
+                                  ; nderung um +/- 1 ?
+                                  cmp bl,0
+                                  jne nicht_aenderung_dx_um_1
+
+                                  mov bx,ax
+                                  sub bx,w cs:[edx_cache+0]
+
+                                  ;----------------------------------
+                                  cmp bx,-1
+                                  jne nicht_erzeuge_code_dec_dx
+
+                                  ; DEC DX
+                                  dec w cs:[edx_cache+0]
+                                  mov al,04a
+                                  call erzeuge_code_byte
+                                  jmp erzeuge_code_mov_dx_xxxx_weiter
+  nicht_erzeuge_code_dec_dx:
+                                  ;----------------------------------
+
+                                  ;----------------------------------
+                                  cmp bx,+1
+                                  jne nicht_erzeuge_code_inc_dx
+
+                                  ; INC DX
+                                  inc w cs:[edx_cache+0]
+                                  mov al,042
+                                  call erzeuge_code_byte
+                                  jmp erzeuge_code_mov_dx_xxxx_weiter
+  nicht_erzeuge_code_inc_dx:
+                                  ;----------------------------------
+
+                                  null bx
+
+  nicht_aenderung_dx_um_1:
+                                  ; Bits 0..7 gleich geblieben ?
+                                  cmp b cs:[edx_cache+0],al
+                                  if ne or bl,vergessen_edx_bits_00_07
+
+                                  ; Bits 8..15 gleich geblieben ?
+                                  cmp b cs:[edx_cache+1],ah
+                                  if ne or bl,vergessen_edx_bits_08_15
+
+                                  ; nichts neues ?
+                                  cmp bl,0
+                                  je erzeuge_code_mov_dx_xxxx_weiter
+
+                                  ; AX ?
+                                  cmp bl,vergessen_edx_bits_00_07+vergessen_edx_bits_08_15
+                                  je erzeuge_code_mov_dx_xxxx_lang
+
+                                  ; AH oder AL
+                                  push ax
+                                    mov al,0b2 ; "MOV DL,'?'"
+                                    cmp bl,vergessen_edx_bits_08_15
+                                    if e mov al,0b6 ; "MOV DH,'?'"
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  push ax
+                                    cmp bl,vergessen_edx_bits_08_15
+                                    if e xchg al,ah
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  ; Merken
+                                  and b cs:[edx_cache_vergessen],0ff-vergessen_edx_bits_00_07-vergessen_edx_bits_08_15
+                                  mov w cs:[edx_cache],ax
+                                  jmp short erzeuge_code_mov_dx_xxxx_weiter
+
+  erzeuge_code_mov_dx_xxxx_lang:
+                                  ; MOV DX,'??'
+                                  push ax
+                                    mov al,0ba
+                                    call erzeuge_code_byte
+                                  pop ax
+                                  call erzeuge_code_word
+                                  ; Merken
+                                  and b cs:[edx_cache_vergessen],0ff-vergessen_edx_bits_00_07-vergessen_edx_bits_08_15
+                                  mov w cs:[edx_cache],ax
+                                  ;jmp short erzeuge_code_mov_dx_xxxx_weiter
+
+  erzeuge_code_mov_dx_xxxx_weiter:
+                                pop bx
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;;erzeuge_code_mov_cl_xx:
+;;                                push bx
+;;                                  ; noch etwas im Cache ?
+;;                                  mov bl,b cs:[edx_cache_vergessen]
+;;                                  and bl,vergessen_edx_bits_00_07
+;;                                  jnz erzeuge_code_mov_cl_xx_lang
+;;
+;;                                  ; Inhalt gleich ?
+;;                                  cmp b cs:[edx_cache],al
+;;                                  ; keine Kode zu generieren
+;;                                  je short erzeuge_code_mov_cl_xx_weiter
+;;
+;;  erzeuge_code_mov_cl_xx_lang:
+;;
+;;                                  ; MOV DL,'?'
+;;                                  push ax
+;;                                    mov al,0b2
+;;                                    call erzeuge_code_byte
+;;                                  pop ax
+;;                                  call erzeuge_code_byte
+;;                                  ; Merken
+;;                                  and b cs:[edx_cache_vergessen],0ff-vergessen_edx_bits_00_07
+;;                                  mov b cs:[edx_cache],al
+;;                                  ;jmp short erzeuge_code_mov_cl_xx_weiter
+;;
+;;  erzeuge_code_mov_cl_xx_weiter:
+;;                                pop bx
+;;                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+

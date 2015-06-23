@@ -1,0 +1,13 @@
+Benutzerdokumentation         COMPDECO                    Veit Kannegieser
+ננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננ
+
+Entpackt COMPAQ-BIOS-Abbilder. COMPDECO entpackt nicht die ROMPAQ-Kompression,
+benutzen sie dazu ROMPAQ.EXE /D oder Typ. Einige COMPAQ-BIOS-Versionen sind
+nicht gepackt, andere basieren auf dem Phoenix-BIOS.
+
+Benutzung: COMPDECO <Dateiname> [ <Zielverzeichnis> ]
+
+Beispiel fr COMPAQ Armada:
+  FIREA100.F7E (275KiB) wurde mit ROMPAQ nach FIREA10 (512 KiB) entpackt.
+
+  'COMPDECO.EXE FIREA10 FIREA10.x\' entpackt die einzelnen Bl”cke

@@ -1,0 +1,15 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_gleiche_Dateinamen  :^string;
+  textz_Benutzung_SCHNITT_Quelldatei  :^string;
+  textz_Der_Parameter  :^string;
+  textz_ist_unsinnig  :^string;
+  textz_Die_Startpostion_in_der_Quelldatei_liegt_ausserhalb_der_Dateigrenzen  :^string;
+  textz_Der_Parameter_Laenge_ist_groesser_als_der_Rest_der_Quelldatei  :^string;
+  textz_Fehler  :^string;
+  textz_tabelle_z1  :^string;
+  textz_tabelle_z2  :^string;
+  textz_tabelle_z3  :^string;
+  textz_tabelle_z4  :^string;
+  textz_tabelle_z5  :^string;

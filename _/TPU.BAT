@@ -1,0 +1,6 @@
+@ECHO OFF
+TPC %1.PAS
+MD C:\BP\U2
+IF     [%OS%]==[OS2] COPY %1.TPU C:\BP\U2
+IF NOT [%OS%]==[OS2] COPY %1.TPU C:\BP\U2\
+

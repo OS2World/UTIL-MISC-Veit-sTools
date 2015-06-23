@@ -1,0 +1,77 @@
+; Ausschalten einer PCMCIA/Cardbus-Karte
+; 2000.07.21 Veit Kannegieser
+
+                        .586p
+;####################################################################
+
+data16                  segment word public 'DATA' use16
+
+                        dd -1
+                        dw 08000h
+                        dw offset strat
+                        dw 0
+                        db 'PCCOFF$$'
+                        db 8 dup (0)
+
+data16                  ends
+
+;####################################################################
+
+code16                  segment word public 'CODE' use16
+
+ausschalten             proc near
+
+                        or al,002h
+
+                        out dx,al
+                        inc dx
+                          xchg al,ah
+                            in al,dx
+                          xchg al,ah
+                        dec dx
+
+                        and ah,0ffh-010h
+
+                        out dx,al
+                        inc dx
+                          xchg al,ah
+                            out dx,al
+                          xchg al,ah
+                        dec dx
+
+                        ret
+ausschalten             endp
+
+;--------------------------------------------------------------------
+
+strat                   proc far
+
+                        mov dx,003e0h
+
+                        mov al,000h
+                        call ausschalten
+
+                        mov al,040h
+                        call ausschalten
+
+                        mov al,080h
+                        call ausschalten
+
+                        mov al,0c0h
+                        call ausschalten
+
+                        sub ax,ax
+                        mov word ptr es:[bx+14],ax      ; kein  Code
+                        mov word ptr es:[bx+16],ax      ; keine Daten
+                        mov word ptr es:[bx+ 3],08115h  ; Fehler+fertig+noncritical
+
+                        retf
+
+strat                   endp
+
+code16                  ends
+
+;####################################################################
+
+end
+

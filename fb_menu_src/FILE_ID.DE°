@@ -1,0 +1,13 @@
+
+* verhindert Rechnerneustart 
+  bei geladenem TaskMgr
+
+* šbergeht Selbsttest 
+  beim Rechnerneustart
+
+* funktioniert auch wenn
+  mit URAM der Bereich F000-F7FF
+  fr DOS belegt wurde
+
+* rettet auch noch bei
+  jmp FFFF:0000

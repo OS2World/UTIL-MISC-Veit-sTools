@@ -1,0 +1,45 @@
+; aus FBOOT.EXE (2.13)
+; FÅllt Segmente $4000 bis $7800
+; das ist kein Problem weil VPart bei $8000 anfÑngt
+
+kopiere_fastboot_romhandler:
+                cmp b cs:[dos_test],'D'
+                if e ret
+
+                pusha
+                  push ds
+                    push es
+
+                      cld
+                      push 0
+                      pop ds
+                      mov bx,04000
+      sl_fb_1:
+                      mov es,bx
+                      sub si,si
+                      sub di,di
+                      sub ax,ax
+                      sub bp,bp
+                      sub dx,dx
+                      mov cx,00504
+      sl_fb_2:
+                      lodsb
+                      stosb
+                      rol ax, cl
+                      add ax, cx
+                      add bp, ax
+                      adc dx, bx
+                      loop sl_fb_2
+
+                      xchg ax, bp
+                      stosw
+                      xchg ax, dx
+                      stosw
+                      add bh, 8
+                      jns sl_fb_1
+
+                    pop es
+                  pop ds
+                popa
+
+                ret

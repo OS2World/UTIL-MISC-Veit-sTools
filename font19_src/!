@@ -1,0 +1,18 @@
+abgehakt
+  crtc.7  or $10 (line compare +$100)
+
+  polarit„t (480) und clock „ndern
+   vielleicht clock #3
+
+  Kopieren von BIOS-Tabellen (mit Plausibilit„tstest)
+    wozu
+
+  test TShell
+    funktioniert
+
+  dos command center 100x? modus
+    funktioniert nicht, scitech kann es besser
+
+  Unterstreingung bei 'lx /?' untersuchen
+    gel”st
+    

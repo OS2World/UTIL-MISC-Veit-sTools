@@ -1,0 +1,245 @@
+;*****************************************************
+
+sektoren_pro_spur       equ 07c18
+anzahl_seiten           equ 07c1a
+ms_ibm_patch_stelle     equ 07d9b
+datei_1                 equ 07de6
+datei_1_wert            equ 001
+datei_2                 equ 07df1
+datei_2_wert            equ 002
+datei_namenlaenge       equ 8+3
+datei_verz_laenge       equ 020
+datei_eintraege         equ 16 ; 0200 / 020
+
+;*****************************************************
+
+org 00100
+
+                        mov ax,00201
+                        mov bx,lesen
+                        mov cx,1
+                        mov dx,0
+                        call 07e00
+                        mov ax,04c00
+                        int 021
+
+lesen:
+                        db 00200 dup ?
+
+org datei_1
+                        db 'IO      DOS'
+org datei_2
+                        db 'MSDOS   DOS'
+
+;þþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþ
+;þþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþ
+org 07e00
+
+                        jmp short start_verzeichnis_suche
+
+;*****************************************************
+
+bx13:                   dw 'uS'
+cx13:                   dw 'hc'
+dx13:                   dw 'De'
+sekt_zaehler:           dw 'SO'
+seiten_zaehler:         db '*'
+
+datei_gefunden_wert:    db 0
+
+fehler_text1_start:
+                        db 00d,00a
+                        db 'VPart: ',00d,00a
+fehler_text1_ende:
+
+fehler_text2_start:
+                        db 00d,00a
+fehler_text2_ende:
+
+fehler_text3_start:
+                        db 00d,00a
+                        #if deutsch
+                        db 'nicht im Stammverzeichnis gefunden ... '
+                        #endif
+                        #if englisch
+                        db 'not found in rootdirectory ... '
+                        #endif
+fehler_text3_ende:
+
+;*****************************************************
+; Hilfsprozedur
+ausschrift:
+                          cld
+                          mov ah,00e
+                          xor bx,bx
+ausschrift_schleife:
+                          lodsb
+                          int 010
+                          loop ausschrift_schleife
+
+                          ret
+;
+;*****************************************************
+
+;*****************************************************
+; Eingabe
+;   si=Verzeichnisquelle
+;   di=geforderter Name
+;   dl=Dateiname(1/2)
+;   bx=Ziel bei Richtigkeit
+; Ausgabe
+;   si,di unver„ndert
+vergleiche_verzeichniseintrag:
+                         push si
+                           push di
+                             mov cx,datei_namenlaenge
+                             cld
+                             rep cmpsb
+                             jnz vergleiche_verzeichniseintrag_nicht_erfolgreich
+
+                             ; richtig -> kopieren
+                             sub si,datei_namenlaenge
+                             mov di,bx
+                             mov cx,datei_verz_laenge
+                             cld
+                             rep movsb
+                             or [datei_gefunden_wert],dl
+
+vergleiche_verzeichniseintrag_nicht_erfolgreich:
+                           pop di
+                         pop si
+
+                         ret
+;
+;*****************************************************
+
+start_verzeichnis_suche:
+
+
+                        push si,di
+
+                          mov [bx13],bx
+                          mov [cx13],cx
+                          mov [sekt_zaehler],cx
+                          mov [seiten_zaehler],dh
+                          mov [dx13],dx
+
+such_lese_schleife:
+
+                          mov ax,00201
+                          mov bx,such_puffer
+                          mov cx,[sekt_zaehler]
+                          mov dx,[dx13]
+                          mov dh,[seiten_zaehler]
+                          int 013
+                          jnc suche_start
+
+                          mov ax,00201
+                          int 013
+                          if c jmp abbruch
+
+;*****************************************************
+; Vergleiche Verzeichniseintrag k*16+0 bis k*16+15
+
+suche_start:
+
+                          ;test b [datei_gefunden_wert],1
+                          ;jnz suche_datei_1_fertig
+
+                          mov cx,datei_eintraege
+datei_1_suche:
+                          push cx
+
+                            mov ax,datei_eintraege
+                            sub ax,cx
+                            mov si,ax
+                            shl si,5 ; *32
+                            add si,such_puffer
+                            cmp b [si],0
+                            if z jmp verzeichnisende
+
+                            mov di,datei_1
+                            mov dl,datei_1_wert
+                            mov bx,[bx13]
+                            call vergleiche_verzeichniseintrag
+
+                            mov di,datei_2
+                            mov dl,datei_2_wert
+                            mov bx,[bx13]
+                            add bx,datei_verz_laenge
+                            call vergleiche_verzeichniseintrag
+
+                          pop cx
+
+                          cmp b [datei_gefunden_wert],datei_1_wert+datei_2_wert
+                          if z jmp beide_dateien_gefunden
+
+                          loop datei_1_suche
+
+
+                          mov ax,[sekt_zaehler]
+                          inc w [sekt_zaehler]
+                          and ax,63              ; ohne Zylinder
+                          cmp ax,[sektoren_pro_spur]
+                          jnz seitenwechsel_fertig
+
+                          dec w [sekt_zaehler]
+                          and w [sekt_zaehler],0ffff-63 ; Bit 5..0 auf 0
+                          inc w [sekt_zaehler]          ; Sektorzahl 1..63
+                          inc b [seiten_zaehler]
+                          mov ax,[seiten_zaehler]
+                          cmp ax,[anzahl_seiten]
+                          jnz seitenwechsel_fertig
+
+                          add w [sekt_zaehler],00100 ; +1 Spur
+                          mov b [anzahl_seiten],0
+
+seitenwechsel_fertig:
+                          jmp such_lese_schleife
+
+verzeichnisende:
+                          pop cx
+
+abbruch:
+                          ; Fehlerausschrift
+                          mov cx,fehler_text1_ende-fehler_text1_start
+                          mov si,fehler_text1_start
+                          call ausschrift
+                          mov cx,datei_namenlaenge
+                          mov si,datei_1
+                          call ausschrift
+                          mov cx,fehler_text2_ende-fehler_text2_start
+                          mov si,fehler_text2_start
+                          call ausschrift
+                          mov cx,datei_namenlaenge
+                          mov si,datei_2
+                          call ausschrift
+                          mov cx,fehler_text3_ende-fehler_text3_start
+                          mov si,fehler_text3_start
+                          call ausschrift
+
+                          mov ah,000
+                          int 016
+
+                          int 019
+
+
+beide_dateien_gefunden:
+
+                          mov ax,00001
+                          mov bx,[bx13]
+                          mov cx,[cx13]
+                          mov dx,[dx13]
+
+                          mov b [ms_ibm_patch_stelle+0],0cd
+                          mov b [ms_ibm_patch_stelle+1],013
+                        pop di,si
+
+                        clc
+
+                        ret
+
+;*****************************************************
+
+such_puffer:
+                        ; db 0200 dup ?

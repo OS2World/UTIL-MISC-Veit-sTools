@@ -1,0 +1,10 @@
+e_* programs are encoders from 8 bit codepage to unicode/utf8
+d_* programs are decoders from unicode/utf8 to 8 bit codepage
+*u programs use UniApi dlls (OS/2 only)
+*z programs use zst unit, is not as good, simpler and portable
+
+utf8.pas does core encode/decode
+utf8u.pas uses utf8 and UniApi for codepage strings
+utf8z.pas uses utf8 and zst for codepage strings
+
+850.* and UTF8demo.txt (UTF-8-demo.txt) are sample files

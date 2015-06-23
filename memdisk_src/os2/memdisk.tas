@@ -1,0 +1,1247 @@
+; Veit Kannegieser 2001.12.22
+
+Title                   Memory emulated DASD adapter for system boot
+
+                        .486p
+                        locals @@
+
+                        include build.cfg
+
+data                    Segment 'DATA' Use16 Public
+data                    ends
+code                    Segment 'CODE' Use16 Public
+code                    ends
+
+;********************************************************************
+
+data                    Segment
+                       ;assume cs:code
+                        assume ds:data
+
+                        include iorb.inc
+                        include mbios.inc
+                        include devcmd.inc
+                        include devhdr.inc
+                        include devhlp.inc
+                        include mac1.inc
+                        include def1.inc
+                        include def2.inc
+
+memdisk_add_workspace   Struc
+  disk_position         dd ?                    ; current physical "seek" position
+memdisk_add_workspace   EndS
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+                        dd -1
+                        dw DEV_CHAR_DEV+DEVLEV_3
+                        dw Offset memdisk_strategy
+                        dw NULL
+                        db 'MEM$DISK'
+                        dw 4 dup (0)
+                        dd DEV_ADAPTER_DD+DEV_16MB      ; adapter device driver, >16MB address
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+Device_Help             dd ?
+                        Public Device_Help
+
+CommandCode             dw function_unknown     ; 0
+                        dw function_CONFIGURATION
+                        dw function_UNIT_CONTROL
+                        dw function_GEOMETRY
+                        dw function_EXECUTE_IO
+                        dw function_unknown     ; IOCC_FORMAT
+                        dw function_UNIT_STATUS
+                        dw function_DEVICE_CONTROL
+CommandCode_High        equ IOCC_DEVICE_CONTROL
+                        ; not implemented:
+                        ; IOCC_ADAPTER_PASSTHRU
+                        ; IOCC_RESOURCE
+                        Public CommandCode
+
+
+EXECUTE_IO              dw function_unknown     ; 0
+                        dw function_READ
+                        dw function_VERIFY
+                        dw function_unknown     ; prefetch
+                        dw function_WRITE
+                        dw function_WRITE       ; WRITE_VERIFY
+EXECUTE_IO_High         equ IOCM_WRITE_VERIFY
+                        Public EXECUTE_IO
+
+physical_address        dd ?
+anzahl_sektoren_je_spur dd 32
+anzahl_koepfe           dd 4
+anzahl_zylinder         dd 100
+anzahl_sektoren         dd ?
+                        Public physical_address,anzahl_sektoren_je_spur,anzahl_koepfe,anzahl_zylinder,anzahl_sektoren
+
+disk_GDT                dw 0                    ; "disk" access
+dmd_GDT                 dw 0                    ; .DMD buffer access
+                        Public disk_GDT,dmd_GDT
+
+ADDDHandle              dw ?
+                        Public ADDDHandle
+
+my_UnitHandle           equ 'UH'                ; since we only have one unit
+                                                ; it is check-only.
+
+init_done               db false
+allocated               db false
+                        Public init_done,allocated
+
+
+behave_as_a_floppy      db false
+                        Public behave_as_a_floppy
+
+lockstate               dw 0
+                        Public lockstate
+
+MyAdapterInfo           ADAPTERINFO <>
+changed_unitinfo_ptr    dd 0
+                        Public MyAdapterInfo,changed_unitinfo_ptr
+
+data_end                label byte
+
+;********************************************************************
+
+                        include resmgrd.inc
+                        include resmgrdi.inc
+
+                        ;  '12345678901234567'
+MyAdapterName           db 'mem disk adapter',0
+
+                        ;   1234567890123456
+ADD_Name                db 'virtual Harddisk',0
+ADD_Name_removable      db 'virtual removable disk',0
+
+Message_table           dw 1178 ; "%1"  ; message number
+                        dw 1            ; one paramter
+fillin_string_ofs       dw ?            ; first fill in item
+                        dw data
+
+Message_title           db 'MemDisk * Veit Kannegieser * 2001.12.22 .. ',datum,0
+Message_BIOS_not_found  db 'BIOS filter code not found.',0
+Message_bios_data_error db 'BIOS MemDisk data block is invalid.',0
+Message_GDT             db 'GDT error.',0
+Message_Register        db 'RegisterDeviceClass failed.',0
+Message_physaddr        db 'Physical Address of Memory Disk is '
+  Message_physaddr_addr db 'xxxxxxxx',0
+Message_cmdline_error   db 'usage: BASEDEV=MemDisk.ADD [/Q|/V]',13,10
+                        db '  /Q|V .. quiet and verbose message mode.',13,10,0
+
+p_Disk_Config_Table     dd ?
+l_Disk_Config_Table     dw ?
+                        Public p_Disk_Config_Table,l_Disk_Config_Table
+
+quiet                   db true
+                        Public quiet
+
+data                    Ends
+
+;********************************************************************
+
+code                    Segment
+                        assume cs:code
+                        assume ds:data
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+a_proc                  DeviceHelper
+                        call [Device_Help]
+
+                      ; jnc @@exit
+                      ; i n t  3
+  @@exit:
+                        ret
+a_endp                  DeviceHelper
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+a_proc                  memdisk_strategy
+                        pushad
+
+                        ; error,unknown command
+                        mov ax,08003h
+
+                        ; basedev init command ?
+                        cmp es:RequestBlock[bx].Command_Code,CMDInitBase
+                        jne @@not_init
+
+                        ; double check
+                        cmp [init_done],true
+                        je @@not_init
+
+                        ; install
+                        call do_init
+                        mov es:RequestBlock[bx].Data_1,0
+                        and es:RequestBlock[bx].Pointer_2,0
+                       ;jmp @@strat_done
+  @@not_init:
+                        ;cmp es:RequestBlock[bx].Command_Code,CMDGetDevSupport
+                        ; note: we do not support EDDI "STRAT2"
+                        ; makes not sense since we immedialtely process any request
+  @@strat_done:
+                        ; done.
+                        or  ax,00100h
+                        mov es:RequestBlock[bx].Request_Packet_Status,ax
+
+                        popad
+                        retf
+a_endp                  memdisk_strategy
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+; DX:AX->FLAT:EAX
+a_proc                  SelectorToFlat
+                        push esi
+                        push dx
+
+                        movzx esi,ax    ; Offset
+                        mov ax,dx       ; Selector
+                        mov dl,DevHlp_VirtToLin
+                        call DeviceHelper
+
+                        pop dx
+                        pop esi
+                        ret
+a_endp                  SelectorToFlat
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+; ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+a_proc                  ADD_functionhandler
+
+                        push bp
+                          mov bp,sp
+
+                          push fs               ;\ set to
+                            push bx             ;/   IORB
+                              push di           ;>   subfunction
+                                push ds         ;>   data16
+
+                                  mov bx,data
+                                  mov ds,bx
+
+                                  lfs bx,[bp+2+4]
+  @@funcion_loop:
+                                  ; assume no error, then check..
+                                  mov fs:IORBH[bx].IOH_Status,0
+                                  mov fs:IORBH[bx].IOH_ErrorCode,0
+
+                                  ; valid command code ?
+                                  mov di,fs:IORBH[bx].IOH_CommandCode
+                                  cmp di,CommandCode_High
+                                  ja @@invalid_CommandCode
+
+                                  ; IOCC_CONFIGURATION does not need an unithandle
+                                  cmp di,IOCC_CONFIGURATION
+                                  je @@accept_unithandle
+                                  cmp fs:IORBH[bx].IOH_UnitHandle,my_UnitHandle
+                                  je @@accept_unithandle
+
+                                  ; wrong IOH_UnitHandle
+                                  mov fs:IORBH[bx].IOH_Status,IORB_ERROR
+                                  mov fs:IORBH[bx].IOH_ErrorCode,IOERR_CMD_SYNTAX
+                                  jmp @@not_unknown_command
+  @@accept_unithandle:
+                                  ; for IOCC_GEOMETRY..IOCC_RESOURCE the unit must be allocated
+                                  cmp di,IOCC_GEOMETRY
+                                  jnae @@no_not_allocated_error
+                                  cmp allocated,true
+                                  je @@no_not_allocated_error
+
+  @@no_not_allocated_error:
+                                  ; call command handler
+                                  shl di,1
+                                  call CommandCode[di]
+                                  jmp @@not_unknown_command
+  @@invalid_CommandCode:
+                                  call function_unknown
+  @@not_unknown_command:
+                                  ; one request elemenent is done
+                                  or fs:IORBH[bx].IOH_Status,IORB_DONE
+
+
+                                  ; save the pointer to the next IORB
+                                  ; since after calling the notify procedure,
+                                  ; the IORB is no longer valid.
+
+                                  sub ax,ax
+                                  sub di,di
+                                  ; chained request?
+                                  test fs:IORBH[bx].IOH_RequestControl,IORB_CHAIN
+                                  jz @@no_pNxtIORB
+
+                                  mov di,fs:IORBH[bx].IOH_pNxtIORB.offs
+                                  mov ax,fs:IORBH[bx].IOH_pNxtIORB.sel
+  @@no_pNxtIORB:
+
+                                  ; should completion callback called ?
+                                  test fs:IORBH[bx].IOH_RequestControl,IORB_ASYNC_POST
+                                  jz @@no_completion_callback
+
+                                  pushad
+                                  push gs
+                                  push fs
+
+                                    push fs
+                                    push bx
+                                    call fs:IORBH[bx].IOH_NotifyAddress
+                                    add sp,4
+
+                                  pop fs
+                                  pop gs
+                                  popad
+
+  @@no_completion_callback:
+                                  ; chained request? (ax:di)
+                                  test ax,ax
+                                  jz @@function_exit    ; no.
+
+                                  ; load+process it
+                                  mov fs,ax
+                                  mov bx,di
+                                  jmp @@funcion_loop
+  @@function_exit:
+
+                                pop ds
+                              pop di
+                            pop bx
+                          pop fs
+
+                        pop bp
+                        retf
+a_endp                  ADD_functionhandler
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+a_proc                  function_unknown
+                        mov fs:IORBH[bx].IOH_Status   ,IORB_ERROR
+                        mov fs:IORBH[bx].IOH_ErrorCode,IOERR_CMD_NOT_SUPPORTED
+                        ret
+a_endp                  function_unknown
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+;a_proc                 function_do_nothing
+;                       ; error code and flag is already cleared
+;                       ret
+;a_endp                 function_do_nothing
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+a_proc                  function_CONFIGURATION
+                        pushad
+
+                        mov ax,fs:IORBH[bx].IOH_CommandModifier
+                        cmp ax,IOCM_COMPLETE_INIT
+                        je @@exit                       ; succesful
+
+                        cmp ax,IOCM_GET_DEVICE_TABLE
+                        jne @@not_IOCM_GET_DEVICE_TABLE
+
+                        les di,fs:IORB_CONFIGURATION[bx].IOCFG_pDeviceTable
+                        mov es:DEVICETABLE[di].IODT_ADDLevelMajor,ADD_LEVEL_MAJOR
+                        mov es:DEVICETABLE[di].IODT_ADDLevelMinor,ADD_LEVEL_MINOR
+                        mov ax,[ADDDHandle]
+                        mov es:DEVICETABLE[di].IODT_ADDHandle,ax
+                        mov es:DEVICETABLE[di].IODT_TotalAdapters,1
+                        lea ax,[di+Size DEVICETABLE]
+                        mov es:DEVICETABLE[di].IODT_pAdapter,ax
+
+                        ; copy adapterinfo/unitinfo
+                        mov di,ax
+                        mov si,Offset MyAdapterInfo
+                        mov cx,Size MyAdapterInfo
+                        cld
+                        rep movsb
+
+                        ; filter/DD updated unitinfo?
+                        cmp changed_unitinfo_ptr,0
+                        je @@ignore_changed_unitinfo_ptr
+
+                        push ds
+                          lds si,changed_unitinfo_ptr
+                          mov cx,Size UNITINFO
+                          sub di,cx
+                          rep movsb
+                        pop ds
+
+  @@ignore_changed_unitinfo_ptr:
+                        jmp @@exit                      ; successful
+
+  @@not_IOCM_GET_DEVICE_TABLE:
+                        call function_unknown           ; unknown
+
+  @@exit:
+                        popad
+                        ret
+a_endp                  function_CONFIGURATION
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+a_proc                  function_UNIT_CONTROL
+                        pushad
+
+                        mov di,fs:IORBH[bx].IOH_CommandModifier
+                        cmp di,IOCM_ALLOCATE_UNIT
+                        jne @@not_IOCM_ALLOCATE_UNIT
+
+                        cmp [allocated],true
+                        je @@unit_already_allocated
+
+                        mov [allocated],true
+                        jmp @@exit                      ; successful
+
+  @@unit_already_allocated:
+                        mov fs:IORBH[bx].IOH_Status,IORB_ERROR
+                        mov fs:IORBH[bx].IOH_ErrorCode,IOERR_UNIT_ALLOCATED
+                        jmp @@exit                      ; error
+
+
+  @@not_IOCM_ALLOCATE_UNIT:
+                        cmp di,IOCM_DEALLOCATE_UNIT
+                        jne @@not_IOCM_DEALLOCATE_UNIT
+
+                        cmp [allocated],false
+                        je @@unit_not_allocated
+
+                        mov [allocated],false
+                        jmp @@exit                      ; successful
+  @@unit_not_allocated:
+                        mov fs:IORBH[bx].IOH_Status,IORB_ERROR
+                        mov fs:IORBH[bx].IOH_ErrorCode,IOERR_UNIT_NOT_ALLOCATED
+                        jmp @@exit                      ; failed
+
+  @@not_IOCM_DEALLOCATE_UNIT:
+                        cmp di,IOCM_CHANGE_UNITINFO
+                        jne @@not_IOCM_CHANGE_UNITINFO
+
+                        cmp fs:IORB_UNIT_CONTROL[bx].IOUC_UnitInfoLen,Size UNITINFO
+                        je @@validsize_IOCM_CHANGE_UNITINFO
+
+                        mov fs:IORBH[bx].IOH_Status,IORB_ERROR
+                        mov fs:IORBH[bx].IOH_ErrorCode,IOERR_CMD_SYNTAX
+                        jmp @@exit                      ; failed
+
+  @@validsize_IOCM_CHANGE_UNITINFO:
+                        ; not update our unitinfo table, just copy the pointer
+                        mov eax,fs:IORB_UNIT_CONTROL[bx].IOUC_pUnitInfo
+                        mov changed_unitinfo_ptr,eax
+                        jmp @@exit                      ; successful
+
+  @@not_IOCM_CHANGE_UNITINFO:
+                        call function_unknown           ; unknown
+  @@exit:
+                        popad
+                        ret
+a_endp                  function_UNIT_CONTROL
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+a_proc                  function_GEOMETRY
+                        pushad
+                          mov di,fs:IORBH[bx].IOH_CommandModifier
+                          cmp di,IOCM_GET_MEDIA_GEOMETRY
+                          je @@function_IOCM_GET_x_GEOMETRY
+                          cmp di,IOCM_GET_DEVICE_GEOMETRY
+                          je @@function_IOCM_GET_x_GEOMETRY
+
+                          call function_unknown
+                          jmp @@exit                    ; unknown
+
+  @@function_IOCM_GET_x_GEOMETRY:
+                          les di,fs:IORB_GEOMETRY[bx].IOGG_pGeometry
+                          mov eax,ds:anzahl_sektoren
+                          mov es:GEOMETRY[di].IOG_TotalSectors,eax
+                          mov es:GEOMETRY[di].IOG_BytesPerSector,512
+                          mov es:GEOMETRY[di].IOG_Reserved,0
+                          mov ax,word ptr ds:anzahl_koepfe
+                          mov es:GEOMETRY[di].IOG_NumHeads,ax
+                          mov eax,ds:anzahl_zylinder
+                          mov es:GEOMETRY[di].IOG_TotalCylinders,eax
+                          mov ax,word ptr ds:anzahl_sektoren_je_spur
+                          mov es:GEOMETRY[di].IOG_SectorsPerTrack,ax
+
+                                                        ; successful
+  @@exit:
+
+                        popad
+                        ret
+a_endp                  function_GEOMETRY
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+
+a_proc                  function_EXECUTE_IO
+                        push gs
+                        pushad
+
+                          cmp fs:IORB_EXECUTEIO[bx].IOXIO_BlockSize,512
+                          je @@IOXIO_BlockSize_512
+
+  @@parametererror_EXECUTE_IO__REQ_NOT_SUPPORTED:
+                          mov fs:IORBH[bx].IOH_Status,IORB_ERROR
+                          mov fs:IORBH[bx].IOH_ErrorCode,IOERR_ADAPTER_REQ_NOT_SUPPORTED
+                          jmp @@exit                    ; failed
+  @@IOXIO_BlockSize_512:
+                          mov cx,fs:IORB_EXECUTEIO[bx].IOXIO_cSGList
+                          jcxz @@parametererror_EXECUTE_IO__SGLIST_BAD
+
+                          lgs di,fs:IORB_EXECUTEIO[bx].IOXIO_pSGList
+                          call CHS_to_RBA
+                          cmp edx,ds:anzahl_sektoren
+                          jae @@parametererror_EXECUTE_IO__RBA_LIMIT
+                          movzx eax,fs:IORB_EXECUTEIO[bx].IOXIO_BlockCount
+                          cmp eax,010000h/512           ; 64 KB
+                          ja @@parametererror_EXECUTE_IO__REQ_NOT_SUPPORTED
+
+                          call SetupDiskPosition
+                          add edx,eax
+                          cmp edx,anzahl_sektoren
+                          jbe @@not_above_RBA_LIMIT
+
+  @@parametererror_EXECUTE_IO__RBA_LIMIT:
+                          mov fs:IORBH[bx].IOH_Status,IORB_ERROR
+                          mov fs:IORBH[bx].IOH_ErrorCode,IOERR_RBA_LIMIT
+                          jmp @@exit                    ; failed
+  @@not_above_RBA_LIMIT:
+
+  @@loop_EXECUTE_IO:      ;******************************************
+
+                          mov eax,gs:SCATGATENTRY[di].IOSG_XferBufLen
+                          test eax,eax
+                          jz @@parametererror_EXECUTE_IO__SGLIST_BAD
+                          test eax,511
+                          jz @@not_SGLIST_BAD
+
+  @@parametererror_EXECUTE_IO__SGLIST_BAD:
+                          mov fs:IORBH[bx].IOH_Status,IORB_ERROR
+                          mov fs:IORBH[bx].IOH_ErrorCode,IOERR_CMD_SGLIST_BAD
+                          jmp @@exit                    ; failed
+
+  @@not_SGLIST_BAD:
+                          call setup_DMD_selector
+                          call setup_Disk_selector
+
+
+                          ; call subcomand handler
+                          mov ax,fs:IORBH[bx].IOH_CommandModifier
+                          cmp ax,EXECUTE_IO_High
+                          jbe @@valid_modifier
+
+                          call function_unknown
+                          jmp @@exit                    ; unknown
+
+  @@valid_modifier:
+                          shl ax,1
+                          xchg ax,di
+                          call EXECUTE_IO[di]
+                          xchg ax,di
+
+                          mov eax,gs:SCATGATENTRY[di].IOSG_XferBufLen
+                          add di,Size SCATGATENTRY
+                          add fs:IORBH[bx].IOH_ADDWorkSpace.memdisk_add_workspace.disk_position,eax
+                          shr eax,9                     ; /512
+                          add fs:IORB_EXECUTEIO[bx].IOXIO_BlocksXferred,ax
+                          loop @@loop_EXECUTE_IO
+                                                        ; successful
+  @@exit:
+                        popad
+                        pop gs
+                        ret
+a_endp                  function_EXECUTE_IO
+
+;ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+                        ; setup dmd selector to gs:di SGLIST entry
+
+a_proc                  setup_DMD_selector
+                        pushad
+
+                          mov ecx,gs:SCATGATENTRY[di].IOSG_XferBufLen
+
+                          mov ax,di
+                          mov dx,gs
+                          call SelectorToFlat
+                          mov edi,eax           ; PageList
+
+                          mov ax,[dmd_GDT]      ; Selector
+                          mov dh,6              ; ring 0 data
+                          mov dl,DevHlp_PageListToGDTSelector
+                          call DeviceHelper
+
+                        popad
+                        ret
+a_endp                  setup_DMD_selector
+
+;ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+; edx=CHS/RBA -> RBA
+; fs:[bx]=IORB_EXECUTEIO
+; ds=data
+a_proc                  CHS_to_RBA
+                        mov edx,fs:IORB_EXECUTEIO[bx].IOXIO_RBA
+                        ; convert any CHS requests
+                        test fs:IORBH[bx].IOH_RequestControl,IORB_CHS_ADDRESSING
+                        jz @@exit
+
+                        push eax
+                          movzx eax,fs:IORB_EXECUTEIO[bx].IOXIO_RBA.CHS_ADDR.IOCHS_Cylinder
+                          mov edx,ds:anzahl_koepfe
+                          mul edx
+                          movzx edx,fs:IORB_EXECUTEIO[bx].IOXIO_RBA.CHS_ADDR.IOCHS_Head
+                          add eax,edx
+                          mov edx,anzahl_sektoren_je_spur
+                          mul edx
+                          movzx edx,fs:IORB_EXECUTEIO[bx].IOXIO_RBA.CHS_ADDR.IOCHS_Sector
+                          lea edx,[eax+edx-1]
+                        pop eax
+  @@exit:
+                        ret
+a_endp                  CHS_to_RBA
+;ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+; fs:bx=IORB_EXECUTEIO
+; edx=RBA
+a_proc                  SetupDiskPosition
+                        push edx
+                          shl edx,9             ; *512
+                          add edx,[physical_address]
+                          mov fs:IORBH[bx].IOH_ADDWorkSpace.memdisk_add_workspace.disk_position,edx
+                        pop edx
+                        ret
+a_endp                  SetupDiskPosition
+
+;ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+; fs:bx=IORB_EXECUTEIO
+; gs:di=SGLIST entry
+
+a_proc                  setup_Disk_selector
+                        pushad
+                          ; ax:bx
+                          mov eax,fs:IORBH[bx].IOH_ADDWorkSpace.memdisk_add_workspace.disk_position
+                          mov bx,ax
+                          shr eax,16
+                          ; cx,0=64K
+                          mov ecx,gs:SCATGATENTRY[di].IOSG_XferBufLen
+                          mov si,[disk_GDT]     ; selector
+                          mov dl,DevHlp_PhysToGDTSelector
+                          call DeviceHelper
+                        popad
+                        ret
+a_endp                  setup_Disk_selector
+;ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+a_proc                  function_READ
+                        xchg ax,di
+                        push ds
+                        push es
+                        pushad
+
+                          ; length
+                          mov ecx,gs:SCATGATENTRY[di].IOSG_XferBufLen
+
+                          ; Target
+                          mov es,[dmd_GDT]
+                          sub edi,edi
+
+                          ; Source
+                          mov ds,[disk_GDT]
+                          sub esi,esi
+
+                          ; copy 32 bit blocks
+                          shr ecx,2
+
+                          cld
+                          rep movs Dword Ptr es:[edi],[esi]
+
+                        popad
+                        pop es
+                        pop ds
+                        xchg ax,di
+                        ret
+a_endp                  function_READ
+
+;ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+a_proc                  function_VERIFY
+                        ret
+a_endp                  function_VERIFY
+
+;ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+a_proc                  function_WRITE
+                        xchg ax,di
+                        push ds
+                        push es
+                        pushad
+
+                          ; length
+                          mov ecx,gs:SCATGATENTRY[di].IOSG_XferBufLen
+
+                          ; Target
+                          mov es,[disk_GDT]
+                          sub edi,edi
+
+                          ; Source
+                          mov ds,[dmd_GDT]
+                          sub esi,esi
+
+                          ; copy 32 bit blocks
+                          shr ecx,2
+
+                          cld
+                          rep movs Dword Ptr es:[edi],[esi]
+
+                        popad
+                        pop es
+                        pop ds
+                        xchg ax,di
+                        ret
+a_endp                  function_WRITE
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+a_proc                  function_UNIT_STATUS
+                        push di
+
+                          mov di,fs:IORBH[bx].IOH_CommandModifier
+                          cmp di,IOCM_GET_UNIT_STATUS
+                          jne @@not_IOCM_GET_UNIT_STATUS
+
+                          mov fs:[bx].IORB_UNIT_STATUS.IOUS_UnitStatus,US_READY
+                          jmp @@exit                    ; successful
+
+  @@not_IOCM_GET_UNIT_STATUS:
+                          cmp di,IOCM_GET_CHANGELINE_STATE
+                          jne @@not_IOCM_GET_CHANGELINE_STATE
+                          cmp behave_as_a_floppy,true
+                          jne @@not_IOCM_GET_CHANGELINE_STATE
+
+                          ; US_CHANGELINE_ACTIVE not set
+                          mov fs:[bx].IORB_UNIT_STATUS.IOUS_UnitStatus,0
+                          jmp @@exit                    ; successful
+
+  @@not_IOCM_GET_CHANGELINE_STATE:
+                          cmp di,IOCM_GET_MEDIA_SENSE
+                          jne @@not_IOCM_GET_MEDIA_SENSE
+
+                          ; only respond when in floppy mode
+                          cmp behave_as_a_floppy,true
+                          jne @@exit_UNIT_STATUS_function_unknown
+                          ; largest value seem to be 2.8M
+                          mov fs:[bx].IORB_UNIT_STATUS.IOUS_UnitStatus,US_MEDIA_288MB
+                          jmp @@exit                    ; successful
+
+  @@not_IOCM_GET_MEDIA_SENSE:
+                          cmp di,IOCM_GET_LOCK_STATUS
+                          jne @@not_IOCM_GET_LOCK_STATUS
+
+                          push lockstate
+                          pop fs:[bx].IORB_UNIT_STATUS.IOUS_UnitStatus
+                          jmp @@exit                    ; successful
+
+  @@not_IOCM_GET_LOCK_STATUS:
+  @@exit_UNIT_STATUS_function_unknown:
+                          call function_unknown         ; unknown
+  @@exit:
+                        pop di
+                        ret
+a_endp                  function_UNIT_STATUS
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+a_proc                  function_DEVICE_CONTROL
+                        push di
+
+                          mov di,fs:IORBH[bx].IOH_CommandModifier
+
+                        ; IOCM_ABORT   - SCSI
+                        ; IOCM_RESET   - SCSI
+                        ; IOCM_SUSPEND - floppy
+                        ; IOCM_RESUME  - floppy
+
+                          cmp di,IOCM_LOCK_MEDIA
+                          jne @@not_IOCM_LOCK_MEDIA
+                          or lockstate,US_LOCKED
+                          jmp @@exit                    ; successful
+  @@not_IOCM_LOCK_MEDIA:
+
+                          cmp di,IOCM_UNLOCK_MEDIA
+                          jne @@not_IOCM_UNLOCK_MEDIA
+                          and lockstate,(not US_LOCKED)
+                          jmp @@exit                    ; successful
+  @@not_IOCM_UNLOCK_MEDIA:
+
+                          cmp di,IOCM_EJECT_MEDIA
+                          jne @@not_IOCM_EJECT_MEDIA
+                          ; 'success', if not locked??
+                          ; test lockstate,US_LOCKED??
+                          mov fs:IORBH[bx].IOH_Status,IORB_ERROR
+                          mov fs:IORBH[bx].IOH_ErrorCode,IOERR_DEVICE_REQ_NOT_SUPPORTED
+                          jmp @@exit                    ; failed
+  @@not_IOCM_EJECT_MEDIA:
+
+                          call function_unknown
+  @@exit:
+                        pop di
+                        ret
+a_endp                  function_DEVICE_CONTROL
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+code_end:
+
+                        include rmcall.inc
+                        include rmcdrvr.inc
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+                        ; ES:BX=Init packet
+                        ; Output ax=return code
+                        ; other registers altered...
+a_proc                  do_init
+
+                        mov eax,es:RequestBlock[bx].Pointer_1
+                        mov Device_Help,eax
+
+                        call RegisterResourceManager
+
+                        push es
+                        push bx
+
+                          ; look for switches
+                          les bx,es:RequestBlock[bx].Pointer_2
+                          mov ax,es:[bx].Init_Arguments.Disk_Config_Table
+                          mov p_Disk_Config_Table.offs,ax
+                          mov p_Disk_Config_Table.sel ,es
+                          mov ax,es:[bx].Init_Arguments.Machine_Config_Table
+                          mov l_Disk_Config_Table,ax
+                          mov bx,es:[bx].Init_Arguments.Cmd_Line_Args
+
+
+                          mov si,Offset Message_cmdline_error
+  @@loop_skip_drivername:
+                          mov al,es:[bx]
+                          inc bx
+                          cmp al,0
+                          je @@commandline_done
+                          cmp al,' '
+                          ja @@loop_skip_drivername
+
+                          dec bx
+
+  @@next_commandlinechar:
+                          mov al,es:[bx]
+                          inc bx
+
+                          cmp al,0
+                          je @@commandline_done
+
+                          cmp al,' '
+                          jbe @@next_commandlinechar
+
+                          cmp al,'-'
+                          je @@command_switch
+                          cmp al,'/'
+                          jne @@install_failed
+
+  @@command_switch:
+                          mov al,es:[bx]
+                          inc bx
+
+                          cmp al,'1'
+                          jne @@not_switch_1
+
+                          ; was previously an option to not patch _VDMINT10CreateMiniVDMSub
+                          ; that patch code is now  moved to pmvdmcc.sys
+                          jmp @@next_commandlinechar
+  @@not_switch_1:
+                          cmp al,'Q'
+                          je @@switch_q
+                          cmp al,'q'
+                          jne @@not_switch_q
+  @@switch_q:
+                          mov quiet,true
+                          jmp @@next_commandlinechar
+  @@not_switch_q:
+                          cmp al,'V'
+                          je @@switch_v
+                          cmp al,'v'
+                          jne @@install_failed
+  @@switch_v:
+                          mov quiet,false
+                          jmp @@next_commandlinechar
+
+  @@commandline_done:
+
+                          mov si,Offset Message_title
+                          call Display_Message
+
+                          ; Allocate 1 selector
+                          push ds
+                          pop es
+                          mov di,Offset disk_GDT
+                          mov cx,1
+                          mov dl,DevHlp_AllocGDTSelector
+                          call DeviceHelper
+                          jc @@gdt_allocation_failed
+
+                          ; search BIOS memdisk code
+                          push 00040h
+                          pop es
+                          movzx edx,word ptr es:[00013h] ; end 640K memory
+                          shl edx,10 ; 639 -> $9fc00
+
+  @@look_for_bios_memdisk:
+                          ; look until A000:0
+                          mov ecx,0a0000h-Size MemDiskBIOS_Info_Block
+                          sub ecx,edx
+                          jbe @@no_bios_disk_found
+                          mov eax,1024
+                          cmp ecx,eax
+                          if_a <mov ecx,eax>
+
+                          ; make ax:bx accessible
+                          push edx
+                          push cx
+                            mov eax,edx
+                            mov bx,ax
+                            shr eax,16
+                            add cx,Size MemDiskBIOS_Info_Block
+                            mov si,[disk_GDT]           ; selector
+                            mov dl,DevHlp_PhysToGDTSelector
+                            call DeviceHelper
+                          pop cx
+                          pop edx
+                          jc @@no_bios_disk_found
+
+                          mov es,[disk_GDT]
+                          sub di,di
+  @@search_bios_memdisk1_loop:
+                          cmp es:[di]._MDBIB_sign0,_MDBIB_sign0_val
+                          jne @@not_bios_memdisk1
+                          cmp es:[di]._MDBIB_sign1,_MDBIB_sign1_val
+                          je @@found_bios_memdisk
+  @@not_bios_memdisk1:
+                          inc di
+                          inc edx
+                          loop @@search_bios_memdisk1_loop
+  @@not_bios_memdisk:
+                          jmp @@look_for_bios_memdisk
+
+  @@found_bios_memdisk:
+                          ; have information record at es:[di]..
+
+                          ; LVM (default Z:) or Warp4 A:/B: mode?
+                          cmp es:[di].MemDiskBIOS_Info_Block._lvm_letter,'C'
+                          setb behave_as_a_floppy
+
+                          ; use physical address of disk memory
+                          mov eax,es:[di].MemDiskBIOS_Info_Block._phys_addr
+                          mov physical_address,eax
+                          mov MemBase1,eax
+
+                          mov eax,es:[di].MemDiskBIOS_Info_Block._anzahl_zylinder
+                          cmp eax,1
+                          jb @@memdisk_bios_data_error
+                          cmp eax,1024
+                          ja @@memdisk_bios_data_error
+                          mov anzahl_zylinder,eax
+
+                          mov eax,es:[di].MemDiskBIOS_Info_Block._anzahl_koepfe
+                          cmp eax,1
+                          jb @@memdisk_bios_data_error
+                          cmp eax,255
+                          ja @@memdisk_bios_data_error
+                          mov anzahl_koepfe,eax
+
+                          mov eax,es:[di].MemDiskBIOS_Info_Block._anzahl_sektoren_je_spur
+                          cmp eax,1
+                          jb @@memdisk_bios_data_error
+                          cmp eax,63
+                          ja @@memdisk_bios_data_error
+                          mov anzahl_sektoren_je_spur,eax
+
+                          mov edx,anzahl_koepfe
+                          mul edx
+                          mov edx,anzahl_zylinder
+                          mul edx
+                          test edx,edx
+                          jnz @@memdisk_bios_data_error
+                          cmp eax,es:[di].MemDiskBIOS_Info_Block._anzahl_sektoren
+                          jne @@memdisk_bios_data_error
+                          mov anzahl_sektoren,eax
+
+                          shl eax,9                     ; *512
+                          mov MemSize1,eax
+
+                          ; Allocate 1 selector
+                          push ds
+                          pop es
+                          mov di,Offset dmd_GDT
+                          mov cx,1
+                          mov dl,DevHlp_AllocGDTSelector
+                          call DeviceHelper
+                          jc @@gdt_allocation_failed
+
+                          mov si,Offset ADD_Name
+                          cmp behave_as_a_floppy,true
+                          if_e <mov si,Offset ADD_Name_removable>
+                          mov ax,cs
+                          mov bx,Offset ADD_functionhandler
+                          mov di,0                        ; device flags
+                          mov cx,1                        ; device class
+                          mov dl,DevHlp_RegisterDeviceClass
+                          call DeviceHelper
+                          jc @@RegisterDeviceClass_failed
+                          mov [ADDDHandle],ax
+
+                          mov [init_done],true
+
+                          cmp behave_as_a_floppy,true
+                          jne @@not_need_to_hide_drives_from_ibm1flpy_add
+
+                          ; shift floppy drive numbers back from 1..n to 0..n-1 for ibm1flpy.add
+                          les di,p_Disk_Config_Table
+  @@loop_hide_drives_from_ibm1flpy_add:
+                          cmp di,l_Disk_Config_Table
+                          jae @@not_need_to_hide_drives_from_ibm1flpy_add
+
+                          test es:[di].ROMdevnbr,080h
+                          jnz @@not_floppy_00_7f
+
+                          dec es:[di].ROMdevnbr
+                          and es:[di].ROMdevnbr,07fh
+  @@not_floppy_00_7f:
+                          mov di,es:[di].ROMlink
+                          test di,di
+                          jnz @@loop_hide_drives_from_ibm1flpy_add
+
+  @@not_need_to_hide_drives_from_ibm1flpy_add:
+
+                        pop bx
+                        pop es
+
+                        mov di,Offset Message_physaddr_addr
+                        mov eax,physical_address
+                        mov cx,8
+  @@IntToHex:
+                        rol eax,4
+                        push ax
+                          and al,00fh
+                          cmp al,10
+                          sbb al,69h
+                          das
+                          mov ds:[di],al
+                          inc di
+                        pop ax
+                        loop @@IntToHex
+
+                        mov si,Offset Message_physaddr
+                        call Display_Message
+
+                        call RegisterResourceManagerAdapter
+
+                        call SetupMyAdapterInfo
+
+                        ; reduce resident data/code size
+                        mov es:RequestBlock[bx].Pointer_1.WORD1616.Lo,Offset code_end
+                        mov es:RequestBlock[bx].Pointer_1.WORD1616.Hi,Offset data_end
+                        sub ax,ax                       ; no error
+                        jmp @@exit__do_init
+
+  @@no_bios_disk_found:
+                          mov si,Offset Message_BIOS_not_found
+                          jmp @@install_failed
+
+  @@memdisk_bios_data_error:
+                          mov si,Offset Message_bios_data_error
+                          jmp @@install_failed
+  @@gdt_allocation_failed:
+                          mov si,Offset Message_GDT
+                          jmp @@install_failed
+
+  @@RegisterDeviceClass_failed:
+                          mov si,Offset Message_Register
+  @@install_failed:
+                          call Display_Message
+                        pop bx
+                        pop es
+
+                        ; free GDT resources
+
+                        mov ax,disk_GDT
+                        mov dl,DevHlp_FreeGDTSelector
+                        test ax,ax
+                        if_nz < call DeviceHelper >
+
+                        mov ax,dmd_GDT
+                        mov dl,DevHlp_FreeGDTSelector
+                        test ax,ax
+                        if_nz < call DeviceHelper >
+
+                        push es
+                        pushad
+                          push hDriver
+                          CallRM RMDestroyDriver
+                          add sp,4
+                        popad
+                        pop es
+
+                        ; not installed, no message
+                        mov es:RequestBlock[bx].Pointer_1,0
+                        mov ax,08015h
+  @@exit__do_init:
+                        ret
+a_endp                  do_init
+
+;ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+a_proc                  SetupMyAdapterInfo
+                        push es
+                        pusha
+
+                          push ds
+                          pop es
+
+                          cld
+
+                          ; adapterinfo
+
+                          mov di,Offset MyAdapterInfo
+                          push di
+                            add di,Offset IOAI_AdapterName
+                            mov si,Offset MyAdapterName
+                            mov cx,Size ADAPTERINFO.IOAI_AdapterName
+  @@CopyMyAdapterNameLoop:
+                            lodsb
+                            stosb
+                            dec cx
+                            cmp al,0
+                            jne @@CopyMyAdapterNameLoop
+                            rep stosb
+                          pop di
+
+                          mov [di].ADAPTERINFO.IOAI_Reserved,0
+                          mov [di].ADAPTERINFO.IOAI_AdapterUnits,1
+                          mov [di].ADAPTERINFO.IOAI_AdapterDevBus,AI_DEVBUS_OTHER+AI_DEVBUS_32BIT
+                          mov [di].ADAPTERINFO.IOAI_AdapterIOAccess,AI_IOACCESS_MEMORY_MAP
+                          mov [di].ADAPTERINFO.IOAI_AdapterHostBus,AI_HOSTBUS_UNKNOWN+AI_BUSWIDTH_UNKNOWN
+                          mov [di].ADAPTERINFO.IOAI_AdapterSCSITargetID,0
+                          mov [di].ADAPTERINFO.IOAI_AdapterSCSILUN,0
+                          mov [di].ADAPTERINFO.IOAI_AdapterFlags,AF_16M
+                        ;? cmp behave_as_a_floppy,true
+                        ;? if_e <or [di].ADAPTERINFO.IOAI_AdapterFlags,AF_CHS_ADDRESSING>
+                          mov [di].ADAPTERINFO.IOAI_MaxHWSGList,1
+                          mov [di].ADAPTERINFO.IOAI_MaxCDBTransferLength,0
+
+                          add di,Offset ADAPTERINFO.IOAI_UnitInfo
+
+                          ; unitinfo
+                          mov [di].UNITINFO.IOUI_AdapterIndex,0 ; zero based?
+                          mov [di].UNITINFO.IOUI_UnitIndex,0    ; zero based?
+                          mov [di].UNITINFO.IOUI_UnitFlags,UF_NOSCSI_SUPT
+                          cmp behave_as_a_floppy,true
+                          if_e <or [di].UNITINFO.IOUI_UnitFlags,(UF_REMOVABLE or UF_CHANGELINE or UF_A_DRIVE)>
+                          mov [di].UNITINFO.IOUI_Reserved,0
+                          mov [di].UNITINFO.IOUI_UnitHandle,my_UnitHandle
+                          mov [di].UNITINFO.IOUI_FilterADDHandle,0
+                          mov [di].UNITINFO.IOUI_UnitType,UIB_TYPE_DISK
+                          mov [di].UNITINFO.IOUI_QueuingCount,1
+                          mov [di].UNITINFO.IOUI_UnitSCSITargetID,0
+                          mov [di].UNITINFO.IOUI_UnitSCSILUN,0
+
+                        popa
+                        pop es
+                        ret
+a_endp                  SetupMyAdapterInfo
+
+;ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
+
+                        ; data:si=string
+a_proc                  Display_Message
+                        cmp quiet,true
+                        je @@suppress_Message_Display
+
+                        pusha
+                          push ds
+
+                            push Seg data
+                            pop ds
+
+                            mov fillin_string_ofs,si
+                            mov si,Offset Message_table
+                            sub bx,bx
+                            mov dl,DevHlp_Save_Message
+                            call DeviceHelper
+
+                          pop ds
+                        popa
+
+  @@suppress_Message_Display:
+                        ret
+a_endp                  Display_Message
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+a_proc                  RegisterResourceManagerAdapter
+                        push es
+                        pushad
+
+                          ; tell resource usage
+
+                          push    ds                      ; \ EXT Mem
+                          push    Offset Mem_Resource1    ; / record
+                          push    ds                      ; \ update EXT Mem
+                          push    Offset hMem_Resource1   ; / handle
+                          push    hDriver                 ; > allocated by us
+                          CallRM  RMAllocResource
+                          add     sp,4+4+4
+                          test    ax,ax
+                          jnz     @@error_ResourceManager
+
+                          ; get a new adapter
+
+                          push    ds                      ; \ allocate 2 handles
+                          push    Offset MemResourceList  ; / (EXT and 639)
+                          push    dword PTR 0             ; > get parent from hostbus field
+                          push    ds                      ; \ specify the
+                          push    Offset AdapterStructure ; / adapter
+                          push    ds                      ; \ store handle
+                          push    Offset hAdapter         ; / for adapter
+                          push    hDriver                 ; > allocated by us
+                          CallRM  RMCreateAdapter
+                          add     sp,4+4+4+4+4
+                          test    ax,ax
+                          jnz     @@error_ResourceManager
+
+                          cmp     behave_as_a_floppy,true
+                          if_e    <mov [DeviceStructure].DevDescriptName.offs,Offset DevDescNameA>
+
+                          push    DWord Ptr 0             ; > Resource list (none)
+                          push    hAdapter                ; > parent adapter
+                          push    ds                      ; \ specify the
+                          push    Offset DeviceStructure  ; / device
+                          push    ds                      ; \ store handle
+                          push    Offset hDevice          ; / for device
+                          push    hDriver                 ; > allocated by us
+                          CallRM  RMCreateDevice
+                          add     sp,4+4+4+4+4
+                         ;test    ax,ax
+                         ;jnz     @@error_ResourceManager
+
+  @@error_ResourceManager:
+
+                        popad
+                        pop es
+                        ret
+a_endp                  RegisterResourceManagerAdapter
+
+;ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+
+code                    EndS
+
+;********************************************************************
+
+                        End
+

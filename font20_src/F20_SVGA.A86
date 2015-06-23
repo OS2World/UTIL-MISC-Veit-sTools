@@ -1,0 +1,5 @@
+standard_vga                    equ 1
+blinkx                          equ 1
+immer_rate_setzen               equ 1
+
+include font20.a86

@@ -1,0 +1,104 @@
+; 03.07.1997  fehlerhaftes int 021 entfernt
+; 10.08.1997  lhtsr
+; 19.12.1997  opt
+
+attribute_controller    equ 003c0
+Input_Status_Register   equ 003da
+bit3                    equ 008
+bit5                    equ 020
+
+warten                  macro
+                          db 0eb,000
+                        #em
+
+
+even 010
+;************************************************************************
+
+neu_int10:
+
+                        pushf
+
+                          cmp ah,000 ; Setze Modus
+                          jz blinkx
+
+                          cmp ah,005 ; Setze Seite
+                          jz blinkx
+
+                          cmp ah,00b ; Setze Palette
+                          jz blinkx
+
+                          cmp ah,011 ; Zeichensatz und blinken
+                          jz blinkx
+
+                          cmp ah,01a ; Status
+                          jz blinkx
+
+                        popf
+                        ;jmp d cs:[org_int10]
+                        db 0ea
+org_int10:
+org_int10_o             dw '∞∞'
+org_int10_s             dw '∞∞'
+
+                        ;*****************************************
+
+blinkx:
+                        ;popf
+                        ;pushf
+                        call d cs:[org_int10]
+
+                        pushf
+
+                          push ax
+                            push dx
+
+                              call reset_lesen
+
+                              mov dx,attribute_controller
+                              mov al,010+Bit5           ; Index 010
+                              out dx,al
+                              warten
+
+                              inc dx
+                              in al,dx                  ; Wert lesen
+                              dec dx
+                              and al,0ff-Bit3           ; Bit 3 lîschen
+                              warten
+
+
+                              call reset_lesen
+
+                              xchg al,ah                ; al sichern
+
+                              mov al,010+Bit5           ; Index 010
+                              out dx,al
+                              warten
+
+                              xchg al,ah                ; al zurÅck
+
+                              out dx,al                 ; Wert schreiben
+                              warten
+
+                              call reset_lesen
+
+
+                            pop dx
+                          pop ax
+
+                        popf
+                        iret
+
+reset_lesen:
+                        push ax
+                          push dx
+                            mov dx,Input_Status_Register
+                            in al,dx
+                            warten
+                          pop dx
+                        pop ax
+
+                        ret
+
+
+resident_ende:

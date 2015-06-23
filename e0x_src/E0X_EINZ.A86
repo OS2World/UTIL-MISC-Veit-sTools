@@ -1,0 +1,177 @@
+; Hilfsprozeduren zum Einlesen/Verwerten
+; aus Quelldatei
+; zum XMS-Speicher
+
+
+; **********************
+; Eingabe: DS:SI
+; Ausgabe: DS:SI,AL
+;
+lies_hd_copy_zeichen:
+                                sub ah,ah
+                                ; BereichsÅberschreitung Lesepuffer
+                                cmp si,512
+                                jnz hd_copy_entschluesselung_genug_eingabedaten_vorhanden
+
+                                push ax,bx,cx,dx,si,di,ds,es
+                                  call datei_einlesen_512
+                                pop es,ds,di,si,dx,cx,bx,ax
+                                mov si,0
+
+hd_copy_entschluesselung_genug_eingabedaten_vorhanden:
+                                cmp si,w cs:[anzahl_von_512_gelesen]
+                                jge datei_ende_gefunden
+
+
+                                push ds
+                                  mov ds,[lese_puffer_seg]
+                                  cld
+                                  lodsb
+                                pop ds
+
+                                ret
+
+
+datei_ende_gefunden:
+                                inc ah
+                                ret
+
+; **********************
+; Eingabe: (?ES?):DI,AL
+; Ausgabe: (?ES?):DI
+;
+schreibe_hd_copy_zeichen:
+                                cld
+                                stosb
+
+                                ; BereichsÅberschreitung HD-Copy-Schreibpuffer ?
+                                cmp di,hd_copy_entschluesselt+512
+                                jnz hd_copy_entschluesselung_genug_platz_vorhanden
+
+                                call kopiere_ins_xms_512
+                                mov di,hd_copy_entschluesselt
+
+hd_copy_entschluesselung_genug_platz_vorhanden:
+
+                                ret
+; **************************
+
+anzahl_von_512_gelesen:         dw ?
+
+;********************************************************************
+
+; cx wird gerettet
+datei_einlesen_512:
+		                push cx
+
+                                  mov cx,512
+datei_einlesen_anzahl_cx_weiter:
+                                  mov ah,03f ; Lesen
+                                  mov bx,[datei_handhabe]
+                                  mov dx,0
+		                  mov ds,[lese_puffer_seg]
+                                  int21_aufruf
+                                  if c mov ax,0 ; Krondor <-> IHPFS
+                                  mov w cs:[anzahl_von_512_gelesen],ax
+
+		                  ; hier kommt scheibar nicht immer ein CF beim Fehler
+		                  cmp ax,0
+		                  jnz datei_einlesen_512_fehlerfrei
+
+              	                  mov ax,0f6f6
+		                  call fuelle_lese_puffer
+
+datei_einlesen_512_fehlerfrei:
+                                  mov ds,cs
+                                pop cx
+		                ret
+;********************************************************************
+; cx=1..512 Anzahl
+datei_einlesen_cx:
+                                push cx
+                                  jmp datei_einlesen_anzahl_cx_weiter
+;********************************************************************
+; cx*$10000+dx=wohin
+seek:
+                                push ax,bx,cx,dx
+		                  mov ax,04200
+  		                  mov bx,[datei_handhabe]
+		                  ; mov dx,dx
+                                  int21_aufruf
+                                pop dx,cx,bx,ax
+		                ret
+;********************************************************************
+seek_relativ:
+                                push ax,bx,cx,dx
+                                  mov ax,04201 ; relativ CX:DX
+                                  mov bx,[datei_handhabe]
+                                  int21_aufruf
+                                pop dx,cx,bx,ax
+                                ret
+;********************************************************************
+seek_ende:
+                                push ax,bx,cx,dx
+                                  mov ax,04202 ; ende CX:DX
+                                  mov bx,[datei_handhabe]
+                                  int21_aufruf
+                                pop dx,cx,bx,ax
+                                ret
+;********************************************************************
+; eingabe ax=FÅllwort
+fuelle_lese_puffer:
+                                push es,di,cx
+		                  mov cx,0100 ; 512 Byte/16 Bit
+		                  mov di,0
+                                  mov es,cs:[lese_puffer_seg]
+                                  cld
+
+fuelle_lese_puffer_schleife:
+
+                                  rep stosw
+		                  jcxz fuelle_lese_puffer_fertig
+                                  jmp fuelle_lese_puffer_schleife
+
+fuelle_lese_puffer_fertig:
+                                pop cx,di,es
+
+                                ret
+;********************************************************************
+; eingabe ax=FÅllwort
+fuelle_hdcopy_puffer:
+                                push es,di,cx
+		                  mov cx,0100 ; 512 Byte/16 Bit
+		                  mov di,hd_copy_entschluesselt
+                                  mov es,cs
+                                  cld
+
+fuelle_hdcopy_puffer_schleife:
+
+                                  rep stosw
+		                  jcxz fuelle_hdcopy_puffer_fertig
+                                  jmp fuelle_hdcopy_puffer_schleife
+
+fuelle_hdcopy_puffer_fertig:
+                                pop cx,di,es
+
+                                ret
+;********************************************************************
+; cx wird gerettet
+datei_schreiben_512:
+		                push cx
+                                  ; Schreiben
+                                  mov ah,040
+                                  mov bx,[datei_handhabe]
+                                  mov cx,512
+                                  mov dx,0
+                                  mov ds,[lese_puffer_seg]
+                                  int21_aufruf
+
+		                  mov bl,schreib_fehler_farbe
+		                  cmp ax,512
+		                  if nz call faerben
+
+                                  mov ds,cs
+                                pop cx
+
+		                ret
+;********************************************************************

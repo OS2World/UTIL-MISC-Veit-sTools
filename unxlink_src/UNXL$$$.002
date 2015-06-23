@@ -1,0 +1,6 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_Benutzung_  :^string;
+  textz_systax2  :^string;
+  textz_kein_XLINK_gefunden  :^string;

@@ -1,0 +1,242 @@
+; i21/440d->i13 fr IHPFS
+; Veit Kannegieser 28.06.1997
+; neu mit lhtsr    06.09.1997..07.09
+; Fehlerbehandlung 27.12.1997
+; deutsch/englisch und Lesefehler beseitigt 31.12.1997
+; 11.03.1998 deencom neu
+
+                                jmp einrichten
+
+include ihpfsio_.a86
+include ..\lhtsr\lh.a86
+include ..\lhtsr\prg.a86
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ausschrift                      macro
+                                  mov ah,009
+                                  mov dx,#1
+                                  int 021
+                                #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+halt                            macro
+                                  mov ax,04c00+#1
+                                  int 021
+                                #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+programm_name:		        db 'iHPFSiom'
+programm_resident_ende:         dw tsr_ende
+
+programm_int                    equ 013
+programm_int_neu                equ int_13_neu
+programm_int_org                equ int_13_org
+
+#if englisch
+
+installation_text:	        db 'load IHPFS IOMEGA Zip 100 harddisk emulator',00d,00a
+			        db '$'
+deinstallation_text:	        db 'remove IHPFS IOMEGA Zip 100 harddisk emulator',00d,00a
+			        db '$'
+doppelt_text:		        db 'multiple install of IHPFS IOMEGA Zip 100 harddisk emulator !',00d,00a
+			        db '$'
+nichtaktiv_text:	        db 'IHPFS IOMEGA Zip 100 harddisk emulator not found active in memory !',00d,00a
+
+#else
+
+installation_text:	        db 'lade IHPFS IOMEGA Zip 100 Festplattenemulator',00d,00a
+			        db '$'
+deinstallation_text:	        db 'entferne IHPFS IOMEGA Zip 100 Festplattenemulator',00d,00a
+			        db '$'
+doppelt_text:		        db 'mehrfache Installation von IHPFS IOMEGA Zip 100 Festplattenemulator !',00d,00a
+			        db '$'
+nichtaktiv_text:	        db 'IHPFS IOMEGA Zip 100 Festplattenemulator nicht aktiv im Speicher gefunden !',00d,00a
+			        db '$'
+#endif
+
+einrichten:
+                                ausschrift titel
+
+                                mov si,00081
+                                mov cl,b [00080]
+                                mov ch,0
+                                cld
+
+                                jcxz para_fertig
+
+parameter_test:
+                                lodsb
+                                and al,0df
+                                cmp al,'U'
+                                if z jmp installieren_und_deinstallieren
+                                cmp al,'R'
+                                if z jmp installieren_und_deinstallieren
+                                loop parameter_test
+
+para_fertig:
+                                mov ax,03d00
+                                mov dx,scsimgr
+                                int 021
+                                jnc scsimgr_geladen
+
+                                ausschrift text_kein_scsimgr_geladen
+                                halt 0ff
+
+scsimgr_geladen:
+                                mov bx,ax
+
+                                mov ax,04402
+                                ; mov bx,bx
+                                mov cx,4
+                                mov dx,scsimgr_addresse
+                                int 021
+
+                                mov ah,03e
+                                ; mov bx,bx
+                                int 021
+
+                                ;--- suche "target_id"
+
+                                ausschrift text_suche_Geraet
+
+                                mov cx,9
+                                mov b [target_id],-1
+                                mov w [datenpuffer_zeiger+0],puffer
+                                mov w [datenpuffer_zeiger+2],ds
+
+such_schleife:
+                                inc b [target_id]
+
+                                mov ah,002
+                                mov dl,' '
+                                int 021
+                                mov dl,b [target_id]
+                                add dl,'0'
+                                int 021
+
+                                ; Paritionstabelle lesen
+                                call scsi_mgr_aufruf
+                                cmp w [puffer+001fe],0aa55
+                                jz laufwerk_gefunden
+                                loop such_schleife
+
+                                ausschrift text_kein_laufwerk_gefunden
+                                halt 0ff
+
+laufwerk_gefunden:
+                                ausschrift zeilenumbruch
+
+                                mov si,puffer+01be ; 1.Partition
+                                mov cx,4
+
+bestimme_maximalwerte:
+                                ; Zylinder
+                                mov al,b [si+7]
+                                mov ah,b [si+6]
+                                shr ah,6
+                                cmp w [max_zylinder],ax
+                                if na mov w [max_zylinder],ax
+
+                                ; Sektor
+                                mov al,b [si+6]
+                                and al,03f
+                                cmp b [max_sektor],al
+                                if na mov b [max_sektor],al
+
+                                ; Kopf
+                                mov al,b [si+5]
+                                cmp b [max_kopf],al
+                                if na mov b [max_kopf],al
+
+                                add si,010
+                                loop bestimme_maximalwerte
+
+                                mov ax,w [max_zylinder]
+                                mov bl,b [max_kopf]
+                                sub bh,bh
+                                inc bx
+                                mul bx
+                                mov bl,[max_sektor]
+                                mov bh,0
+                                mul bx
+
+                                mov w [laufwerksgroesse+0],ax
+                                mov w [laufwerksgroesse+2],dx
+
+
+                                ausschrift text_suche_freien_fesplattenplatz
+                                mov b [festplatten_nummer],080-1
+                                mov cx,8
+
+suche_freie_fesplatte:
+                                inc b [festplatten_nummer]
+
+                                mov ah,002
+                                mov dl,' '
+                                int 021
+                                mov dl,'8'
+                                int 021
+                                mov dl,b [festplatten_nummer]
+                                add dl,'0'-080
+                                int 021
+
+                                push cx
+                                  mov ah,015
+                                  mov dl,b [festplatten_nummer]
+                                  int 013
+                                  jc freier_platz_gefunden
+                                pop cx
+                                loop suche_freie_fesplatte
+
+                                ausschrift text_kein_festplattenplatz
+                                halt 0ff
+
+
+
+freier_platz_gefunden:
+                                pop cx
+                                ausschrift zeilenumbruch
+
+
+
+installieren_und_deinstallieren:
+                                einfaches_tsr
+
+			        mov ax,04c00
+			        int 021
+
+
+titel:                          db 'IHPFSIOM * Veit Kannegieser * 28.06úú31.12.1997',00d,00a,'$'
+scsimgr:                        db 'SCSIMGR$',0
+
+#if englisch
+
+text_kein_scsimgr_geladen:      db 'no SCSI/ASPI-driver loaded !',7,00d,00a,'$'
+text_suche_Geraet:              db 'searching drive ...','$'
+text_kein_laufwerk_gefunden:    db ' no drive found',7,00d,00a,'$'
+text_suche_freien_fesplattenplatz:
+                                db 'seraching for unused harddsik number ...','$'
+text_kein_festplattenplatz:     db ' none found !',7,00d,00a,'$'
+zeilenumbruch:                  db 00d,00a,'$'
+
+#else
+
+text_kein_scsimgr_geladen:      db 'kein SCSI/ASPI-Treiber geladen !',7,00d,00a,'$'
+text_suche_Geraet:              db 'Suche Laufwerk ...','$'
+text_kein_laufwerk_gefunden:    db ' kein Laufwerk gefunden',7,00d,00a,'$'
+text_suche_freien_fesplattenplatz:
+                                db 'Suche ungenutzte Festplattennummer ...','$'
+text_kein_festplattenplatz:     db ' keine gefunden !',7,00d,00a,'$'
+zeilenumbruch:                  db 00d,00a,'$'
+
+#endif
+
+
+puffer:                         db 512 dup 'P'
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+installations_prozedur:
+			        ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+deinstallations_prozedur:
+			        ret

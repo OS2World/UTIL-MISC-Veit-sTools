@@ -1,0 +1,10 @@
+int_2f_handler:
+                pushf
+                  cmp ah,013
+                  jnz kein_trick_2f
+
+                  breakpoint '2F/13'
+
+kein_trick_2f:
+                popf
+                jmp d cs:[orgint2f]

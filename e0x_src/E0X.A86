@@ -1,0 +1,3255 @@
+; Spur, name : "[E0X] 56 E:\TEST.IMG" in farbe in der untersten zeile
+
+                        jmp einrichten
+
+titel_bunt:             db ' @',070
+titel:                  db 'ִִִִִִִִִִִִִ´ E0X * Veit Kannegieser * 1995.07.21 תת 2002.06.30 ֳִִִִִִִִִִִִ',00d,00a
+                        db 00d,00a,'$'
+
+
+                        db 1024 dup 'Û'
+neuer_stack_ende:
+
+
+text_datei_fehler_fehlt_adr:                            dw text_datei_fehler_fehlt_deutsch
+text_datei_fehler_zu_gross_adr:                         dw text_datei_fehler_zu_gross_deutsch
+text_datei_fehler_unsinn_adr:                           dw text_datei_fehler_unsinn_deutsch
+xmsfehler_speicher_adr:                                 dw xmsfehler_speicher_deutsch
+execfehler_speicher_adr:                                dw execfehler_speicher_deutsch
+execfehler_pfad_adr:                                    dw execfehler_pfad_deutsch
+execfehler_datei_adr:                                   dw execfehler_datei_deutsch
+execfehler_unbekannt_adr:                               dw execfehler_unbekannt_deutsch
+exec_problem_adr:                                       dw exec_problem_deutsch
+datei_schreib_anz_adr:                                  dw datei_schreib_anz_deutsch
+xms_freigabe_fehler_adr:                                dw xms_freigabe_fehler_deutsch
+beendet_adr:                                            dw beendet_deutsch
+xms_treiber_fehler_adr:                                 dw xms_treiber_fehler_deutsch
+parameter_fehler_adr:                                   dw parameter_fehler_deutsch
+laufwerk_b_fehler_adr:                                  dw laufwerk_b_fehler_deutsch
+nicht_starten_wegen_konnte_nicht_anfordern_adr:         dw nicht_starten_wegen_konnte_nicht_anfordern_deutsch
+abzugsdatei_anz_adr:                                    dw abzugsdatei_anz_deutsch
+programm_anz_adr:                                       dw programm_anz_deutsch
+parameter_anz_adr:                                      dw parameter_anz_deutsch
+datei_lese_anz_adr:                                     dw datei_lese_anz_deutsch
+abgebrochen_adr:                                        dw abgebrochen_deutsch
+xmsspeichertxt_adr:                                     dw xmsspeichertxt_deutsch
+os2_warnung_text_adr:                                   dw os2_warnung_text_deutsch
+e0x_ist_schon_installier_text_adr:                      dw e0x_ist_schon_installier_text_deutsch
+os2_subst_fehler_text_adr:                              dw os2_subst_fehler_text_deutsch
+welches_laufwerk_ist_svdisk_text_adr:                   dw welches_laufwerk_ist_svdisk_text_deutsch
+svdisk_abbruch_text_adr:                                dw svdisk_abbruch_text_deutsch
+
+;**********************************************************************
+include e0x_equ.a86
+include e0x_macr.a86
+include e0x_iret.a86
+;**********************************************************************
+
+os2_oder_xmm:           db 'X'
+svdisk_laufwerk:        db ('A'-'A')
+
+subst_ein_start:
+                        db '?:\'
+subst_aus_start:
+                        db 0
+subst_ende:
+
+;**********************************************************************
+;                           AH=    FEHLER=BL    STATUS=AX
+funktion_xms_query_free equ 008 ;    +            -       query free
+funktion_xms_allocate   equ 009 ;   (+)           +       allocate
+funktion_xms_free       equ 00a ;   (+)           +       free
+funktion_xms_move       equ 00b ;   (+)           +       move
+funktion_xms_reallocate equ 00f ;   (+)           +       reallocate
+;**********************************************************************
+xmm_aufruf:
+                        cmp b cs:[os2_oder_xmm],'O'
+                        jz os2_xmm_emu
+
+                        cmp ah,funktion_xms_query_free
+                        jz xmm_aufruf_008
+
+                        call d [xmm]
+                        cmp ax,00001
+                        jnz xmm_aufruf_fehler
+                        ret
+
+xmm_aufruf_008:
+                        mov bl,0
+                        call d [xmm]
+                        cmp bl,0
+                        jnz xmm_aufruf_fehler
+                        ret
+
+xmm_aufruf_fehler:
+                        breakpoint 'XMS-Fehler'
+
+                        push bx
+                          mov bl,xms_fehler_farbe
+                          call faerben
+                        pop bx
+                        ret
+
+;**********************************************************************
+
+org_sp_2526             dw ?
+
+int2526_dos4_block:
+  i2526_start_sector:   dd ?
+  i2526_anzahl:         dw ?
+  i2526_puffer_o:       dw ?
+  i2526_puffer_s:       dw ?
+
+
+os2_xmm_emu:
+                        cmp ah,funktion_xms_query_free
+                        jz os2_xmm_emu_funktion_xms_query_free
+
+                        cmp ah,funktion_xms_allocate
+                        jz os2_xmm_emu_funktion_xms_allocate
+
+                        cmp ah,funktion_xms_free
+                        jz os2_xmm_emu_funktion_xms_free
+
+                        cmp ah,funktion_xms_move
+                        jz os2_xmm_emu_funktion_xms_move
+
+                        cmp ah,funktion_xms_reallocate
+                        jz os2_xmm_emu_funktion_xms_reallocate
+
+                        breakpoint 'OS2 XMS-EMU'
+
+os2_xmm_emu_funktion_xms_query_free:
+                        mov ax,15000 ; 15 MB reichen immer
+                        mov dx,ax    ; auch nicht anderweitig genutzt
+                        mov bl,0
+                        ret
+
+os2_xmm_emu_funktion_xms_allocate:
+os2_xmm_emu_funktion_xms_free:
+os2_xmm_emu_funktion_xms_reallocate:
+                        mov ax,00001 ; Erfolg
+                        mov dx,'HA'  ; nicht benutzt
+                        ret
+
+;------------------------------------------------
+os2_xmm_emu_funktion_xms_move:
+                        ; Kopieren ...
+                        push ax,bx,cx,dx
+                          ; Anzahl Sektoren ?
+                          mov ax,[si+0]
+                          mov dx,[si+2]
+                          shr ax,9
+                          shl dx,(16-9)
+                          or ax,dx
+                          mov [i2526_anzahl],ax
+
+                          ; @Speicher des Puffers ?
+                          mov ax,[si+4]
+                          cmp ax,0
+                          jz os2_xmm_emu_funktion_xms_move_26
+
+os2_xmm_emu_funktion_xms_move_25:
+                          ; Ziel ?
+                          mov ax,[si+12]
+                          mov dx,[si+14]
+                          mov [i2526_puffer_o],ax
+                          mov [i2526_puffer_s],dx
+
+                          ; Startsektor
+                          mov ax,[si+6]
+                          mov dx,[si+8]
+                          shr ax,9
+                          shl dx,(16-9)
+                          or ax,dx
+                          mov [i2526_start_sector],ax
+                          sub ax,ax
+                          mov [i2526_start_sector+2],ax
+
+                          mov al,[svdisk_laufwerk]
+                          mov ah,0
+                          mov cx,-1
+                          mov bx,int2526_dos4_block
+                          mov cs:[org_sp_2526],sp
+                          pushf
+                          call d cs:[orgint25]
+                          mov sp,cs:[org_sp_2526]
+                          jmp os2_xmm_emu_funktion_xms_move_2526_rueckkehr
+
+os2_xmm_emu_funktion_xms_move_26:
+                          ; Quelle ?
+                          mov ax,[si+6]
+                          mov dx,[si+8]
+                          mov [i2526_puffer_o],ax
+                          mov [i2526_puffer_s],dx
+
+                          ; Startsektor
+                          mov ax,[si+12]
+                          mov dx,[si+14]
+                          shr ax,9
+                          shl dx,(16-9)
+                          or ax,dx
+                          mov [i2526_start_sector],ax
+                          sub ax,ax
+                          mov [i2526_start_sector+2],ax
+
+                          mov al,[svdisk_laufwerk]
+                          mov ah,0
+                          mov cx,-1
+                          mov bx,int2526_dos4_block
+                          mov cs:[org_sp_2526],sp
+                          pushf
+                          call d cs:[orgint26]
+                          mov sp,cs:[org_sp_2526]
+
+                          ;jmp os2_xmm_emu_funktion_xms_move_2526_rueckkehr
+
+os2_xmm_emu_funktion_xms_move_2526_rueckkehr:
+
+                          jc os2_xmm_emu_funktion_xms_move_2526_rueckkehr_fehler
+
+                        pop dx,cx,bx,ax
+                        mov ax,1
+                        ret
+
+os2_xmm_emu_funktion_xms_move_2526_rueckkehr_fehler:
+
+                        pop dx,cx,bx,ax
+                        mov ax,0
+                        jmp xmm_aufruf_fehler
+
+;**********************************************************************
+int24_selbst macro
+                        mov ax,00000
+                        mov ds,ax
+
+                        push [024*4]
+                          push [024*4+2]
+
+                            mov bx,cs
+                            mov w [024*4],int24_handler
+                            mov [024*4+2],cs
+
+#em
+
+int24_zurueck macro
+                          mov ax,00000
+                          mov ds,ax
+                          pop [024*4+2]
+                        pop [024*4]
+
+#em
+
+
+int24_handler:
+                        mov al,3 ; fail , 0=ignorieren
+                        iret
+
+;**********************************************************************
+
+int13_oder_40:          db 013
+
+
+laufwerk:               db 00
+
+datei_fehler_keiner     equ '0'
+datei_fehler_fehlt      equ '1'
+datei_fehler_zu_gross   equ '2'
+datei_fehler_unsinn     equ '3'
+
+datei_fehler_nr:        db datei_fehler_keiner
+
+dateiname:              db 80 dup 0
+
+dateiname_zaehlstelle:  dw ?
+
+programm_start:         dw ?
+
+diskdupe_kopf:          db 0
+
+diskdupe_bloecke:       dw ?
+zusatzinformation:
+diskdupe_pack:          db (spur_max*koepfe_max) dup ('P','B') ; 1 = normal, 2 = eingespart
+                        ; jeweils boolean,byte
+
+hd_copy_entschluesselt: db 512 dup 'H'
+
+hd_copy_sonderzeichen:  db 0
+
+parameter:              db 128 dup 0
+
+parameter_block:
+
+                        dw 0
+                        dw parameter
+             parabl_s   dw ?
+                        dd 4 dup 0
+
+datei_handhabe:         dw ?
+
+datei_start_l:          dw ?
+datei_start_h:          dw ?
+
+xms_handhabe:           dw ?
+
+speicher_kilos:         dw ?
+
+bios_90:                db ?
+
+bios_90_org:            db ?
+
+laufwerks_typ:          db ?  ; 1,2,3,4,(5)
+
+;**** Definition nach packung.pas ***
+
+extra_kopf_start:
+
+kopf_text:              db 80 dup 'T'
+
+sektoren:               dw ?
+
+spuren:                 db ?
+
+sekt_spur:              db ?
+
+koepfe:                 db ?
+
+anzahl_extra            db 0
+
+extra_1_daten:
+extra_1_cl:             db 0ff
+extra_1_ch:             db 0ff
+extra_1_dh:             db 0ff
+extra_1_xms_lo:         dw 0
+extra_1_xms_hi:         dw 0
+extra_2_daten:
+extra_2_cl:             db 0ff
+extra_2_ch:             db 0ff
+extra_2_dh:             db 0ff
+extra_2_xms_lo:         dw 0
+extra_2_xms_hi:         dw 0
+extra_3_daten:
+extra_3_cl:             db 0ff
+extra_3_ch:             db 0ff
+extra_3_dh:             db 0ff
+extra_3_xms_lo:         dw 0
+extra_3_xms_hi:         dw 0
+extra_4_daten:
+extra_4_cl:             db 0ff
+extra_4_ch:             db 0ff
+extra_4_dh:             db 0ff
+extra_4_xms_lo:         dw 0
+extra_4_xms_hi:         dw 0
+extra_5_daten:
+
+extra_kopf_ende:
+
+;************************************
+
+extra_kopf_laenge       equ extra_kopf_ende-extra_kopf_start
+
+kopf_kopie:             db extra_kopf_laenge dup 'K'
+
+platte_gewechselt_ja    equ 1
+platte_gewechselt_nein  equ 0
+
+plattenwechsel:         db 6
+
+
+schreibschutz:          db ?
+
+veraendert:             db 0
+
+lese_puffer_seg:        dw ?
+
+kopierer:
+  anzahl_lo:            dw 512
+  anzahl_hi:            dw 0
+  quell_h:              dw ?
+  quell_o:              dw ?
+  quell_s:              dw ?
+  ziel_h:               dw ?
+  ziel_o:               dw ?
+  ziel_s                dw ?
+
+xmm:
+xmm_o                   dw ?
+xmm_s                   dw ?
+
+indosflag:
+indosflag_o:            dw ?
+indosflag_s:            dw ?
+
+criterrflag:
+criterrflag_o:          dw ?
+criterrflag_s:          dw ?
+
+orgint10:
+orgint10_o:             dw ?
+orgint10_s:             dw ?
+
+orgint13:
+orgint13_o:             dw ?
+orgint13_s:             dw ?
+
+orgint13_oder_40:
+orgint13_oder_40_o:     dw ?
+orgint13_oder_40_s:     dw ?
+
+orgint15:
+orgint15_o:             dw ?
+orgint15_s:             dw ?
+
+orgint16:
+orgint16_o:             dw ?
+orgint16_s:             dw ?
+
+orgint21:
+orgint21_o:             dw ?
+orgint21_s:             dw ?
+
+orgint25:
+orgint25_o:             dw ?
+orgint25_s:             dw ?
+
+orgint26:
+orgint26_o:             dw ?
+orgint26_s:             dw ?
+
+orgint28:
+orgint28_o:             dw ?
+orgint28_s:             dw ?
+
+orgint2f:
+orgint2f_o:             dw ?
+orgint2f_s:             dw ?
+
+orgint40:
+orgint40_o:             dw ?
+orgint40_s:             dw ?
+
+vor_rueck:              db 000
+
+sperre:                 db 001
+
+dbt:
+dbt_o:                  dw ?
+dbt_s:                  dw ?
+;**************************************************************************
+e0x_start_pfad:         db '?:\',(pfadlaenge) dup 0
+
+programm_beenden_und_pfad_zurueck:
+                        push ax
+                          mov ax,cs
+                          mov ds,ax
+                          mov es,ax
+
+                          mov ah,00e ; ?:
+                          mov dl,[e0x_start_pfad]
+                          sub dl,'A'
+                          int 021
+
+                          mov ah,03b ; CD
+                          mov dx,e0x_start_pfad
+                          int 021
+
+
+                          cmp b [os2_oder_xmm],'O'
+                          jnz kein_os2_subst
+
+                          push ax,bx,cx,si,di,bp
+                            mov ax,06102                      ; OS/2 Subst DELETE
+                            mov bl,[laufwerk]                 ; A=0 B=1
+                            null bh
+                            mov cx,subst_ende-subst_aus_start ; L„nge
+                            mov si,00003                      ; "Subst"
+                            mov di,subst_aus_start            ; neuer Wert
+                            mov bp,06467                      ; 'dg'
+                            pushf
+                            call d cs:[orgint21]              ; fehler unbeachtet
+                          pop bp,di,si,cx,bx,ax
+kein_os2_subst:
+                        pop ax
+
+                        mov ah,04c
+                        int 021
+
+;**************************************************************************
+
+indos_max:              db ?
+
+keine_arbeit:
+                              pop ax
+                            pop ds
+                          pop si
+                        popf
+                        ret
+
+suche_arbeit:
+                        pushf
+                          push si
+                            push ds
+                              push ax
+                                cmp b cs:[vor_rueck],0
+                                jz keine_arbeit
+
+                                cmp b cs:[sperre],0
+                                jnz keine_arbeit
+
+                                mov al,cs:[indos_max]
+                                
+                                lds si,cs:[indosflag]
+                                mov ah,b [si]
+                                ; Krondor Installion unter OS/2
+                                ; indos C0,C1...
+                                and ah,0ff-0c0 ;
+                                cmp ah,al
+                                ja keine_arbeit
+  ignoriere_indos:
+                                lds si,cs:[criterrflag]
+                                cmp b [si],0
+                                jnz keine_arbeit
+
+                                call simulieren_aus
+
+                                call einlesen
+
+                                call simulieren_ein
+
+                                jmp keine_arbeit ; mehr ...
+
+;**************************************************************************
+include e0x_i15.a86
+;**************************************************************************
+include e0x_i16.a86
+;**************************************************************************
+include e0x_i21.a86
+;**************************************************************************
+include e0x_i25.a86
+;**************************************************************************
+include e0x_i26.a86
+;**************************************************************************
+include e0x_i28.a86
+;**************************************************************************
+include e0x_i2f.a86
+;**************************************************************************
+include e0x_i13.a86
+;**************************************************************************
+include e0x_boff.a86
+;**************************************************************************
+
+ausschrift_farbe:       db 7
+
+ausschrift:
+                        pushf
+                          push ax
+                            push bx
+                              push cx
+                                push si
+                                  push es
+                                    push bp
+                                      mov si,dx
+                                      mov b [ausschrift_farbe],7
+                                      mov es,ds
+                                      cld
+ausschrift_schleife:
+                                      lodsb
+                                      cmp al,0
+                                      jz ausschrift_ende
+                                      cmp al,'$'
+                                      jz ausschrift_ende
+                                      cmp al,'@'
+                                      jz ausschrift_faerben
+
+                                      push si
+ausschrift_noch_nicht_ende_gleiche_farbe:
+                                        lodsb
+                                        cmp al,0
+                                        jz ausschrift_ende_gleiche_farbe
+                                        cmp al,'$'
+                                        jz ausschrift_ende_gleiche_farbe
+                                        cmp al,'@'
+                                        jnz ausschrift_noch_nicht_ende_gleiche_farbe
+ausschrift_ende_gleiche_farbe:
+                                        mov ax,si
+                                      pop si
+                                      sub ax,si
+                                      mov cx,ax ; Anzahl Zeichen mit gleicher Farbe
+
+                                      mov ax,01301 ; Write String / Cursorbewegung
+                                      mov bh,000   ; Seite 0
+                                      mov bl,[ausschrift_farbe]
+                                      dec si
+                                      mov bp,si
+                                      add si,cx
+
+                                      push ax
+                                        push ds
+                                          mov ax,00040
+                                          mov ds,ax
+                                          mov dx,[00050]
+                                        pop ds
+                                      pop ax
+
+                                      pushf
+                                      call d [orgint10]
+
+                                      jmp ausschrift_schleife
+
+ausschrift_faerben:
+                                      lodsb
+                                      mov [ausschrift_farbe],al
+                                      jmp ausschrift_schleife
+ausschrift_ende:
+                                    pop bp
+                                  pop es
+                                pop si
+                              pop cx
+                            pop bx
+                          pop ax
+                        popf
+                        ret
+;********************************************************************
+
+lies_leerzeichen:
+                        cld
+                        lodsb
+                        cmp al,' '
+                        jz lies_leerzeichen
+                        cmp al,9
+                        jz lies_leerzeichen
+                        dec si
+                        ret
+
+;********************************************************************
+
+test_auf_leerzeichen:
+                        cmp al,' '
+                        jz test_auf_leerzeichen_ende
+                        cmp al,009
+test_auf_leerzeichen_ende:
+                        ret
+
+;********************************************************************
+
+test_auf_parameter_ende:
+                        cmp al,000
+                        jz test_auf_parameter_ende_ende
+                        cmp al,01a
+                        jz test_auf_parameter_ende_ende
+                        cmp al,00d
+test_auf_parameter_ende_ende:
+                        ret
+
+;********************************************************************
+
+xms_treiber_fehler_deutsch:
+                        db '@',12,' niemand da, der sich als XMS 2+ Verwalter ausgibt$'
+xms_treiber_fehler_englisch:
+                        db '@',12,' XMS 2+ not detected$'
+
+xms_arbeit_fehler_deutsch:
+                        db '@',12,' Fehler bei Anforderung XMS$'
+xms_arbeit_fehler_englisch:
+                        db '@',12,' error demanding XMS$'
+
+xms_freigabe_fehler_deutsch:
+                        db '@',12,' Fehler bei der Freigabe von XMS$'
+xms_freigabe_fehler_englisch:
+                        db '@',12,' error releasing XMS$'
+
+einruecken:
+                        db '@',7,'                $'
+
+;********************************************************************
+;
+;                       Installation
+
+einrichten:
+                        mov ah,009
+                        mov dx,titel
+                        int 021
+
+                        call sprach_auswahl
+
+                        call int_sichern
+
+                        ; Stack anpassen
+                        mov sp,(neuer_stack_ende/2)*2 ; gerade
+
+                        mov ax,3
+                        pushf
+                        call d [orgint10]
+                        mov dx,titel_bunt
+                        call ausschrift
+
+                        call start_pfad_sichern
+
+                        call parameter_einlesen
+
+                        call os2_warnung
+
+                        call lese_puffer_anfordern
+                        call teste_int40
+                        call xms_installation
+
+                        ; Holen DBT Adresse
+                        mov ah,08
+                        mov dl,cs:[laufwerk]
+                        int 013
+                        mov [dbt_o],di
+                        mov di,es
+                        mov [dbt_s],di
+                        push cs
+                        pop es
+
+
+                        call teste_xms
+
+                        call weitere_vorbereitungen
+
+                        ; Speicher anpassen (endgltig)
+                        mov ah,04a
+                        mov bx,exec_groesse
+                        shr bx,4
+                        inc bx
+                        push cs
+                        pop es
+                        int 021
+
+
+                        cmp b [datei_fehler_nr],datei_fehler_keiner
+                        jz starten
+
+                        cmp b [datei_fehler_nr],datei_fehler_fehlt
+                        if z mov dx,[text_datei_fehler_fehlt_adr]
+
+                        cmp b [datei_fehler_nr],datei_fehler_zu_gross
+                        if z mov dx,[text_datei_fehler_zu_gross_adr]
+
+                        cmp b [datei_fehler_nr],datei_fehler_unsinn
+                        if z mov dx,[text_datei_fehler_unsinn_adr]
+
+                        call ausschrift
+
+                        mov dx,[xmsfehler_speicher_adr]
+                        cmp b [datei_fehler_nr],datei_fehler_zu_gross
+                        if z call ausschrift
+                        jmp nicht_starten_wegen_datei_fehler
+
+starten:
+                        call simulieren_ein
+
+                        ; exec
+                        mov ax,ds
+                        mov parabl_s,ax
+                        mov ax,04b00
+                        mov bx,parameter_block
+                        mov dx,[programm_start]
+                        int21_aufruf
+
+                        if nc jmp beenden_fehlerfrei
+
+                        mov dx,[execfehler_speicher_adr]
+                        cmp ax,8
+                        if z jmp beenden
+
+                        mov dx,[execfehler_pfad_adr]
+                        cmp ax,3
+                        if z jmp beenden
+
+                        mov dx,[execfehler_datei_adr]
+                        cmp ax,2
+                        if z jmp beenden
+
+                        mov dx,[execfehler_unbekannt_adr]
+                        jmp beenden
+
+
+exec_problem_deutsch:
+                        db '@',12,' Problem bei Programmausfhrung:$'
+exec_problem_englisch:
+                        db '@',12,' problem in program execution:$'
+
+execfehler_speicher_deutsch:
+                        db '@',12,' nicht genug Speicher !',007,'$'
+execfehler_speicher_englisch:
+                        db '@',12,' not enough memory !',007,'$'
+
+execfehler_pfad_deutsch:
+                        db '@',12,' Pfad nicht gefunden !',007,'$'
+execfehler_pfad_englisch:
+                        db '@',12,' path not found !',007,'$'
+
+execfehler_datei_deutsch:
+                        db '@',12,' Datei nicht gefunden !',007,'$'
+execfehler_datei_englisch:
+                        db '@',12,' file not found !',007,'$'
+
+execfehler_unbekannt_deutsch:
+                        db '@',12,' unbekannter Fehler !',007,'$'
+execfehler_unbekannt_englisch:
+                        db '@',12,' unknown error !',007,'$'
+
+nicht_starten_wegen_konnte_nicht_anfordern_deutsch:
+                        db '@',12,' konnte nicht 512 Byte Puffer im unteren Speicher anfordern !',007,'$'
+nicht_starten_wegen_konnte_nicht_anfordern_englisch:
+                        db '@',12,' can''t allocate 512 byte buffer below 640K !',007,'$'
+
+text_datei_fehler_fehlt_deutsch:
+                        db '@',12,' Abzugsdatei l„בt sich nicht ”ffnen !',007,'$'
+text_datei_fehler_fehlt_englisch:
+                        db '@',12,' can''t open image file !',007,'$'
+
+text_datei_fehler_zu_gross_deutsch:
+                        db '@',12,' Abzugsdatei zu groב / kann nicht mehr Speicher anfordern !',007,'$'
+text_datei_fehler_zu_gross_englisch:
+                        db '@',12,' image file to big / can''t allocate more memory !',007,'$'
+
+text_datei_fehler_unsinn_deutsch:
+                        db '@',12,' fehlerhafte Abzugsdatei oder unbekanntes Format !',007,'$'
+text_datei_fehler_unsinn_englisch:
+                        db '@',12,' defective image file  or  unknown file format !',007,'$'
+
+xmsfehler_speicher_deutsch:
+                        db '@',12,' Speicherproblem: nur '
+xmsspeichertxt_deutsch:
+                        db '00000 KB XMS frei !',007,'$'
+xmsfehler_speicher_englisch:
+                        db '@',12,' memory problem: only '
+xmsspeichertxt_englisch:
+                        db '00000 KB XMS free !',007,'$'
+
+beenden:
+                        push dx
+                        mov dx,[exec_problem_adr]
+                        call ausschrift
+                        pop dx
+                        call ausschrift
+
+beenden_fehlerfrei:
+
+                        ; reset_disk
+                        call simulieren_aus
+                        mov cx,2 ; 2 Versuche
+
+nicht_starten_wegen_datei_fehler:
+
+                        ; Int 13,15,16,21,25,26,28 aush„ngen
+                        mov ah,025
+                        mov al,[int13_oder_40]
+                        mov dx,[orgint13_oder_40_o]
+                        push ds
+                          mov ds,[orgint13_oder_40_s]
+                          int21_aufruf
+                        pop ds
+
+                        mov ax,02515
+                        mov dx,[orgint15_o]
+                        push ds
+                          mov ds,[orgint15_s]
+                          int21_aufruf
+                        pop ds
+
+                        mov ax,02516
+                        mov dx,[orgint16_o]
+                        push ds
+                          mov ds,[orgint16_s]
+                          int21_aufruf
+                        pop ds
+
+                        mov ax,02521
+                        mov dx,[orgint21_o]
+                        push ds
+                          mov ds,[orgint21_s]
+                          int21_aufruf
+                        pop ds
+
+                        mov ax,02525
+                        mov dx,[orgint25_o]
+                        push ds
+                          mov ds,[orgint25_s]
+                          int21_aufruf
+                        pop ds
+
+                        mov ax,02526
+                        mov dx,[orgint26_o]
+                        push ds
+                          mov ds,[orgint26_s]
+                          int21_aufruf
+                        pop ds
+
+                        mov ax,02528
+                        mov dx,[orgint28_o]
+                        push ds
+                          mov ds,[orgint28_s]
+                          int21_aufruf
+                        pop ds
+
+                        mov ax,0252f
+                        mov dx,[orgint2f_o]
+                        push ds
+                          mov ds,[orgint2f_s]
+                          int21_aufruf
+                        pop ds
+
+
+                        push ax,bx,cx,dx,si,di,bp
+
+                        cmp b [schreibschutz],'2'
+                        jnz kein_zurueckschreiben
+                        cmp b cs:[veraendert],0
+                        jz kein_zurueckschreiben
+
+                        mov dx,[datei_schreib_anz_adr]
+                        call ausschrift
+                        call zurueck_schreiben
+                        mov dx,cr_lf
+                        call ausschrift
+
+kein_zurueckschreiben:
+                        pop bp,di,si,dx,cx,bx,ax
+
+                        cmp w [speicher_kilos],0
+                        jz kein_xms_freigeben_noetig
+
+                        ; XMS weggeben
+                        mov ah,funktion_xms_free        ; Freigabe
+                        mov dx,[xms_handhabe]
+                        mov bl,0                        ; Annahme: Kein Fehler
+                        call xmm_aufruf
+
+                        mov dx,[xms_freigabe_fehler_adr]
+                        cmp ax,1
+                        if nz jmp fehler
+
+kein_xms_freigeben_noetig:
+                        mov dx,ende_links
+                        call ausschrift
+                        mov dx,[beendet_adr]
+                        call ausschrift
+                        mov dx,ende_rechts
+                        call ausschrift
+
+                        ; Programmende
+                        null al
+                        jmp programm_beenden_und_pfad_zurueck
+
+;********************************************************************
+;********************************************************************
+;********************************************************************
+
+; Eingabe ax=gefordert
+;         ds=cs
+; Ausgabe bx=vorhanden
+;
+ermittle_und_verbessere_anzahl_xmssektoren:
+
+                        ; Wieviele wrden jetzt passen ?
+                        mov bx,[speicher_kilos]
+                        shl bx,1
+                        cmp ax,bx
+                        if na ret
+
+                        ; Vergr”בerung notwendig
+                        push ax
+                          mov bx,ax
+                          shr bx,1 ; 512/1024
+                          cmp w [speicher_kilos],0
+                          jz kein_weggeben_notwendig
+
+                            push bx
+                              ; XMS weggeben
+                              mov ah,funktion_xms_free  ; Freigabe
+                              mov dx,[xms_handhabe]
+                              mov bl,0                  ; Annahme: Kein Fehler
+                              call xmm_aufruf
+                              mov w [speicher_kilos],0
+                            pop bx
+
+  kein_weggeben_notwendig:
+
+                          ; wieder anfordern
+                          mov ah,funktion_xms_allocate
+                          mov dx,bx
+                          mov bl,0        ; Annahme: Kein Fehler
+                          call xmm_aufruf
+
+                          mov [xms_handhabe],dx
+                          cmp ax,1
+                          jnz vergroesserung_fehler
+
+                        pop ax
+
+                        mov bx,ax
+
+                        shr bx,1
+                        mov [speicher_kilos],bx ; in K statt 512
+                        shl bx,1
+                        ret
+
+vergroesserung_fehler:
+                        pop ax
+                        mov w [speicher_kilos],0
+                        mov bx,0 ; zu wenig
+                        ret
+
+;********************************************************************
+wenn_nicht_e9_eb macro
+                        cmp b es:[#1],0eb
+                        jz falsch_#2
+                        cmp b es:[#1],0e9
+                        jnz #2
+  falsch_#2:
+#em
+;********************************************************************
+include e0x_einz.a86
+include e0x_hdcp.a86
+include e0x_cpqm.a86
+include e0x_cisc.a86
+include e0x_scop.a86
+include e0x_dskl.a86
+include e0x_kopi.a86
+include e0x_dskf.a86
+include e0x_dup4.a86
+include e0x_blit.a86
+include e0x_emtc.a86
+;********************************************************************
+sauberen_kopf_einrichten:
+                        push es,ds
+                          pusha
+                            ; sauberen Kopf erzeugen
+                            mov ds,cs
+                            mov es,cs
+                            mov si,kopf_kopie
+                            mov di,extra_kopf_start
+                            mov cx,extra_kopf_laenge
+                            kopiere
+                          popa
+                        pop ds,es
+                        ret
+;********************************************************************
+
+einlesen:
+                        push ds
+                        push es
+                        push cs
+                        push cs
+                        pop ds
+                        pop es
+                        push ax,bx,cx,dx,si,di,bp
+
+                        cmp b [schreibschutz],'2'
+                        if z call zurueck_schreiben
+
+                        ; Neuer Dateiname
+                        mov al,cs:[vor_rueck]
+                        mov si,cs:[dateiname_zaehlstelle]
+                        add cs:[si],al
+                        mov b cs:[vor_rueck],000
+
+                        mov b cs:[datei_fehler_nr],datei_fehler_keiner
+
+                        ; Datei ”ffnen
+                        mov ah,03d
+                        mov al,040+0 ; Denynone+readonly
+                        mov dx,dateiname
+                        int21_aufruf
+                        jnc oeffene_fehlerfrei
+
+                        mov b cs:[datei_fehler_nr],datei_fehler_fehlt
+                        mov bl,fehler_farbe
+                        call faerben
+                        jmp datei_fehler
+
+oeffene_fehlerfrei:
+
+                        mov [datei_handhabe],ax
+
+                        ; Randfarbe
+                        mov bl,arbeit_farbe
+                        call faerben
+
+                        mov w [datei_start_l],0  ; Annahme: normales Format
+                        mov w [datei_start_h],0
+                        mov b [diskdupe_kopf],0  ; Annahme: kein DiskDupe
+
+                        mov [anzahl_lo],512      ; in Sektorbl”cken
+
+untersuche_bootsektor:
+
+                        ; Kopf einlesen
+                        mov dx,[datei_start_l]
+                        mov cx,[datei_start_h]
+                        call seek
+                        call datei_einlesen_512
+
+                        mov es,[lese_puffer_seg]
+                        mov ax,es:[0]
+                        mov bx,es:[2]
+
+                        ; Sprnge erkennen
+                        ; reine Abzugsdatei
+                        cmp al,0e9  ; jmp
+                        if z jmp bootsektor_auswerten
+                        cmp al,0eb  ; jmps
+                        if z jmp bootsektor_auswerten
+
+
+                        ; EXE ?
+                        cmp ax,'MZ'
+                        jz exe_kopf
+                        cmp ax,'ZM'
+                        jnz nicht_exe
+
+exe_kopf:
+                        mov ax,es:[4] ; Seiten
+                        mov bx,es:[2] ; Rest letzte Seite
+                        cmp bx,0
+                        if z mov bx,512
+                        ; ax*512->dx:ax
+                        mov dx,ax
+                        shr dx,16-9
+                        shl ax,9
+                        add ax,bx
+                        adc dx,0
+
+                        sub ax,512
+                        sbb dx,0
+
+                        add [datei_start_l],ax
+                        adc w [datei_start_h],dx
+
+                        jmp untersuche_bootsektor
+
+
+nicht_exe:
+
+                        ; PMFLOPPY
+                        cmp ax,'sD'
+                        jnz nicht_pmfloppy
+
+                        add w [datei_start_l],0002d
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_pmfloppy:
+
+                        ; EZ-DiskCopy Pro
+                        cmp ax,'ZE'
+                        jnz nicht_ezcp
+                        cmp bx,'PC'
+                        jnz nicht_ezcp
+
+                        add w [datei_start_l],0002e
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_ezcp:
+                        ; Disk eXPress
+                        cmp ax,'SA'
+                        jnz nicht_diskexpress
+
+                        add w [datei_start_l],512
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_diskexpress:
+
+                        ; Disk eXPress in exe
+                        cmp w es:[4],'SA'
+                        jnz nicht_diskexpress_4
+
+                        add w [datei_start_l],512+4
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_diskexpress_4:
+
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; Diskdupe von MSD
+                        cmp ax,'MI'
+                        jnz nicht_diskdupe_4
+
+                        cmp bl,000
+                        jnz nicht_diskdupe_4
+
+                        mov di,es:[10]
+                        shl di,1 ; *2
+                        mov ax,cs:[di+diskdupe_4_sektoren_tabelle-2*1]
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+
+                        call importiere_diskdupe_4
+                        jmp datei_laden_abgeschlossen
+
+nicht_diskdupe_4:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        cmp ax,'SM'
+                        if nz jmp  nicht_diskdupe_5
+
+                        cmp bx,' D'
+                        if nz jmp  nicht_diskdupe_5
+
+                        ; Zum Bootsektor
+                        mov dx,[datei_start_l]
+                        mov cx,[datei_start_h]
+
+                        add dx,es:[00016]
+                        adc cx,0
+                        call seek
+
+                        ; richtigen Bootsektor lesen
+                        call datei_einlesen_512
+
+                        ; Berechnung der Plattengr”בe aus dem Bootsektor
+                        cmp w es:[00018],sekt_spur_max
+                        if a jmp bootsektor_unsinn
+
+                        cmp w es:[0001a],koepfe_max
+                        if a jmp bootsektor_unsinn
+
+                        ; 13=Anzahl Sektoren
+                        cmp w es:[00013],spur_max*koepfe_max*sekt_spur_max
+                        if a jmp bootsektor_unsinn
+
+                        cmp w es:[00013],0
+                        if z jmp bootsektor_unsinn
+
+                        ; Test ob Speicher ausreicht
+                        mov es,[lese_puffer_seg]
+                        mov ax,es:[00013]
+
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+                        ; Zurck zum Diskdupe-Kopf
+                        mov dx,[datei_start_l]
+                        mov cx,[datei_start_h]
+                        call seek
+
+                        call datei_einlesen_512
+
+                        mov es,[lese_puffer_seg]
+                        mov b [diskdupe_kopf],1 ; "Kompression" merken
+
+                        mov dx,es:[00016]
+                        add [datei_start_l],dx  ; Merken das die Daten sp„ter kommen
+                        adc w [datei_start_h],0
+
+                        mov dx,es:[00043]       ; Anzahl Spuren*2
+                        mov [diskdupe_bloecke],dx
+
+                        mov cx,dx               ; Zaehler Packdaten
+                        mov si,00046            ; Start Packdaten
+                        mov di,diskdupe_pack    ; Ziel Packdaten
+                        mov bx,0                ; Dateiofs
+
+
+disk_dupe_kopf_schleife:
+
+                        cmp si,500
+                        jna disk_dupe_kopf_genug_vorhanden
+
+                        add bx,500
+                        push ax,bx,cx
+                          mov dx,bx
+                          mov cx,0
+                          call seek
+                          call datei_einlesen_512
+                        pop cx,bx,ax
+                        mov si,0
+
+disk_dupe_kopf_genug_vorhanden:
+
+                        mov ax,es:[si]
+                        mov ds:[di],ax
+                        add si,5
+                        add di,2
+
+                        loop disk_dupe_kopf_schleife
+
+                        jmp bootsektor_auswerten
+
+nicht_diskdupe_5:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; CFS DISKEMU
+                        cmp ax,'FC'
+                        jnz nicht_cfs_diskemu
+
+                        cmp w es:[0002],'DS'
+                        jnz nicht_cfs_diskemu
+
+                        cmp w es:[0004],'SI'
+                        jnz nicht_cfs_diskemu
+
+                        add w [datei_start_l],044  ; Merken das die Daten sp„ter kommen
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_cfs_diskemu:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; EZ-Copy Plus
+                        cmp ax,'QC'
+                        jnz nicht_ez_copy_plus
+
+                        wenn_nicht_e9_eb 00008,nicht_ez_copy_plus
+
+                        add w [datei_start_l],08  ; Merken das die Daten sp„ter kommen
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_ez_copy_plus:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; SCOPY
+                        cmp ax,'ID'
+                        jnz nicht_scopy
+
+                        cmp w es:[00002],'KS'
+                        jnz nicht_scopy
+                        cmp w es:[00004],'IF'
+                        jnz nicht_scopy
+                        cmp w es:[00006],'EL'
+                        jnz nicht_scopy
+
+                        mov al,es:[0000a]
+                        mov bl,es:[0000c]
+                        mul bl
+
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+                        cmp b es:[00012],0
+                        jz scopy_unkomprimiert
+
+                        call importiere_scopy
+                        jmp datei_laden_abgeschlossen
+
+        scopy_unkomprimiert:
+                        mov al,es:[00013]
+                        add al,00020
+                        null ah
+
+                        add w [datei_start_l],ax  ; Merken das die Daten sp„ter kommen
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_scopy:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+
+                        ; OS/2 LoadDskF ?
+                        cmp ax,059aa
+                        jnz kein_loddskf
+
+                        mov dx,es:[00026]
+                        add [datei_start_l],dx   ; Merken das die Daten sp„ter kommen
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+kein_loddskf:
+
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+
+                        ; OS/2 VM-DOS-Abbild ?
+                        cmp ax,00200             ; 2 Seiten
+                        if nz cmp ax,00100       ; 1 Seite
+                        jnz kein_vm_dos
+
+                        add w [datei_start_l],8  ; Merken das die Daten sp„ter kommen
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+kein_vm_dos:
+
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+
+                        ; AST-DiskFile.EXE (FLASH-BIOS)
+                        cmp w es:[00017],ax
+                        jnz kein_ast_diskfile
+                        wenn_nicht_e9_eb 4,kein_ast_diskfile
+
+ja_ast_diskfile_:
+                        add w [datei_start_l],4  ; Merken das die Daten sp„ter kommen
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+kein_ast_diskfile:
+
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; 2FILE,2DISK / PC-Magazine
+                        cmp ax,'CP'
+                        jnz kein_pcm2file
+                        cmp b es:[00002],'M'
+                        jnz kein_pcm2file
+                        wenn_nicht_e9_eb 0000d,kein_pcm2file
+
+                        add w [datei_start_l],0000d  ; Merken das die Daten sp„ter kommen
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+kein_pcm2file:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; Floppy-Copy
+                        ; CDISK Compressed
+                        cmp ax,'DC'
+                        jnz nicht_floppy_coppy
+                        cmp bx,'SI'
+                        jnz nicht_floppy_coppy
+
+                        wenn_nicht_e9_eb 00060,nicht_floppy_coppy
+                        
+                        ; komprimiert
+                        cmp b es:[0004c],3
+                        ja nicht_floppy_coppy
+
+                        add w [datei_start_l],00060 
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_floppy_coppy:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; 1PASS
+                        cmp b es:[0001a],al ; Sekt/Spur
+                        jnz nicht_1pass
+                        cmp b es:[00017],ah ; Media Descriptor
+                        jnz nicht_1pass
+                        wenn_nicht_e9_eb 00002,nicht_1pass
+
+                        add w [datei_start_l],00002  ; Merken das die Daten sp„ter kommen
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_1pass:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+
+                        ; FastPacked 1.2
+                        cmp ax,0ffff
+                        jnz nicht_fastpacked_12
+
+                        ; Sprnge erkennen
+                        wenn_nicht_e9_eb 00051,nicht_fastpacked_12
+
+                        add w [datei_start_l],051
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_fastpacked_12:
+
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+
+                        ; FastPacked 1.4
+                        cmp ax,0ffff
+                        jnz nicht_fastpacked_14
+
+                        ; Sprnge erkennen
+                        wenn_nicht_e9_eb 00166,nicht_fastpacked_14
+
+                        add w [datei_start_l],0166
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+nicht_fastpacked_14:
+
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; COPY-QM ?
+                        cmp ax,'QC'
+                        jnz nicht_copy_qm
+
+                        mov di,es:[0006f]
+                        add di,085+2
+                        wenn_nicht_e9_eb di,nicht_copy_qm
+
+                        mov ax,es:[0000b] ; Anzahl Sektoren
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+                        call importiere_copy_qm
+                        jmp datei_laden_abgeschlossen
+
+nicht_copy_qm:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; EZ-DisKlone Plus
+                        cmp ax,0461a
+                        jnz nicht_disklone
+
+                        cmp w es:[00002],04644
+                        jnz nicht_disklone
+
+                        wenn_nicht_e9_eb 00086,nicht_disklone
+
+                        mov al,es:[00005]
+                        cmp al,6
+                        ja nicht_disklone
+
+                        mov bl,5
+                        mul bl
+
+                        add ax,disklone_plus_tabelle_start
+                        mov si,ax
+                        mov ax,[si]
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+                        call importiere_disklone
+                        jmp datei_laden_abgeschlossen
+
+
+nicht_disklone:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; CISCOPY unkomprimiert
+                        cmp ah,'L'
+                        jnz nicht_ciscopy
+
+                        cmp al,1
+                        jb nicht_ciscopy
+
+                        cmp al,7
+                        ja nicht_ciscopy
+
+                        mov bl,5
+                        mul bl
+                        add ax,ciscopy_tabelle_start
+                        mov si,ax
+                        mov w cs:[ciscopy_tabellen_zeiger],ax
+
+                        mov al,cs:[si+3]
+                        mov bl,cs:[si+4]
+                        mul bl
+                        inc ax
+                        mov di,ax
+                        ; Keine Kompression
+                        ; ax zerst”rt
+                        mov ax,'XY'
+                        cmp b es:[di],0
+                        jnz nicht_ciscopy
+
+
+                        mov ax,cs:[si]
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+                        call importiere_ciscopy
+                        jmp datei_laden_abgeschlossen
+
+ciscopy_tabellen_zeiger:dw ?
+
+nicht_ciscopy:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+
+                        ; Erweiterter Plattenabzug ... ?
+                        cmp ax,'rE'
+                        jnz nicht_erweitert
+
+                        add w [datei_start_l],00200
+                        adc w [datei_start_h],0
+
+                        ; es=Lespuffer
+                        mov ax,es:[sektoren-extra_kopf_start]  ; noch nicht kopiert
+                        add ax,4
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+                        mov si,0                    ;lese_puffer:0
+                        mov ds,[lese_puffer_seg]
+                        mov di,extra_kopf_start
+                        mov es,cs
+                        mov cx,extra_kopf_laenge
+                        kopiere
+                        mov ds,cs
+                        mov es,cs
+                        ; natrliches Format ...
+                        jmp kopf_auswerten
+
+nicht_erweitert:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; es bleibt noch UCOPY brig ...
+                        wenn_nicht_e9_eb 0000b,kein_ucopy_kopf
+
+                        add w [datei_start_l],00b
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+kein_ucopy_kopf:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; es bleibt noch BlitzCopy brig ...
+			cmp al,002 ; mindestens Bootsektor vorhanden
+			jnz kein_blitzcopy
+                        wenn_nicht_e9_eb 00058,kein_blitzcopy
+
+
+			call berechne_blitzcopy_anzahl_sektoren
+			; ax
+			call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+			call importiere_blitzcopy
+                        jmp datei_laden_abgeschlossen
+
+kein_blitzcopy:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; DDUMP.EXE ?
+                        cmp al,3 ; 0=360...3=1440
+                        ja kein_ddump_kopf
+
+                        wenn_nicht_e9_eb 000a2,kein_ddump_kopf
+
+                        add w [datei_start_l],0a2
+                        adc w [datei_start_h],0
+                        jmp bootsektor_auswerten
+
+kein_ddump_kopf:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; DIM 1.4.A
+                        cmp ax,'iD'
+                        jnz nicht_dim
+                        cmp w es:[00002],'ks'
+                        jnz nicht_dim
+                        cmp w es:[00004],'I '
+                        jnz nicht_dim
+                        cmp w es:[00006],'aM'
+                        jnz nicht_dim
+                        cmp w es:[00008],'eg'
+                        jnz nicht_dim
+                        cmp w es:[0000a],'V '
+                        jnz nicht_dim
+
+                        add w [datei_start_l],054
+                        adc w [datei_start_h],0
+                        mov b [dim_kopf_beachten],1
+                        jmp bootsektor_auswerten
+
+dim_kopf_beachten:      db 0
+
+nicht_dim:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        ; DIM 1.4.A Lcke zwischen SFX und Daten
+                        cmp ax,0
+                        jnz nicht_dim_sfx
+
+                        cmp w es:[00002],0
+                        jnz nicht_dim_sfx
+
+                        cmp w es:[00131],'iD'
+                        jnz nicht_dim_sfx
+
+                        add w [datei_start_l],00131
+                        adc w [datei_start_h],0
+                        jmp untersuche_bootsektor
+
+nicht_dim_sfx:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+                        cmp ax,0eae0
+                        jnz nicht_disk_factory
+
+                        cmp w es:[00002],00c0b
+                        jnz nicht_disk_factory
+
+
+                        mov al,b es:[00028] ; Spuren
+                        shl al,1            ; * 2 Seiten
+                        mul b es:[00029]    ; Sekt/Spur
+
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+                        call importiere_disk_factory
+                        jmp datei_laden_abgeschlossen
+
+nicht_disk_factory:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+
+                        ; HD-COPY
+                        cmp al,0ff
+                        jnz nicht_hd_copy
+
+                        mov ax,es:[0000e] ; al = Spuren-1
+                                          ; ah = Sekt/Spur
+                        inc al
+                        mul ah            ; al*ah->ax
+                        shl ax,1          ; ax*2->ax
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+                        call importiere_hd_copy
+                        jmp datei_laden_abgeschlossen
+nicht_hd_copy:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+			cmp ax,'\\'
+                        jnz nicht_emtcopy
+
+                        cmp bx,0c57a
+                        jnz nicht_emtcopy
+
+                        call berechne_groesse_emtcopy
+                        cmp ax,-1
+                        if z jmp bootsektor_unsinn
+                        ; ax
+			call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+			call importiere_emtcopy
+                        jmp datei_laden_abgeschlossen
+
+nicht_emtcopy:
+;תתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתתת
+
+                        jmp bootsektor_auswerten
+
+;***************************************************************************
+
+bootsektor_unsinn:
+                        mov es,cs
+
+                        mov b cs:[datei_fehler_nr],datei_fehler_unsinn
+
+                        mov bl,fehler_farbe
+                        call faerben
+                        jmp datei_fehler
+
+bootsektor_auswerten:
+
+                        mov dx,[datei_start_l]
+                        mov cx,[datei_start_h]
+                        call seek
+
+                        ; richtigen Bootsektor lesen
+                        call datei_einlesen_512
+
+                        mov es,[lese_puffer_seg]
+
+                        ; Test auf Gltigkeit
+                        mov ax,es:[00000]
+                        cmp ax,0ea60 ; ARJ
+                        jz bootsektor_unsinn
+
+                        cmp ax,'KP'  ; PkZip
+                        jz bootsektor_unsinn
+
+                        cmp ax,'aR'  ; Rar
+                        jz bootsektor_unsinn
+
+                        cmp ax,05aaa ; LoadDskf komprimiert
+                        jz bootsektor_unsinn
+
+                        cmp w es:[00018],sekt_spur_max
+                        ja bootsektor_unsinn
+
+                        cmp w es:[0001a],koepfe_max
+                        ja bootsektor_unsinn
+
+                        ; 13=Anzahl Sektoren
+                        mov ax,es:[00013]
+                        cmp ax,0
+                        if z mov ax,es:[00020]
+
+                        cmp ax,spur_max*koepfe_max*sekt_spur_max
+                        ja bootsektor_unsinn
+
+                        cmp ax,0
+                        jz bootsektor_unsinn
+
+                        ; Test ob Speicher ausreicht
+
+                        call ermittle_und_verbessere_anzahl_xmssektoren
+                        cmp ax,bx
+                        if a jmp xms_zu_klein
+
+                        call sauberen_kopf_einrichten
+
+                        mov [sektoren],ax
+
+                        ; es=Lesepuffer
+                        mov al,es:[00018]
+                        mov [sekt_spur],al
+
+                        mov al,es:[0001a]
+                        mov [koepfe],al
+
+                        mov es,cs
+
+                        mov al,[sekt_spur]
+                        mov bl,[koepfe]
+                        mul bl
+
+                        mov bx,ax
+                        mov ax,[sektoren]
+                        mov dx,0
+
+                        cmp bx,0
+                        if z mov bx,1 ; keine Division durch 0 zulassen
+                        div bx        ; hier ist keine Fehlerbehandlung mehr m”glich
+                        dec al
+
+                        mov [spuren],al
+
+                        ; Seek(pos(bootsektor))
+                        mov ds,cs
+                        mov es,cs
+                        mov dx,[datei_start_l]
+                        mov cx,[datei_start_h]
+                        call seek
+
+
+kopf_auswerten:
+                        mov cx,0
+                        mov w [quell_h],0
+                        mov w [quell_o],0
+                        mov w [quell_s],[lese_puffer_seg]
+                        mov w [ziel_h],[xms_handhabe]
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+
+einlesen_datei:
+
+                        cmp b [diskdupe_kopf],0
+                        jz einelesen_datei_lesen_normal
+
+                        mov ax,cx
+                        div b [sekt_spur] ; Berechnung Spur*2+Seite
+                        mov ah,0
+                        shl ax,1 ; * 2 ( word laden )
+                        mov si,diskdupe_pack
+                        add si,ax
+                        mov ax,[si]
+                        cmp al,1
+                        jz einelesen_datei_lesen_normal
+
+                        mov al,ah ; Fllen mit ah
+                        call fuelle_lese_puffer
+                        jmp einlesen_datei_lesen_fertig
+
+einelesen_datei_lesen_normal:
+
+                        call datei_einlesen_512
+
+einlesen_datei_lesen_fertig:
+
+                        call kopiere_ins_xms_512
+                        inc cx
+
+                        push ax,cx,dx
+
+                          cmp b [dim_kopf_beachten],1
+                          jnz nicht_dim_kopf_beachten
+
+                          mov ax,cx
+                          div b [sekt_spur]
+                          cmp ah,0 ; Rest=0 .. neue Spur ?
+                          jnz nicht_dim_kopf_beachten
+
+                          mov dl,[sekt_spur]
+                          mov dh,0
+                          mov cx,00000
+                          call seek_relativ
+
+  nicht_dim_kopf_beachten:
+                        pop dx,cx,ax
+
+
+                        cmp cx,[sektoren]
+                        jnz einlesen_datei
+
+
+                        ; bis zu 4 Extrasektoren
+                        mov cx,0
+
+extra_laden_schleife:
+
+                        cmp cl,[anzahl_extra]
+                        jz extra_laden_ende
+
+                        inc cx
+                        call datei_einlesen_512
+
+                        ; Bestimmung XMS off (Ziel)
+                        mov dx,cx
+                        dec dx
+                        mov al,extra_2_cl-extra_1_cl
+                        mul dl
+                        add ax,extra_1_xms_lo
+                        mov si,ax
+                        cld
+                        es:lodsw
+                        mov w [ziel_o],ax
+                        es:lodsw
+                        mov w [ziel_s],ax
+
+                        call kopiere_ins_xms_512
+
+                        jmp extra_laden_schleife
+
+extra_laden_ende:
+
+datei_laden_abgeschlossen:
+
+                        ; ermittle_und_verbessere_anzahl_xmssektoren aufgerufen ?
+                        cmp w [xms_handhabe],0
+                        if z jmp bootsektor_unsinn
+
+
+                        ; Datei schlieבen
+                        mov ah,03e
+                        mov bx,[datei_handhabe]
+                        int21_aufruf
+
+                        mov bl,schwarz_farbe
+                        call faerben
+
+                        mov ch,[spuren]
+                        mov cl,[sekt_spur]
+
+                        ; <= 41 Spuren ?
+                        mov b [laufwerks_typ],001 ; 360
+                        mov b [bios_90],047
+                        cmp ch,41
+                        jle laufwerkstyp_bestimmet
+
+                        ; <= 10 Sekt/Spur
+                        mov b [laufwerks_typ],003 ; 720
+                        mov b [bios_90],017
+                        cmp cl,10
+                        jle laufwerkstyp_bestimmet
+
+                        ; <= 17 Sekt/Spur
+                        mov b [laufwerks_typ],002 ; 1200
+                        mov b [bios_90],015
+                        cmp cl,17
+                        jle laufwerkstyp_bestimmet
+
+                        ; <= 25 Sekt/Spur
+                        mov b [laufwerks_typ],004 ; 1440
+                        mov b [bios_90],017
+                        cmp cl,25
+                        jle laufwerkstyp_bestimmet
+
+                        mov b [laufwerks_typ],005 ; ? 2880
+                        ; mov b [bios_90],017
+
+laufwerkstyp_bestimmet:
+
+
+                        mov b cs:[veraendert],0
+
+datei_fehler:
+                        pop bp,di,si,dx,cx,bx,ax
+                        pop es
+                        pop ds
+
+                        ret
+
+xms_zu_klein:
+                        mov b cs:[datei_fehler_nr],datei_fehler_zu_gross
+
+                        mov bl,xms_fehler_farbe
+                        call faerben
+                        jmp datei_fehler
+
+;-----------------------------------------------
+zurueck_schreiben:
+                        cmp b cs:[veraendert],0
+                        if z ret
+
+                        mov bl,schreib_farbe
+                        call faerben
+
+                        ; Datei erzeugen !
+                        mov ax,03c00
+                        mov cx,0
+                        mov dx,dateiname
+                        int21_aufruf
+                        mov [datei_handhabe],ax
+
+                        if c jmp schreiben_fehler
+
+                        cmp [kopf_text],'rE'
+                        jnz schreibarbeit
+
+                        ; Kopf->Schreibpuffer
+                        mov si,extra_kopf_start
+                        mov di,0
+                        mov es,[lese_puffer_seg]
+                        mov cx,extra_kopf_laenge
+                        kopiere
+
+                        ; Rest fllen
+                        mov di,extra_kopf_laenge
+                        mov cx,512-extra_kopf_laenge
+                        mov al,'Û'
+fuell_rest:
+                        stosb
+                        loop fuell_rest
+
+                        push cs
+                        pop es
+
+                        ; Schreiben des Kopfes
+                        call datei_schreiben_512
+
+schreibarbeit:
+
+                        mov cx,0
+                        mov w [anzahl_lo],512
+                        mov w [ziel_h],0
+                        mov w [ziel_o],0
+                        mov w [ziel_s],[lese_puffer_seg]
+                        mov w [quell_h],[xms_handhabe]
+                        mov w [quell_o],0
+                        mov w [quell_s],0
+
+schreib_schleife:
+
+                        mov ah,funktion_xms_move
+                        mov si,kopierer
+                        mov bl,0        ; Annahme: Kein Fehler
+                        call xmm_aufruf
+
+                        inc cx
+                        mov ax,cx
+                        mov bx,cx
+                        shr ax,7
+                        shl bx,9
+                        mov [quell_o],bx
+                        mov [quell_s],ax
+
+                        call datei_schreiben_512
+
+                        cmp cx,[sektoren]
+                        jnz schreib_schleife
+
+                        ; bis zu 4 Extrasektoren
+                        mov cx,0
+
+extra_schreiben_schleife:
+
+                        cmp cl,[anzahl_extra]
+                        jz extra_schreiben_ende
+
+                        inc cx
+
+                        ; Bestimmung XMS off (Ziel)
+                        mov dx,cx
+                        dec dx
+                        mov al,extra_2_cl-extra_1_cl
+                        mul dl
+                        add ax,extra_1_xms_lo
+                        mov si,ax
+                        cld
+                        lodsw
+                        mov w [quell_o],ax
+                        lodsw
+                        mov w [quell_s],ax
+
+                        mov ah,funktion_xms_move
+                        mov si,kopierer
+                        mov bl,0        ; Annahme: Kein Fehler
+                        call xmm_aufruf
+
+                        call datei_schreiben_512
+
+                        jmp extra_schreiben_schleife
+
+extra_schreiben_ende:
+
+                        ; Datei schlieבen
+                        mov ah,03e
+                        mov bx,[datei_handhabe]
+                        int21_aufruf
+
+                        mov bl,schwarz_farbe
+                        call faerben
+
+                        ret
+
+schreiben_fehler:
+                        mov bl,schreib_fehler_farbe
+                        call faerben
+                        ret
+
+
+;********************************************************************
+alte_randfarbe:         db schwarz_farbe
+faerben:
+                        mov cs:[alte_randfarbe],bl
+                        push ax
+                          push bx
+                            mov ah,00b
+                            mov bh,0
+                            ; bl ist Parameter
+                            pushf
+                            call d cs:[orgint10]
+                          pop bx
+                        pop ax
+                        ret
+;********************************************************************
+simulieren_ein:
+                        pushf
+
+                        push di
+                        push si
+                        push ds
+                        push es
+
+                        int24_selbst
+
+                          mov ds,cs
+                          mov es,cs
+
+                          dec b [sperre]
+                          call reset_test
+
+                        int24_zurueck
+
+                        pop es
+                        pop ds
+                        pop si
+                        pop di
+
+                        popf
+                        ret
+;********************************************************************
+simulieren_aus:
+                        pushf
+                        push di
+                        push si
+                        push ds
+                        push es
+
+                        ; BIOS-Variable restaurieren
+                        push ax
+                          mov ax,00040
+                          mov ds,ax
+                          mov ax,00090
+                          add al,cs:[laufwerk]
+                          mov di,ax
+                          mov al,cs:[bios_90_org]
+                          mov ds:[di],al
+                        pop ax
+
+                        int24_selbst
+
+                          mov ds,cs
+                          mov es,cs
+
+                          inc b [sperre]
+                          call reset_test
+
+                        int24_zurueck
+
+                        pop es
+                        pop ds
+                        pop si
+                        pop di
+
+                        popf
+                        ret
+
+;********************************************************************
+; ds=cs,es=cs
+hyper_status            db ?
+testdatei:              db 'A:\ûûûûûûûû.זזז',0
+suchmaske:              db '*.*',0
+org_dta:                dd ?
+
+reset_test:
+                        push ax,bx,cx,dx,si,di,ds,es
+
+                          mov bl,[alte_randfarbe]
+                          push bx
+
+                            mov bl,cache_reset_farbe
+                            call faerben
+
+                            ;********** Hyperdisk zurcksetzen ****************
+
+                            ; Status holen
+                            mov ax,0df01
+                            mov bx,'DH'
+                            int 02f
+                            mov hyper_status,dl
+
+                            ; Reset
+                            mov ax,0df02
+                            mov bx,'DH'
+                            and dl,07f
+                            int 02f
+
+                            ; Restaurieren
+                            mov ax,0df02
+                            mov bx,'DH'
+                            mov dl,hyper_status
+                            int 02f
+
+                            ;********* SMARTDRV zurcksetzen **********
+                            mov ax,04a10
+                            mov bx,00002
+                            int 02f
+
+                            ; Bios-Variable
+                            mov ax,00040
+                            mov es,ax
+                            mov b es:[00041],006
+
+                            mov b [plattenwechsel],platte_gewechselt_ja
+                            mov ax,00201 ; Lies Sektor
+                            mov bx,0 ; es:0
+                            mov cx,1
+                            mov dh,0
+                            mov dl,[laufwerk]
+                            mov es,[lese_puffer_seg]
+                            cmp b cs:[os2_oder_xmm],'O'
+                            jz reset_test_int13_gruendlich
+                            pushf
+                              ; hier INT $13 weil das DOS etwas mitbekommen soll
+                              call d [orgint13]
+                            jnc reset_test_int13_gruendlich
+
+                            ; 2.Versuch
+                            mov ax,00201
+                            pushf
+                              ; hier INT $13 weil das DOS etwas mitbekommen soll
+                              call d [orgint13]
+                            jnc reset_test_int13_gruendlich
+                            jmp reset_keine_diskette_im_laufwerk
+
+reset_test_int13_gruendlich:
+
+                            mov ds,cs
+                            mov si,cs
+                            null bh
+                            mov bl,[laufwerk]
+                            inc bl  ; 1=A 2=B
+                            mov ch,008
+                            mov dx,hd_copy_entschluesselt
+                            mov di,dx
+
+                            ;get device para
+                            mov b [plattenwechsel],platte_gewechselt_ja
+                            mov ax,0440d
+                            mov cl,060
+                            int21_aufruf
+
+                            ;sense media type
+                            mov b [plattenwechsel],platte_gewechselt_ja
+                            mov ax,0440d
+                            mov cl,068
+                            int21_aufruf
+
+                            ; get volume serial number
+                            mov b [plattenwechsel],platte_gewechselt_ja
+                            mov ax,0440d
+                            mov cx,066
+                            int21_aufruf
+
+                            ; free Disk Space ?
+                            mov b [plattenwechsel],platte_gewechselt_ja
+                            mov ah,036
+                            mov dl,[laufwerk]
+                            inc dl
+                            int21_aufruf
+
+                            ;***************************************
+
+                            ; GET DTA
+                            mov ah,02f
+                            int21_aufruf
+                            mov cs:[org_dta+0],bx
+                            mov cs:[org_dta+2],es
+
+                            ; SET DTA
+                            mov ah,01a
+                            mov dx,hd_copy_entschluesselt
+                            ; mov ds,ds
+                            int21_aufruf
+
+                            ; Findfirst
+                            mov ah,04e
+                            mov cx,0ff; alle
+                            mov dx,suchmaske
+                            int21_aufruf
+
+                            ; SET DTA
+                            mov ah,01a
+                            les bx,[org_dta]
+                            int21_aufruf
+
+                            ;***************************************
+
+                            ; Test: Datei ”ffnen
+                            mov al,[laufwerk]
+                            add al,'A'
+                            mov b [testdatei],al
+                            mov ax,03d00
+                            mov dx,testdatei
+                            int21_aufruf
+
+
+reset_keine_diskette_im_laufwerk:
+
+                            mov b [plattenwechsel],platte_gewechselt_ja
+
+                            mov ax,00040
+                            mov es,ax
+                            mov b es:[00040],1
+
+                          pop bx
+                          call faerben
+
+
+                        pop es,ds,di,si,dx,cx,bx,ax
+
+                        ret
+;********************************************************************
+
+abzugsdatei_anz_deutsch:
+                        db 'Abzugsdatei ..... $'
+abzugsdatei_anz_englisch:
+                        db 'image file ...... $'
+
+programm_anz_deutsch:
+                        db 'Programm ........ $'
+programm_anz_englisch:
+                        db 'program ......... $'
+
+parameter_anz_deutsch:
+                        db 'Parameter ....... $'
+parameter_anz_englisch:
+                        db 'parameter ....... $'
+
+
+datei_lese_anz_deutsch:
+                        db ' @',arbeit_farbe,'Lesen ...$'
+datei_lese_anz_englisch:
+                        db ' @',arbeit_farbe,'reading ...$'
+
+datei_schreib_anz_deutsch:
+                        db ' @',schreib_farbe,'Zurckschreiben ...$'
+datei_schreib_anz_englisch:
+                        db ' @',schreib_farbe,'write back ...$'
+
+abgebrochen_deutsch:
+                        db '@',070,'Abgebrochen',007,'$'
+abgebrochen_englisch:
+                        db '@',070,'E0X aborted',007,'$'
+
+beendet_deutsch:
+                        db '@',070,'E0X beendet$'
+beendet_englisch:
+                        db '@',070,'finish E0X $'
+
+ende_links:
+                        db 00d,00a,' @',070
+                        db 'ִִִִִִִִִִִִִִִִִִִִִִִִִִִִִִִ´ $';
+
+ende_rechts:            db '@',070,' ֳִִִִִִִִִִִִִִִִִִִִִִִִִִִִִִִִ@',7
+cr_lf:                  db 00d,00a,'$'
+
+
+exec_groesse:
+;²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²²
+
+parameter_fehler_deutsch:
+  db '@',7,' @',01e,' Emulation eines Plattenlaufwerkes ber XMS                                   @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,' Benutzung: E0X (LW) (Abzugsdatei) (Schreiben) (XMS) (Programm [Parameter] )  @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,'         LW         A (Laufwerk A:)   B (Laufwerk B:)       oder A! , B!      @',7,00d,00a
+  db '@',7,' @',01e,'         Schreiben  0 (aus)  1 (ein)  2 (ein,speichern)                       @',7,00d,00a
+  db '@',7,' @',01e,'         XMS        Mindestgr”בe des anzufordernden Speichers ( in KB )       @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,' Beispiel: E0X A TRANS@',01c,'ר1@',01e,'.IMG 0 1500 A:\INSTALL.EXE                            @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,' W„hrend des Programmlaufes benutzbare Tasten :                               @',7,00d,00a
+  db '@',7,' @',01e,'         @',01c,'F11@',01e,' ( -> TRANS@',01c,'0@',01e,'.IMG )  @',01c,'F12@',01e,' ( -> TRANS@',01c,'2@',01e,'.IMG )                         @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,' Farben am Bildschirmrand :                                                   @',7,00d,00a
+  db '@',7,' @',01e,'         @',07e,' ‏ Lesen      @',01e,'  @',07c,' ‏ Lesefehler    @',01e,'  @',07f,' ‏ Plattencache zurcksetzen @',01e,'     @',7,00d,00a
+  db '@',7,' @',01e,'         @',072,' ‏ Schreiben  @',01e,'  @',076,' ‏ Schreibfehler @',01e,'  @',07b,' ‏ Bereichsberschreitung    @',01e,'     @',7,00d,00a
+  db '@',7,' @',01e,'         @',071,' ‏ XMS-Fehler @',01e,'                                                       @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '$'
+parameter_fehler_englisch:
+  db '@',7,' @',01e,' emulation of a disk drive with XMS usage                                     @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,' usage: E0X (drive) (image file) (write back) (XMS) (programm [parameter] )   @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,'         drive      A (drive A:)   B (drive B:)       or   A! , B!            @',7,00d,00a
+  db '@',7,' @',01e,'         write      0 (protected)  1 (not protected)  2 (write back)          @',7,00d,00a
+  db '@',7,' @',01e,'         XMS        minimal size of memory to allocate ( KB )                 @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,' example: E0X A TRANS@',01c,'ר1@',01e,'.IMG 0 1500 A:\INSTALL.EXE                             @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,' useable keys at runtime :                                                    @',7,00d,00a
+  db '@',7,' @',01e,'         @',01c,'F11@',01e,' ( -> TRANS@',01c,'0@',01e,'.IMG )  @',01c,'F12@',01e,' ( -> TRANS@',01c,'2@',01e,'.IMG )                         @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '@',7,' @',01e,' colors on screen border :                                                    @',7,00d,00a
+  db '@',7,' @',01e,'         @',07e,' ‏ read       @',01e,'  @',07c,' ‏ read error    @',01e,'  @',07f,' ‏ reset disk cache          @',01e,'     @',7,00d,00a
+  db '@',7,' @',01e,'         @',072,' ‏ write      @',01e,'  @',076,' ‏ write error   @',01e,'  @',07b,' ‏ access to wrong sectors   @',01e,'     @',7,00d,00a
+  db '@',7,' @',01e,'         @',071,' ‏ XMS error  @',01e,'                                                       @',7,00d,00a
+  db '@',7,' @',01e,'                                                                              @',7,00d,00a
+  db '$'
+
+
+laufwerk_b_fehler_deutsch:
+                        db '@',12,'Laufwerk B: ist in der derzeitigen Konfiguration nicht benutzbar.@',7,00d,00a
+                        db '@',12,'Bitte tragen Sie im BIOS-Standard-Setup ein Laufwerk B: ein !    @',7,00d,00a
+                        db '@',7,00d,00a
+                        db '$'
+laufwerk_b_fehler_englisch:
+                        db '@',12,'drive B: is in the actual configuration not available.@',7,00d,00a
+                        db '@',12,'please enable drive B: in your BIOS setup !           @',7,00d,00a
+                        db '@',7,00d,00a
+                        db '$'
+
+
+os2_warnung_text_deutsch:
+                        db '@',12,' OS/2 Warp gefunden.@',7,00d,00a
+                        db '@',12,' um E0X unter OS/2 zu benutzen mssen Sie:@',7,00d,00a
+                        db '@',12,'  a) ‏ ein eigenst„ndiges DOS laden@',7,00d,00a
+                        db '@',12,'     ‏ FSFILTER.SYS nicht laden oder FSACCESS !A benutzen@',7,00d,00a
+                        db '@',7,00d,00a
+                        db '@',12,'  b) ‏ OS/2 MDOS benutzen@',7,00d,00a
+                        db '@',12,'     ‏ SVDISK von A.J.Shan geladen haben@',7,00d,00a
+                        db '@',12,'     ‏ eine (leere) "Diskette" mindestens gleicher Gr”בe@',7,00d,00a
+                        db '@',12,'       in das virtuelle Laufwerk eingelegt haben@',7,00d,00a
+                        db '@',7,00d,00a
+                        db '$'
+os2_warnung_text_englisch:
+                        db '@',12,' OS/2 Warp found.@',7,00d,00a
+                        db '@',12,' to use E0X under OS/2 you must:@',7,00d,00a
+                        db '@',12,'  a) ‏ load an independet DOS@',7,00d,00a
+                        db '@',12,'     ‏ not load FSFILTER.SYS or use FSACCESS !A @',7,00d,00a
+                        db '@',7,00d,00a
+                        db '@',12,'  b) ‏ use OS/2 MDOS@',7,00d,00a
+                        db '@',12,'     ‏ load SVDISK / A.J.Shan@',7,00d,00a
+                        db '@',12,'     ‏ "insert" an (empty) media at least equal size@',7,00d,00a
+                        db '@',12,'       in the virtual drive@',7,00d,00a
+                        db '@',7,00d,00a
+                        db '$'
+
+e0x_ist_schon_installier_text_deutsch:
+                        db '@',12,' Hinweis: E0X wurde bereits geladen!@',7,00d,00a
+                        db '$'
+e0x_ist_schon_installier_text_englisch:
+                        db '@',12,' hint: E0X is already running!@',7,00d,00a
+                        db '$'
+
+os2_subst_fehler_text_deutsch:
+                        db '@',12,' OS/2 "Subst"-Fehler !@',7,00d,00a
+                        db '$'
+os2_subst_fehler_text_englisch:
+                        db '@',12,' OS/2 "subst"-error !@',7,00d,00a
+                        db '$'
+
+welches_laufwerk_ist_svdisk_text_deutsch:
+                        db '@',12,' OS/2 MDOS Variante erfordert SVDISK (A.J.Shan) @',7,00d,00a
+                        db '@',12,' WARNUNG! Das SVDISK-Laufwerk wird vollst„ndig berschrieben !@',7,00d,00a
+                        db '@',12,' Welchen Buchstaben hat das SVDISK-Laufwerk ? Abbruch mit Esc @',007,'$'
+welches_laufwerk_ist_svdisk_text_englisch:
+                        db '@',12,' OS/2 MDOS variant requies SVDISK (A.J.Shan)@',7,00d,00a
+                        db '@',12,' WARNING: data currently on the drive will be lost !@',7,00d,00a
+                        db '@',12,' with drive letter is the svdisk ? abort with Esc @',007,'$'
+
+svdisk_abbruch_text_deutsch:
+                        db '@',12,' Abbruch auf Wunsch des Benutzers @',7,00d,00a
+                        db '$'
+svdisk_abbruch_text_englisch:
+                        db '@',12,' abort on user request@',7,00d,00a
+                        db '$'
+
+;********************************************************************
+fehler:
+                        call ausschrift
+                        mov dx,ende_links
+                        call ausschrift
+                        mov dx,[abgebrochen_adr]
+                        call ausschrift
+                        mov dx,ende_rechts
+                        call ausschrift
+
+                        mov al,001
+                        jmp programm_beenden_und_pfad_zurueck
+
+int_sichern:
+
+                        ; Holen Indos-Adresse
+                        mov ah,034
+                        int 021
+                        mov [indosflag_o],bx
+                        mov [indosflag_s],es
+                        push cs
+                        pop es
+
+                        ; Holen critical error flag
+                        mov ax,05d06
+                        int 021
+                        mov ax,ds
+                        push cs
+                        pop ds
+                        mov [criterrflag_o],si
+                        mov [criterrflag_s],ax
+
+                        ; Int 10,13,16,21,25,26,28,40 sichern
+                        mov ax,03510
+                        int 021
+                        mov [orgint10_o],bx
+                        mov [orgint10_s],es
+
+                        mov ax,03513
+                        int 021
+                        mov [orgint13_o],bx
+                        mov [orgint13_s],es
+                        mov [orgint13_oder_40_o],bx
+                        mov [orgint13_oder_40_s],es
+
+                        mov ax,03515
+                        int 021
+                        mov [orgint15_o],bx
+                        mov [orgint15_s],es
+
+                        mov ax,03516
+                        int 021
+                        mov [orgint16_o],bx
+                        mov [orgint16_s],es
+
+                        mov ax,03521
+                        int 021
+                        mov [orgint21_o],bx
+                        mov [orgint21_s],es
+
+                        mov ax,03525
+                        int 021
+                        mov [orgint25_o],bx
+                        mov [orgint25_s],es
+
+                        mov ax,03526
+                        int 021
+                        mov [orgint26_o],bx
+                        mov [orgint26_s],es
+
+                        mov ax,03528
+                        int 021
+                        mov [orgint28_o],bx
+                        mov [orgint28_s],es
+
+                        mov ax,0352f
+                        int 021
+                        mov [orgint2f_o],bx
+                        mov [orgint2f_s],es
+
+                        mov ax,03540
+                        int 021
+                        mov [orgint40_o],bx
+                        mov [orgint40_s],es
+
+                        push cs
+                        pop es
+
+                        ret
+
+;********************************************************************
+
+xms_installation:
+                        ; Entweder OS/2 mit SVDISK  oder  XMS
+                        mov ax,04010
+                        int 02f
+                        cmp ax,04010
+                        jnz xms_installation_os2_gefunden
+
+                        ; ist XMS 2+ installiert ?
+                        mov ax,04300
+                        int 02f
+                        mov dx,[xms_treiber_fehler_adr]
+                        cmp al,080
+                        if nz jmp fehler
+
+                        ; Holen der Einsprungadresse
+                        mov ax,04310
+                        int 02f
+                        mov [xmm_o],bx
+                        mov [xmm_s],es
+                        push cs
+                        pop es
+
+                        ret
+
+xms_installation_os2_gefunden:
+
+                        mov dx,[welches_laufwerk_ist_svdisk_text_adr]
+                        call ausschrift
+
+                        mov ah,001
+                        int 021
+
+                        push ax
+                          mov dx,cr_lf
+                          call ausschrift
+                        pop ax
+
+                        mov dx,[svdisk_abbruch_text_adr]
+                        cmp al,01b ; Esc
+                        if z jmp fehler
+
+                        and al,0df ; Groבbuchstabe
+                        mov b [subst_ein_start],al
+                        sub al,'A'
+                        mov b [svdisk_laufwerk],al
+
+                        push ds
+                          mov dl,al
+                          inc dl     ; A=1 ...
+                          mov ah,01c ; "Get Allocation Table Information for ..."
+                          mov cx,0ffff
+                          int 021
+
+                        pop ds
+
+                        cmp cx,512 ; normale Sektorgroesse
+                        jnz xms_installation_os2_gefunden
+
+                        and al,0ff-1-2 ; 1 bis 2 Sektoren pro Zuordnungseinheit
+                        cmp al,0
+                        jnz xms_installation_os2_gefunden
+
+                        cmp dx,(3690*1024)/512
+                        jnbe xms_installation_os2_gefunden
+
+                        mov b [os2_oder_xmm],'O'
+
+                        ; alte Werte l”schen
+                        mov ax,06102                      ; OS/2 Subst DELETE
+                        mov bl,[laufwerk]                 ; A=0 B=1
+                        null bh
+                        mov cx,subst_ende-subst_aus_start ; L„nge
+                        mov si,00003                      ; "Subst"
+                        mov di,subst_aus_start            ; neuer Wert
+                        mov bp,06467                      ; 'dg'
+                        pushf
+                        call d cs:[orgint21]              ; Fehler unbeachtet
+
+                        ; neuen Wert setzen
+                        mov ax,06101                      ; OS/2 Subst ADD
+                        mov bl,[laufwerk]                 ; A=0 B=1
+                        null bh
+                        mov cx,subst_ende-subst_ein_start ; L„nge
+                        mov si,00003                      ; "Subst"
+                        mov di,subst_ein_start            ; neuer Wert
+                        mov bp,06467                      ; 'dg'
+                        pushf
+                        call d cs:[orgint21]
+
+                        cmp ax,0
+                        if z ret
+
+                        mov dx,[os2_subst_fehler_text_adr]
+                        jmp fehler
+
+;********************************************************************
+
+parameter_einlesen:
+                        ; Parameter einlesen
+                        mov si,00080
+                        cld
+                        lodsb
+                        mov dx,[parameter_fehler_adr]
+
+                        cmp si,0
+                        if z jmp fehler
+
+                        mov si,081
+                        call lies_leerzeichen
+                        lodsb              ; Laufwerksbuchstabe = Para 1
+                        and al,0ff-020
+
+                        cmp al,'A'
+                        jz laufwerk_zulaessig
+                        cmp al,'B'
+                        jz laufwerk_zulaessig_vielleicht
+                        jmp fehler
+
+laufwerk_zulaessig_vielleicht:
+                        push ds,ax
+                          mov ax,00040
+                          mov ds,ax
+                          mov bl,[00010]
+                        pop ax,ds
+
+                        test bl,080+040 ; 2,3 oder 4 Laufwerke
+                        jnz laufwerk_zulaessig
+
+                        ; nur ein Laufwerk
+                        mov dx,[laufwerk_b_fehler_adr]
+                        jmp fehler
+
+laufwerk_zulaessig:
+
+                        cmp al,'!'
+                        jz erst_ausrufezeichen
+
+                        sub al,'A'
+                        mov [laufwerk],al
+                        lodsb
+                        jmp laufwerksbestimmung_weiter
+
+erst_ausrufezeichen:
+
+                        lodsb
+                        sub al,'A'
+                        mov [laufwerk],al
+                        mov al,'!'
+
+laufwerksbestimmung_weiter:
+
+                        cmp al,'!'
+                        jnz kein_zwang_int13
+
+                        mov ax,[orgint13_s]
+                        mov bx,[orgint13_o]
+                        mov [orgint13_oder_40_s],ax
+                        mov [orgint13_oder_40_o],bx
+                        mov b [int13_oder_40],013
+
+                        lodsb
+
+kein_zwang_int13:
+
+                        ; A: -> A
+                        cmp al,':'
+                        if z lodsb
+
+                        call test_auf_leerzeichen
+                        if nz jmp fehler
+                        call test_auf_parameter_ende
+                        if z jmp fehler
+
+                        call lies_leerzeichen
+
+                        ; mit FExpand()
+                        mov di,dateiname
+                        mov w [dateiname_zaehlstelle],0
+
+                        cmp b [si+1],':'
+                        jz dateiname_fexpand_laufwerk_mit
+
+                        ; ohne Laufwerksbuchstabe
+                        mov ah,019
+                        int 021
+                        add al,'A'
+                        cld
+                        stosb
+                        mov al,':'
+                        stosb
+                        jmp short dateiname_fexpand_laufwerk_weiter
+
+dateiname_fexpand_laufwerk_mit:
+
+                        lodsb
+                        call test_auf_parameter_ende
+                        if z jmp fehler
+                        call test_auf_leerzeichen
+                        if z jmp fehler
+                        stosb
+                        lodsb ; ':'
+                        stosb
+
+dateiname_fexpand_laufwerk_weiter:
+                        mov al,[si]
+                        call test_auf_parameter_ende
+                        if z jmp fehler
+                        call test_auf_leerzeichen
+                        if z jmp fehler
+
+                        cmp al,'\'
+                        jz dateiname_fexpand_pfadstrich_mit
+                        cmp al,'/'
+                        jz dateiname_fexpand_pfadstrich_mit
+
+                        ; ohne '\' -> relativ
+                        mov al,'\'
+                        stosb
+                        push si
+                          mov ah,047
+                          mov dl,[dateiname]
+                          sub dl,('A'-1)
+                          mov si,di
+                          int 021
+                        pop si
+
+                        push cx
+                          null al
+                          cld
+dateiname_fexpand_suche_pfad_ende:
+                          scasb
+                          jnz dateiname_fexpand_suche_pfad_ende
+                          dec di
+                        pop cx
+
+                        mov al,'\'
+                        cld
+                        cmp b [di-1],'\'
+                        if nz stosb
+
+dateiname_fexpand_pfadstrich_mit:
+                        cld
+
+name_lesen_schleife:
+
+                        mov dx,[parameter_fehler_adr]
+                        lodsb
+                        call test_auf_parameter_ende
+                        if z jmp fehler
+                        call test_auf_leerzeichen
+                        jz name_lesen_ende
+
+                        cmp al,'ר'
+                        jz zaehlstelle_gefunden
+
+                        stosb
+                        jmp name_lesen_schleife
+
+zaehlstelle_gefunden:
+                        mov [dateiname_zaehlstelle],di
+                        jmp name_lesen_schleife
+
+name_lesen_ende:
+
+                        dec di
+                        cmp w [dateiname_zaehlstelle],0
+                        if z mov [dateiname_zaehlstelle],di
+
+                        call lies_leerzeichen
+
+                        lodsb
+                        cmp al,'0'
+                        jz schreibschutz_bearbeiten
+
+                        cmp al,'1'
+                        jz schreibschutz_bearbeiten
+
+                        cmp al,'2'
+                        jz schreibschutz_bearbeiten
+
+                        jmp fehler
+
+
+schreibschutz_bearbeiten:
+
+                        mov [schreibschutz],al
+
+                        call lies_leerzeichen
+
+                        mov bx,0     ; Ausgangszahl
+                        mov cx,10    ; Zehnersystem
+
+zahl_lesen:
+                        lodsb
+                        mov dx,[parameter_fehler_adr]
+                        call test_auf_parameter_ende
+                        if z jmp fehler
+                        call test_auf_leerzeichen
+                        jz zahl_lesen_ende
+
+                        push ax
+                          mov ax,bx
+                          mul cx
+                          mov bx,ax
+                        pop ax
+
+                        sub al,'0'
+                        mov ah,0
+                        add bx,ax
+                        jmp zahl_lesen
+
+zahl_lesen_ende:
+
+                        cmp bx,0
+
+                        mov [speicher_kilos],bx
+                        call lies_leerzeichen
+                        mov [programm_start],si
+
+programm_lesen_schleife:
+
+                        lodsb
+                        call test_auf_parameter_ende
+                        jz kein_parameter
+
+                        call test_auf_leerzeichen
+                        jnz  programm_lesen_schleife
+
+                        mov b [si-1],0   ; Programmname mit #0 abschlieבen
+
+                        call lies_leerzeichen
+                        mov di,parameter+1
+
+parameter_lesen_schleife:
+
+                        lodsb
+                        call test_auf_parameter_ende
+                        jz parameter_fertig
+                        stosb
+                        jmp parameter_lesen_schleife
+
+kein_parameter:
+                        mov b [si-1],0   ; Programmname mit #0 abschlieבen
+                        mov di,parameter+1
+
+parameter_fertig:
+
+                        mov ax,di
+                        sub ax,parameter
+                        dec ax
+                        mov [parameter],al
+
+                        mov al,00d
+                        stosb
+
+                        ret
+;********************************************************************
+org_umb:                dw ?
+org_strat:              dw ?
+
+lese_puffer_anfordern:
+                        ; Lesepuffer im unteren Speicher anfordern
+
+                        ; Speicher anpassen (vorl„ufig)
+                        mov ah,04a
+                        mov bx,exec_max_groesse
+                        shr bx,4
+                        inc bx
+                        push cs
+                        pop es
+                        int 021
+
+                        mov ax,05802 ; holen UMB CHAIN
+                        int 021
+                        mov ah,0
+                        mov [org_umb],ax
+
+                        mov ax,05800 ; holen Strategie
+                        int 021
+                        mov [org_strat],ax
+
+                        mov ax,05803 ; setzen UMB CHAIN
+                        mov bx,00000 ; entfernen
+                        int 021
+
+                        mov ax,05801 ; setzen Strategie
+                        mov bx,00002 ; LOW,LAST FIT
+                        int 021
+
+                        mov ah,048
+                        mov bx,32 ; 512 / 16
+                        mov dx,[nicht_starten_wegen_konnte_nicht_anfordern_adr]
+                        int 021
+                        if c jmp fehler
+
+                        mov [lese_puffer_seg],ax
+
+                        mov ax,05801 ; setzen Strategie
+                        mov bx,[org_strat]
+                        int 021
+
+                        mov ax,05803 ; setzen UMB CHAIN
+                        mov bx,[org_umb]
+                        int 021
+
+
+                        ret
+;********************************************************************
+
+teste_xms:
+                        ; Test, ob genug XMS da ist
+                        mov ah,funktion_xms_query_free   ; XMS: QUERY FREE
+                        mov bl,0                         ; Annahme: Kein Fehler
+                        call xmm_aufruf
+                        push ax
+
+                          mov di,[xmsspeichertxt_adr]
+                          add di,4                ; l„nge('1234')
+                          mov dx,0
+                          mov bx,10               ; Zehnersystem
+                          div bx
+                          add [di],dl             ; Zehntausend
+                          dec di
+
+                          mov dx,0
+                          div bx
+                          add [di],dl             ; Tausend
+                          dec di
+
+                          mov dx,0
+                          div bx
+                          add [di],dl             ; Hundert
+                          dec di
+
+                          mov dx,0
+                          div bx
+                          add [di],dl             ; Zehner
+                          dec di
+
+                          add [di],al             ; Einer
+
+                        pop ax
+
+                        mov dx,[xmsfehler_speicher_adr]
+                        cmp ax,[speicher_kilos]
+                        jae genug_xms_da
+
+nicht_genug_xms_da:
+
+                        mov dx,[xmsfehler_speicher_adr]
+                        jmp fehler
+
+genug_xms_da:
+                        ; hier keine Anforderung wenn [speicher_kilos]=0
+                        ; weil sp„ter vergr”בert wird
+
+                        cmp w [speicher_kilos],0
+                        if z ret
+
+                        ; Anforderung XMS
+                        mov ah,funktion_xms_allocate
+                        mov dx,[speicher_kilos]
+                        mov bl,0        ; Annahme: Kein Fehler
+                        call xmm_aufruf
+
+                        mov [xms_handhabe],dx
+                        cmp ax,1
+                        jnz nicht_genug_xms_da
+
+                        ret
+
+;********************************************************************
+
+weitere_vorbereitungen:
+                        ; BIOS-Variable sichern
+                        push ds
+                          mov ax,00040
+                          mov ds,ax
+                          mov ax,00090
+                          add al,cs:[laufwerk]
+                          mov di,ax
+                          mov al,ds:[di]
+                          mov cs:[bios_90_org],al
+                        pop ds
+
+                        ; Int 13,15,16,21,25,26,28,2f einh„ngen
+                        mov ah,025
+                        mov al,[int13_oder_40]
+                        mov dx,int_13_oder_40_handler
+                        int21_aufruf
+
+                        mov ax,02515
+                        mov dx,int_15_handler
+                        int21_aufruf
+
+                        mov ax,02516
+                        mov dx,int_16_handler
+                        int21_aufruf
+
+                        mov ax,02521
+                        mov dx,int_21_handler
+                        int21_aufruf
+
+                        mov ax,02525
+                        mov dx,int_25_handler
+                        int21_aufruf
+
+                        mov ax,02526
+                        mov dx,int_26_handler
+                        int21_aufruf
+
+                        mov ax,02528
+                        mov dx,int_28_handler
+                        int21_aufruf
+
+                        mov ax,0252f
+                        mov dx,int_2f_handler
+                        int21_aufruf
+
+                        ; "sauberen" Extrakopf erzeugen
+                        mov si,extra_kopf_start
+                        mov di,kopf_kopie
+                        mov cx,extra_kopf_laenge
+                        kopiere
+
+                        mov dx,einruecken
+                        call ausschrift
+                        mov dx,[abzugsdatei_anz_adr]
+                        call ausschrift
+                        mov dx,dateiname
+                        call ausschrift
+                        mov dx,cr_lf
+                        call ausschrift
+
+                        mov dx,einruecken
+                        call ausschrift
+                        mov dx,[programm_anz_adr]
+                        call ausschrift
+                        mov dx,[programm_start]
+                        call ausschrift
+                        mov dx,cr_lf
+                        call ausschrift
+
+                        mov dx,einruecken
+                        call ausschrift
+                        mov dx,[parameter_anz_adr]
+                        call ausschrift
+                        mov dx,parameter+1
+                        call ausschrift
+                        mov dx,cr_lf
+                        call ausschrift
+
+                        mov dx,[datei_lese_anz_adr]
+                        call ausschrift
+                        call einlesen
+                        mov dx,cr_lf
+                        call ausschrift
+
+                        ret
+
+;********************************************************************
+os2_warnung:
+                        mov ax,04010
+                        int 02f
+                        cmp ax,04010
+                        jz kein_os2
+
+                        mov dx,[os2_warnung_text_adr]
+                        call ausschrift
+
+kein_os2:
+                        ret
+;********************************************************************
+teste_int40:
+                        ; INT 040 testweise einh„ngen
+                        mov ax,02540
+                        mov ds,cs
+                        mov dx,test_int40_handler
+                        int21_aufruf
+
+                        mov ah,008
+                        mov dl,[laufwerk]
+                        int 013
+
+                        mov es,cs
+
+                        ; wieder aush„ngen
+                        mov ax,02540
+                        mov dx,[orgint40_o]
+                        push ds
+                          mov ds,[orgint40_s]
+                          int21_aufruf
+                        pop ds
+
+                        cmp b [int13_oder_40],040
+                        jnz int40_inkompatibel
+
+                        ; ja ich benutze lieber I040
+
+                        mov ax,[orgint40_s]
+                        mov bx,[orgint40_o]
+                        mov [orgint13_oder_40_s],ax
+                        mov [orgint13_oder_40_o],bx
+
+int40_inkompatibel:
+                        push ds
+                          lds si,[orgint13_oder_40]
+                          mov ax,[si+3]
+                        pop ds
+
+                        cmp ax,'0E'
+                        jnz e0x_ist_noch_nicht_installiert
+
+                        mov dx,[e0x_ist_schon_installier_text_adr]
+                        call ausschrift
+
+e0x_ist_noch_nicht_installiert:
+                        ret
+;********************************************************************
+test_int40_handler:
+                        mov b cs:[int13_oder_40],040
+                        jmp d cs:[orgint40]
+;********************************************************************
+exec_max_groesse:
+
+sprach_auswahl_fertig_deutsch:
+
+                        ret
+
+sprach_auswahl:
+                        include ..\country\country.a86
+                        bestimme_country_bx_com
+
+                        cmp bx,49 ; D
+                        jz sprach_auswahl_fertig_deutsch
+
+                        cmp bx,43 ; ™
+                        jz sprach_auswahl_fertig_deutsch
+
+                        cmp bx,41 ; CH
+                        jz sprach_auswahl_fertig_deutsch
+
+                        ; Englisch
+                        mov [text_datei_fehler_fehlt_adr]                            ,text_datei_fehler_fehlt_englisch
+                        mov [text_datei_fehler_zu_gross_adr]                         ,text_datei_fehler_zu_gross_englisch
+                        mov [text_datei_fehler_unsinn_adr]                           ,text_datei_fehler_unsinn_englisch
+                        mov [xmsfehler_speicher_adr]                                 ,xmsfehler_speicher_englisch
+                        mov [execfehler_speicher_adr]                                ,execfehler_speicher_englisch
+                        mov [execfehler_pfad_adr]                                    ,execfehler_pfad_englisch
+                        mov [execfehler_datei_adr]                                   ,execfehler_datei_englisch
+                        mov [execfehler_unbekannt_adr]                               ,execfehler_unbekannt_englisch
+                        mov [exec_problem_adr]                                       ,exec_problem_englisch
+                        mov [datei_schreib_anz_adr]                                  ,datei_schreib_anz_englisch
+                        mov [xms_freigabe_fehler_adr]                                ,xms_freigabe_fehler_englisch
+                        mov [beendet_adr]                                            ,beendet_englisch
+                        mov [xms_treiber_fehler_adr]                                 ,xms_treiber_fehler_englisch
+                        mov [parameter_fehler_adr]                                   ,parameter_fehler_englisch
+                        mov [laufwerk_b_fehler_adr]                                  ,laufwerk_b_fehler_englisch
+                        mov [nicht_starten_wegen_konnte_nicht_anfordern_adr]         ,nicht_starten_wegen_konnte_nicht_anfordern_englisch
+                        mov [abzugsdatei_anz_adr]                                    ,abzugsdatei_anz_englisch
+                        mov [programm_anz_adr]                                       ,programm_anz_englisch
+                        mov [parameter_anz_adr]                                      ,parameter_anz_englisch
+                        mov [datei_lese_anz_adr]                                     ,datei_lese_anz_englisch
+                        mov [abgebrochen_adr]                                        ,abgebrochen_englisch
+                        mov [xmsspeichertxt_adr]                                     ,xmsspeichertxt_englisch
+                        mov [os2_warnung_text_adr]                                   ,os2_warnung_text_englisch
+                        mov [e0x_ist_schon_installier_text_adr]                      ,e0x_ist_schon_installier_text_englisch
+                        mov [os2_subst_fehler_text_adr]                              ,os2_subst_fehler_text_englisch
+                        mov [welches_laufwerk_ist_svdisk_text_adr]                   ,welches_laufwerk_ist_svdisk_text_englisch
+                        mov [svdisk_abbruch_text_adr]                                ,svdisk_abbruch_text_englisch
+
+
+sprach_auswahl_fertig:
+
+                        ret
+
+;********************************************************************
+
+; initialisierung
+start_pfad_sichern:
+                        mov ah,019 ; Laufwerk
+                        int 021
+                        add al,'A'
+                        mov [e0x_start_pfad],al
+
+                        mov ah,047 ; Pfad
+                        null dl
+                        mov si,e0x_start_pfad+1+1+1 ; '?:\'
+                        int 021
+
+                        ret
+;********************************************************************
+

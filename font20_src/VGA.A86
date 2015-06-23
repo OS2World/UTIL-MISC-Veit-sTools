@@ -1,0 +1,18 @@
+; cl=0..3
+setze_standard_vga_clock:
+                                cmp cl,0ff
+                                jz ret
+                                push ax,dx
+
+                                  mov dx,Miscellaneous_Output_Register_R
+                                  in al,dx
+                                  and al,0ff-bit3-bit2
+                                  mov ah,cl
+                                  and ah,bit0+bit1
+                                  shl ah,2 ; -> Bit2/3
+                                  or al,ah
+                                  mov dx,Miscellaneous_Output_Register_W
+                                  out dx,al
+
+                                pop dx,ax
+                                ret

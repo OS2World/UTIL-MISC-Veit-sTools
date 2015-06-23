@@ -1,0 +1,86 @@
+; Test Bootcd-Spezifikation
+; 23.07.1998 Veit Kannegieser
+
+                                mov ah,009
+                                mov dx,titel
+                                int 021
+
+                                mov ah,008
+                                int 021
+
+                                mov ah,009
+                                mov dx,umbruch
+                                int 021
+
+
+                                mov w [boot_catalog_puffer_seg],cs
+
+teste_bootcd_schleife:
+                                mov ax,04d00 ; "RETURN BOOT CATALOG"
+                                mov si,return_boot_catalog_block
+                                mov dl,b [laufwerk]
+                                int 013
+                                jc nicht_unterstuetzt
+
+                                mov b [bootcd_gefunden],'1'
+
+
+  nicht_unterstuetzt:
+                                inc b [laufwerk]
+                                jnz teste_bootcd_schleife
+
+
+                                mov dx,text_nicht_gefunden
+                                cmp b [bootcd_gefunden],'1'
+                                if e mov dx,text_gefunden
+
+                                mov ah,009
+                                int 021
+
+                                mov ax,04c00
+                                int 021
+
+
+laufwerk:                       db 0
+
+bootcd_gefunden                 db '0'
+
+
+return_boot_catalog_block:
+                                db 8 ; LÑnge
+                                db 1 ; Anzahl Sektoren
+                                dw boot_catalog_puffer
+boot_catalog_puffer_seg:        dw ?
+                                dw 0 ; 1. Sektor
+
+
+boot_catalog_puffer:            db 4096 dup '*'
+
+
+titel:
+#if deutsch
+                                db 'BOOTCD: Bitte in alle CD-Laufwerke eine startbare CD einlegen',00d,00a
+                                db 'Weiter mit Leertaste ','$'
+#else
+                                db 'BOOTCD: please insert a bootable media in all cd-rom-drives',00d,00a
+                                db 'to continue press spacebar ','$'
+#endif
+
+umbruch:                        db 00d,00a,'$'
+
+text_nicht_gefunden:
+#if deutsch
+                                db 'Kein Laufwerk unterstÅtzt die BOOT-CD-Spezifikation.',00d,00a,007,'$'
+#else
+                                db 'no drive supports the BOOT-CD-specification.',00d,00a,007,'$'
+#endif
+
+
+text_gefunden:
+#if deutsch
+                                db 'Mindestens ein Laufwerk unterstÅtzt die BOOT-CD-Spezifikation.',00d,00a
+                                db 'Bitte melden Sie sich beim Autor !',00d,00a,'$'
+#else
+                                db 'At leas one drive supports the BOOT-CD-specification.',00d,00a
+                                db 'Please contact the author !',00d,00a,'$'
+#endif

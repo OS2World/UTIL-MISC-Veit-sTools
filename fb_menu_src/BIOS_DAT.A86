@@ -1,0 +1,106 @@
+; 24.07.1998
+
+                                mov ah,009
+                                mov dx,titel
+                                int 021
+                                
+                                ; Erzeugen
+                                mov ah,03c
+                                mov cx,0
+                                mov dx,dateiname
+                                int 021
+                                jc fehler
+                                
+                                mov bx,ax ; handhabe
+                                                                call punkt
+
+                                push 0f000
+                                pop ds
+
+                                mov ax,cs
+                                add ah,010 ; +64K
+                                mov es,ax
+
+                                sub si,si
+                                sub di,di
+                                mov cx,64*1024/2
+                                cld
+                                rep movsw
+                                                                call punkt
+
+                                mov ds,es
+                                mov es,cs
+
+                                
+                                                                call punkt
+
+                                ; Schreibe 1.Teil
+                                mov ah,040
+                                mov cx,32*1024
+                                sub dx,dx
+                                int 021
+                                jc fehler
+
+                                                                call punkt
+
+                                ; Schreibe 2.Teil
+                                mov ah,040
+                                mov dx,cx
+                                int 021
+                                                                call punkt
+
+                                ; Schlieáen
+                                mov ah,03e
+                                int 021
+                                                                call punkt
+
+                                mov dx,umbruch
+
+  programmende:
+                                mov ah,009
+                                mov ds,cs
+                                int 021
+
+                                ; Ende
+                                mov ax,04c00
+                                int 021
+
+
+  fehler:
+                                mov dx,text_fehler
+                                jmp programmende
+
+
+
+
+  punkt:
+                                pusha
+                                  mov ah,002
+                                  mov dl,'.'
+                                  int 021
+                                popa
+                                ret
+
+
+
+titel:                          db 'BIOS_DAT * V.K. * 24.07.1998',00d,00a,
+#if deutsch
+                                db 'Erzeuge BIOS.DAT .','$'
+#else
+                                db 'Creating BIOS.DAT .','$'
+#endif
+
+
+text_fehler:
+#if deutsch
+                                db 'Fehler beim Schreiben in die Datei !',007
+#else
+                                db 'Error writing file !',007
+#endif
+
+
+umbruch:                        db 00d,00a,'$'
+
+dateiname:                      db 'BIOS.DAT',0
+
+

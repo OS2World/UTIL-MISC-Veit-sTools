@@ -1,0 +1,8 @@
+Benutzerdokumentation         DGCP_PAT                    Veit Kannegieser
+ננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננ
+
+Dieses Programm behebt einen Fehler in Programmen die die Watcom-Bibliothek
+clib3r.lib enthalten. Der Fehler tritt nut unter anderen Extendern als
+DOS/4G in Konfigurationen ohne V86-Speicherverwaltungena auf.
+Gepackte Programme mssen vorher natrlich mit PMWUNLIT/UPX -d/..
+ausgepackt werden.

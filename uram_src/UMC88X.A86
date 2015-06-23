@@ -1,0 +1,172 @@
+Title   UMC 881/886
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;
+; PCI
+;
+; 9050.7 C000
+;      6 C800
+;      5 CC00
+;      4 D000
+;      3 D400
+;      2 D800
+;      1 DC00
+;      0 Exxx
+;
+; 8054.7 DC00
+;      6 D800
+;      5 D400
+;      4 D000
+;      3 CC00
+;      2 C800
+;      1 C000
+;      0 Exxx
+;
+; 8055.7 Lesen vom Shadow-RAM
+;      6 Schreibschutz
+;
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_umc88x                    macro
+                                  mov di,#1 ; Segment
+                                  mov cx,#2 ; Index 1
+                                  ;mov bh,#3 ; Maske 1
+                                  mov dx,#4 ; Index 2
+                                  ;mov bl,#5 ; Maske 2
+                                  mov bx,#5+#3*0100
+                                  call setze_umc88x_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_umc88x_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                je setze_umc88x_prozedur_fertig
+
+                                call ausschrift_segment
+
+
+                                mov al,ah
+                                and ax,00201
+                                push ax
+
+                                  push dx,bx
+
+                                    ; Lesen: Index/Maske 1
+                                    mov bl,0ff
+                                    sub bl,bh
+
+                                    cmp al,001 ; Lesen ?
+                                    if ne mov bh,0
+
+                                    call bios_aufruf__prozedur_registeraenderung
+
+                                  pop bx,cx ; dx->cx
+
+                                pop ax
+                                push ax
+
+                                  ; Lesen: Index/Maske 2
+                                  xchg bl,bh
+                                  mov bl,0ff
+                                  sub bl,bh
+
+                                  cmp al,001 ; Lesen ?
+                                  if ne mov bh,0
+
+                                  call bios_aufruf__prozedur_registeraenderung
+
+                                pop ax
+
+                                mov cx,08055
+                                mov bx,000bf    ; ohne Schreibschutzbit
+                                cmp ah,002      ; Schreiben ?
+                                if e call bios_aufruf__prozedur_registeraenderung
+
+setze_umc88x_prozedur_fertig:
+                                ret
+
+
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_umc_881_886_award:
+                                ausschrift_xxxx_aehnliches_bios text_variante_umc_881_886
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+18+1]
+                                add ax,di
+                                add ax,18+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+23+1]
+                                add ax,di
+                                add ax,23+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_umc88x_award
+
+umc_881_886_gemeinsam:
+
+                                setze_umc88x 'C0',08054,002, 09050,080
+
+                                setze_umc88x 'C8',08054,004, 09050,040
+                                setze_umc88x 'CC',08054,008, 09050,020
+
+                                setze_umc88x 'D0',08054,010, 09050,010
+                                setze_umc88x 'D4',08054,020, 09050,008
+                                setze_umc88x 'D8',08054,040, 09050,004
+                                setze_umc88x 'DC',08054,080, 09050,002
+
+                                setze_umc88x 'E0',08054,001, 09050,001
+
+                                setze_umc88x 'F0',08054,000, 09050,000
+
+                                mov cx,08055
+                                mov bh,0
+                                mov bl,0ff-Bit6
+                                cmp b [globaler_schreibschutz],'1'
+                                if e call bios_aufruf__prozedur_registeraenderung
+
+                                jmp initialisieren
+;頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰
+; CX=Index
+; BX=Maske
+registeraenderung_umc88x_awdflash:
+registeraenderung_umc88x_award:
+                                call bios_aufruf__prozedur_registerlesen
+                                and al,bl
+                                or al,bh
+                                call bios_aufruf__prozedur_registerschreiben
+
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+variante_disable_shadownig_umc_881_886:
+                                ausschrift_xxxx_aehnliches_bios text_variante_umc_881_886_awdflash
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+5+1]
+                                add ax,di
+                                add ax,5+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+14+1]
+                                add ax,di
+                                add ax,14+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung_umc88x_awdflash
+
+                                jmp umc_881_886_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_umc88x:
+                                mov w [registeraenderung_emulation],aenderung_standard_pci
+                                jmp umc_881_886_gemeinsam
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

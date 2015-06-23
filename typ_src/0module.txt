@@ -1,0 +1,103 @@
+Datei                   Beschreibung
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+FRAGEN.PAS              bekannte Probleme und Vorhaben
+TYP.PAS                 Hauptprogramm
+TYPDATUM.PAS            Definition der Datumskonstanten (Endversion)
+TYPDATUM.PA_            Definition der Datumskonstanten (Testversion)
+TYPEIN.PAS              Hauptprogramm fr Einstellungen
+TYPEIN_F.PAS            Farbgestaltung, genutzt von TYPEIN.PAS
+TYP_AUSG.PAS            Bildschirmausgabe,Speicherverwaltung
+TYP_BIOS.PAS            Untersuchung von BIOS-Daten
+TYP_BOOT.PAS            Aufruf der Unetrsuchung von Startsektoren
+TYP_C2E.PAS             šberprfung auf COM2EXE
+TYP_CD.PAS              Auswertung von CDROM-Informationen
+TYP_COMP.PAS            Definition von bedingten Symbolen,Compilerschalter
+TYP_DAT.PAS             Erkennung von Datendateien, nach erstem Byte geordnet
+TYP_DATX.PAS            Erkennung von Datendateien, aufwendiger
+TYP_DIEN.PAS            Hilfsfunktionen
+TYP_DIE2.PAS            Hilfsfunktionen, hat nicht mehr in TYP_DIEN gepaát
+TYP_EAS.PAS             Auswerung erweiterter Attribute
+TYP_EIAU.PAS            Dateien/Speicher/.. lesen und schreiben
+TYP_EING.PAS            Nutztereingaben: Tastatur/Maus/Spielhebel
+TYP_ENDE.PAS            Untersuchen des Dateiendes
+TYP_ERW.PAS             Einbinden von Benutzterdefinierten Signaturen
+TYP_EXE0.PAS            Untersuchung von Programmdateien,
+                        erstes Byte $00..$7f
+TYP_EXE1.PAS            ausgelagerte signaturen von Programmen und Sektoren
+TYP_EXE2.PAS            Untersuchung von Programmdateien,
+                        erstes Byte $80..$ff
+TYP_EXEI.PAS            Optimierungsmodul fr TYP_EXE0.PAS/TYP_EXE2.PAS
+TYP_FOR0.PAS            Hilfsfunktionen fr Auflisten von Archivinhalten
+TYP_FOR1.PAS            Auflisten von Archivinhalten
+TYP_FOR2.PAS            Auflisten von Archivinhalten
+TYP_FOR3.PAS            Auflisten von Archivinhalten
+TYP_FOR4.PAS            Auflisten von Archivinhalten
+TYP_FOR4.PAS            Auflisten von Archivinhalten
+TYP_GT.PAS              Schnittstelle zu GTDATA.DLL
+TYP_HILF.PAS            Ausgabe des Hilfebildschirm
+TYP_KOPF.PAS            Untersuchung des Programmkopfes
+TYP_NETW.PAS            Test auf Netztwerk/Subst-Laufwerke
+TYP_OS.PAS              Betriebssystemnaehere Hilfsfunktionen und
+                        Untersuchung des Speichers auf bekammte Viren
+TYP_PARA.PAS            Auswerten der Parameter
+TYP_POEM.PAS            CPU-Emulator
+TYP_POLY.PAS            Erkennung schwieriger zu erkennender Programme
+TYP_SEKT.PAS            Untersuchung von Startsektoren und Partitionstabellen
+TYP_SPEI.PAS            Definition eines groáen globalen Speicherblockes
+TYP_SPRA.PAS            Import mehrsprachiger Zeichenketten
+TYP_SPRU.PAS            Erreichen des Einsprungpunktes in Programmen
+TYP_TAKT.PAS            Zeitmessung
+TYP_TYPE.PAS            globale Typdefinitionen
+TYP_VAR.PAS             Hilfsfunktionen, Variablen und Kostanten
+TYP_VARX.PAS            Hilfsfunktionen, Variablen und Kostanten
+TYP_XEXE.PAS            LX,NE,COFF,PE,LE,ELF,LC,PMWLITE,DOS32,XE
+
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+BUSCH\BUSCHBAU.PAS      Hilfsmodul zur Erstellung ausgelagerter Signaturen
+
+
+BUSCH\BUS_DAT.PAS       wie TYP_DAT.PAS
+BUSCH\DAT___16.OBJ      ausgelagerter DAT Signaturen fr BP
+BUSCH\DAT___32.OBJ      ausgelagerter DAT Signaturen fr VP
+
+BUSCH\BUS_EXE0.PAS      wie TYP_EXE0.PAS
+BUSCH\BUS_EXE2.PAS      wie TYP_EXE2.PAS
+BUSCH\EXE___16.OBJ      ausgelagerter EXE Signaturen fr BP
+BUSCH\EXE___32.OBJ      ausgelagerter EXE Signaturen fr VP
+
+BUSCH\BUS_SEKT.PAS      wie TYP_SEKT.PAS
+BUSCH\SEKT__16.OBJ      ausgelagerter SEKT Signaturen fr BP
+BUSCH\SEKT__32.OBJ      ausgelagerter SEKT Signaturen fr VP
+
+BUSCH\BUSCHSUC.PAS      Suchen in ausgelagerten Signaturen
+
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+INC_GEN\*.*             erzeugte Sprachdateinen fr alle Plattformen
+INC_D32\*.*             erzeugte Sprachdateinen fr DPMI32
+INC_DOS\*.*             erzeugte Sprachdateinen fr DOS
+INC_DOSD\*.*            erzeugte Sprachdateinen fr DOS (nur deutsch)
+INC_OS2\*.*             erzeugte Sprachdateinen fr OS/2
+
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+POEM_SYS\BIN_PAS.PAS    Umwandlung BIN->Konstanten
+
+POEM_SYS\POEM_19.A86    Module fr CPU-Emulator
+POEM_SYS\POEM_20.A86
+POEM_SYS\POEM_21.A86
+POEM_SYS\POEM_29.A86
+POEM_SYS\POEM_BIO.A86
+POEM_SYS\POEM_BIO.BIN
+POEM_SYS\POEM_BIO.PAS
+
+POEM_SYS\POEM_SYS.A86   Module fr CPU-Emulator (Laden von Ger„tetreibern)
+POEM_SYS\POEM_SYS.BIN
+POEM_SYS\POEM_SYS.PAS
+
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+SPRACHE\*.*             Definition der mehrsprachigen Zeichenketten
+
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+In Borland Pascal muá bei groáen Erweiterungen Programmquellext in
+andere Module verschoben werden (64KB Grenze..)
+

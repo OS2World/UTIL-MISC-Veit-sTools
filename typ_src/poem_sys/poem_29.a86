@@ -1,0 +1,20 @@
+; TYP_POEM.PAS INT 29
+; 1999.12.19 Veit Kannegieser
+
+;****************************************************************************
+int_29:
+                        push ax,bx
+
+                          push ax
+                            mov ah,00f
+                            int 010
+                            ; <- bh=Seite
+                          pop ax
+
+                          mov ah,00e
+                          mov bl,007 ; nur fr Grafikmodus
+                          int 010
+
+                        pop bx,ax
+                        iret
+;****************************************************************************

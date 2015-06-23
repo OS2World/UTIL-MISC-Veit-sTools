@@ -1,0 +1,119 @@
+; Zeigereingabeger„te int $15/$c2
+
+;******************************************************************************
+
+installiere_ps_maus:
+                        cmp w [maus_parameter],0
+                        je ret
+
+                        mov ax,0c205
+                        ;mov bh,3
+                        mov bh,b [maus_parameter+0]
+                        int 015
+
+                        mov ax,0c207
+                        mov bx,ps2_zeiger_behandlung
+                        ;mov es,es
+                        int 015
+
+                        mov ax,0c200
+                        mov bh,001
+                        int 015
+                        ret
+
+;******************************************************************************
+
+entferne_ps_maus:
+                        cmp w [maus_parameter],0
+                        je ret
+
+                        mov ax,0c200
+                        mov bh,000
+                        int 015
+
+                        mov ax,0c207
+                        sub bx,bx
+                        mov es,bx
+                        int 015
+
+                        push cs
+                        pop es
+                        ret
+
+;******************************************************************************
+
+alte_knoepfe:           db 0
+
+maus_zeile:             dw 0
+
+maus_benutzt:           db 0
+
+ps2_zeiger_behandlung:
+                        push bp
+                        mov bp,sp
+                          pusha
+                            push ds
+                              push cs
+                              pop ds
+
+                              mov b [maus_benutzt],1
+
+                              mov cx,[maus_zeile]
+                              mov dx,[bp+2+4+2*1]
+                              mov al,[bp+2+4+2*3]
+                              test al,020 ; Bit 5=y negativ
+                              if nz mov dh,0ff
+                              add cx,dx
+
+                              cmp cx,40
+                              jng maus_nicht_nach_oben
+
+                              mov ah,005
+                              mov cx,04800
+                              int 016
+                              sub cx,cx
+  maus_nicht_nach_oben:
+                              cmp cx,-40
+                              jge maus_nicht_nach_unten
+
+                              mov ah,005
+                              mov cx,05000
+                              int 016
+                              sub cx,cx
+  maus_nicht_nach_unten:
+                              mov [maus_zeile],cx
+
+                              and al,001+002
+                              jnz noch_nicht_losgelassen
+
+                              cmp b [alte_knoepfe],0
+                              je waren_garnicht_gedrueckt
+
+                              mov ah,005
+                              mov cx,01c0d
+                              int 016
+  waren_garnicht_gedrueckt:
+  noch_nicht_losgelassen:
+
+                              mov [alte_knoepfe],al
+
+                            pop ds
+                          popa
+                        pop bp
+                        retf
+
+;******************************************************************************
+maustasten_loeschen:
+                        cmp b [maus_benutzt],1
+                        jne ret
+
+  maustasten_loeschen_weiter:
+                        mov ah,011
+                        int 016
+                        jz ret
+
+                        mov ah,010
+                        int 016
+                        jmp maustasten_loeschen_weiter
+
+;******************************************************************************

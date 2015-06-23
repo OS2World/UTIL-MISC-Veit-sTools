@@ -1,0 +1,55 @@
+; POEM_SYS * Modul zum laden von .SYS-Dateien in TYP_POEM
+; 1999.06.24 * Veit Kannegieser
+
+org 0
+; ds=Ladesegment
+; es=Ladesegment
+                        mov ax,cs
+                        mov es,ax
+                        mov ss,ax
+                        mov sp,stack_ende
+
+                        mov es:[commandline+2],ax
+
+                        ; ES:BX
+                        mov bx,request_header
+                        ; Strategie
+                        push cs
+                          push weiter1
+                            push ds
+                              push [4+2+0]
+                            retf
+weiter1:
+                        ; Interrupt
+                        push cs
+                          push weiter2
+                            push ds
+                              push [4+2+2]
+                            retf
+weiter2:
+                        mov ax,04c00
+                        int 021
+
+befehlszeile:           ;db 'DEVICE='
+                        db 'DEVNAME.SYS',13,10,0
+
+
+request_header:
+request_header_laenge:  db request_header_ende-request_header
+subunit:                db 0
+commandcode:            db 0 ; Init
+status:                 dw 0
+res_05:                 db 4 dup 0
+res_09:                 dd 0
+number_of_units:        db 0
+speicher_angefordert:   dd 00000ffff
+commandline:            dw befehlszeile
+                        dw 0
+fehlermeldung:          dw 0
+request_header_ende:
+
+
+even 16
+
+stack_anfang:
+stack_ende              equ stack_anfang+4*800

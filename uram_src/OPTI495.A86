@@ -1,0 +1,183 @@
+Title   OPTI 495,802
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_op495                     macro
+                                  mov di,#1 ; Segment
+                                  ; ch=#2   ; Shadow-Index
+                                  ; cl=#3   ; Shadow-Wert
+                                  ; dh=#4   ; Schreibschutz-Index
+                                  ; dl=#5   ; Schreibschutz-Wert
+                                  mov cx,#2*256+#3
+                                  mov dx,#4*256+#5
+                                  call setze_op495_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+setze_op495_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_op495_prozedur_fertig
+
+                                call ausschrift_segment
+
+                                mov al,ah
+                                and ax,00201
+
+                                ;-------------
+                                mov bl,0ff
+                                sub bl,cl
+                                mov bh,cl
+
+                                cmp al,1 ; Shadow-RAM ein ?
+                                if nz mov bh,0
+
+                                push ax
+                                  mov al,ch ; Shadow-Index
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop ax
+
+                                ;-------------
+                                mov bl,0ff
+                                sub bl,dl
+                                mov bh,dl
+
+
+                                ; Schreiben ............ 0      2      0     2
+                                ; Globaler Schreibschutz 0     [0]     1    [1]
+
+                                ; -> BX                  00ff  00ff-x  xff  00ff-x
+
+
+                                cmp ah,2
+                                je setze_op495_schreiben_einschalten
+
+                                mov bl,0ff       ; kein Bit l봲chen
+                                cmp b [globaler_schreibschutz],'1'
+                                if ne mov bh,0   ; aber auch keins dazu
+
+                                jmp short setze_op495_schreiben_ausfuehren
+
+  setze_op495_schreiben_einschalten:
+                                mov bh,000       ; Schreibschutzbit entfernen
+
+  setze_op495_schreiben_ausfuehren:
+
+                                mov al,dh
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_op495_prozedur_fertig:
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_opti_82495:            ausschrift_xxxx_aehnliches_bios text_variante_opti_82495
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,w es:[di+010+1]
+                                add ax,di
+                                add ax,010+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,w es:[di+019+1]
+                                add ax,di
+                                add ax,019+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_opti495
+
+weiter_opti_495:
+                                setze_op495 'C0',026,Bit0,026,Bit5
+                                setze_op495 'C4',026,Bit1,026,Bit5
+                                setze_op495 'C8',026,Bit2,026,Bit5
+                                setze_op495 'CC',026,Bit3,026,Bit5
+
+                                setze_op495 'D0',023,Bit0,022,Bit4
+                                setze_op495 'D4',023,Bit1,022,Bit4
+                                setze_op495 'D8',023,Bit2,022,Bit4
+                                setze_op495 'DC',023,Bit3,022,Bit4
+
+                                setze_op495 'E0',023,Bit4,022,Bit3
+                                setze_op495 'E4',023,Bit5,022,Bit3
+                                setze_op495 'E8',023,Bit6,022,Bit3
+                                setze_op495 'EC',023,Bit7,022,Bit3
+
+                                jmp initialisieren
+;頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰
+; al=Index
+; bx=Maske
+aenderung_opti495:
+                                push ax
+                                  mov ah,al
+                                  call bios_aufruf__prozedur_registerlesen
+                                  and al,bl
+                                  or al,bh
+                                  xchg al,ah
+                                  call bios_aufruf__prozedur_registerschreiben
+                                pop ax
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_opti802:               ausschrift_xxxx_aehnliches_bios text_variante_opti_802
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,w es:[di+14+1]
+                                add ax,di
+                                add ax,14+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,w es:[di+19+1]
+                                add ax,di
+                                add ax,19+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_opti495
+
+                                jmp weiter_opti_495
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_opti82495:
+                                mov w [registeraenderung_emulation],aenderung_chip_opti82495
+                                jmp weiter_opti_495
+
+;頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰
+; al=Index
+; bx=Maske
+aenderung_chip_opti82495:
+                                installiere_tracer
+
+                                ; Lesen ...
+                                mov ah,al
+                                out 022,al
+                                                                jcxz_nop
+                                                                jcxz_nop
+                                in al,023
+                                                                jcxz_nop
+                                                                jcxz_nop
+
+                                ; 럑dern ...
+                                and al,bl
+                                or al,bh
+
+                                ; Schreiben ...
+                                xchg al,ah
+                                out 022,al
+                                                                jcxz_nop
+                                                                jcxz_nop
+                                xchg al,ah
+                                out 023,al
+                                                                jcxz_nop
+                                                                jcxz_nop
+
+                                entferne_tracer
+
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

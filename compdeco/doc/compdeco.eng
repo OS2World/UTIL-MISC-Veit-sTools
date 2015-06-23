@@ -1,0 +1,14 @@
+user documentation            COMPDECO                    Veit Kannegieser
+ננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננננ
+
+usage: COMPDECO <filename> [ <target directory> ]
+
+Decompresses COMPAQ flash BIOS dumps. COMPDECO does not unpacks ROMPAQ
+compressed files, use 'ROMPAQ.EXE /D' or Typ for this purpose.
+Some COMPAQ BIOS versions are not compresse, others are derived from Phoenix
+BIOS.
+
+Example for COMPAQ Armada:
+  FIREA100.F7E (275KiB) was unpacked to FIREA10 (512 KiB) using ROMPAQ.
+
+  'COMPDECO.EXE FIREA10 FIREA10.x\' unpacks the individual blocks

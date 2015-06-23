@@ -1,0 +1,180 @@
+; Teil 2 REB_MENU: Fastboot
+; Veit Kannegieser * 11.07.1998
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+; 0000:8000                     Lader
+; 0000:8400                     URAM
+; 0900:0000                     BIOS
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+org 08000
+                                dw ladekode_ende-08000
+
+                                ; BIOS
+
+                                sub si,si
+                                push 00900
+                                pop ds
+                                mov di,si
+                                push 0f000
+                                pop es
+                                mov cx,010000/2
+                                cld
+                                rep movsw
+
+                                mov ds,cs
+                                mov es,cs
+
+
+                                ; A20 aus ???
+
+                                ; HMA berschreiben ???
+                                call hma_ueberschreiben
+                                
+                                
+                                call cache_muell
+
+
+                                ; URAM
+                                push cs         ; RETF
+                                call 08400
+
+                                sti
+
+                                mov si,10 ; 10 Versuche
+
+  lade_schleife:
+
+                                ; MBR lesen
+                                mov ax,00201
+                                mov bx,07c00
+                                mov cx,00001
+                                mov dx,00080
+                                mov es,cs
+                                int 013
+
+                                if nc jmp 07c00
+
+                                ; Lesefehler ...
+
+                                ; Fesplatte zurckseten
+                                mov ah,0
+                                mov dl,080
+                                int 013
+
+                                dec si
+                                jnz lade_schleife
+
+
+                                ; Cursorposition ?
+                                mov ah,003
+                                int 010
+
+                                ; Fehlermeldung
+                                mov ax,01301
+                                mov bx,0000c ; hellrot
+                                mov cx,text_lesefehler_laenge
+                                ; mov dx,dx
+                                mov bp,text_lesefehler
+                                int 010
+
+  endlos:
+                                jmp endlos
+
+text_lesefehler:
+#if deutsch
+                                db 'Festplattenlesefehler !',007
+#else
+                                db 'harddisk read error !',007
+#endif
+text_lesefehler_laenge          equ $-text_lesefehler
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+hma_ueberschreiben:
+                                mov ah,087
+                                mov si,gdt_hma
+                                mov cx,16/2
+                                int 015
+
+                                ret
+
+gdt_hma:
+                                db 16 dup ?
+
+                                dw 0ffff
+                                ; 0000:Klebestreifen
+                                dw Klebestreifen
+                                db 000
+                                db 093
+                                db 0
+                                db 000
+
+                                dw 0ffff
+                                ; 1024*1024=$00ø10ø00ø00
+                                dw 00000
+                                db 010
+                                db 093
+                                db 0
+                                db 000
+
+                                db 18 dup 0
+
+Klebestreifen:                  db 16 dup 0
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+cache_muell:
+                                pusha
+                                  push ds,es
+                                    mov bx,01000
+  daten_muell_schleife1:
+                                    mov ds,bx
+                                    mov es,bx
+                                    sub si,si
+                                    sub di,di
+                                    mov cx,64*1024/2
+                                    cld
+  daten_muell_schleife2:
+                                    lodsw
+                                    not ax
+                                    stosw
+                                    loop daten_muell_schleife2
+
+                                    add bh,010
+                                    cmp bh,080
+                                    jne daten_muell_schleife1
+                                    
+
+                                    mov bx,01000
+  code_muell_schleife:
+                                    mov es,bx
+                                    sub di,di
+                                    mov al,090 ; nop
+                                    mov cx,0ffff
+                                    cld
+                                    rep stosb
+                                    mov al,0cb ; retf
+                                    stosb
+
+                                    push cs
+                                      push code_muell_schleife_weiter
+                                        push bx
+                                          push 0
+
+                                        retf
+
+  code_muell_schleife_weiter:
+                                    add bh,010
+                                    cmp bh,080
+                                    jne code_muell_schleife
+                                    
+                                  pop es,ds
+                                popa
+                                ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+ladekode_ende:
+

@@ -1,0 +1,9 @@
+const
+  adresse_1='Cottbus, ?, ?, ?';
+  adresse_2='LÅbben,  Hartmannsdorfer Stra·e 30,     15907';
+
+  elm      ='Veit.Kannegieser@gmx.de';
+  www      ='http://www-user.TU-Cottbus.DE/~kannegv';
+
+  telefon_1='0-49-355-?';
+  telefon_2='0-49-3546-4650';

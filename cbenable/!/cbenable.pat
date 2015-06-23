@@ -1,0 +1,6 @@
+auch 3com schreibschutz
+FILE cbenable.sys
+VER 00000ECA 75
+VER 00000ECB 03
+CHA 00000ECA 90
+CHA 00000ECB 90

@@ -1,0 +1,15 @@
+rem config.sys
+rem vk: USB von F300 auf E400 „ndern
+rem Bus=0
+rem Device=7
+rem Function=2
+rem Indexregister=$20
+rem Gr”áe(Byte)=4
+rem Wert(Port+io-Bit)=$0000E401
+BaseDev=wpcicfg.sys 0 7 2 $20 4 $0000E401
+
+; \os2\boot\snoop.lst
+WPCICFGS.SNP
+; use hex editor to change in WPCICFGS.SNP:
+; old: 'Bus Device Function Index Size Value',0
+; new: '0 7 2 $20 4 $0000E401',0 

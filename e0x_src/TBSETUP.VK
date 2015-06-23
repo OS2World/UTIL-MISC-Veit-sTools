@@ -1,0 +1,4 @@
+% GENVK
+E0X.COM     *       *       0020 ; INT25/26 unter OS/2
+PLUS.COM    *       *       0020 ; INT25/26 unter OS/2
+MINUS.COM   *       *       0020 ; INT25/26 unter OS/2

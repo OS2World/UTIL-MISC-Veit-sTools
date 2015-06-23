@@ -1,0 +1,125 @@
+ciscopy_tabelle_start:
+			;    - .. 0
+			dw 0*0* 0
+			db 0,0, 0
+                        ;  160 .. 1
+                        dw 8*1*40
+                        db 8,1,40
+                        ;  180 .. 2
+                        dw 9*1*40
+                        db 9,1,40
+                        ;  320 .. 3
+                        dw 8*2*40
+                        db 8,2,40
+                        ;  360 .. 4
+                        dw 9*2*40
+                        db 9,2,40
+                        ;  720 .. 5
+                        dw 9*2*80
+                        db 9,2,80
+                        ; 1200 .. 6
+                        dw 15*2*80
+                        db 15,2,80
+                        ; 1440 .. 7
+                        dw 18*2*80
+                        db 18,2,80
+
+;***************************************************************************
+
+importiere_ciscopy:
+                        call kopiere_ins_xms_zaehler_nullen
+                        call sauberen_kopf_einrichten
+
+                        mov ax,cs:[si]
+                        mov w [sektoren],ax
+                        mov al,cs:[si+2]
+                        mov b [sekt_spur],al
+                        mov al,cs:[si+3]
+                        mov b [koepfe],al
+                        mov al,cs:[si+4]
+                        mov b [spuren],al
+
+                        ; Kopieren von 'LLLLLLLL....' in die DISKDUPE Tabelle
+                        push di,si,es,ds
+                          mov ax,cs
+                          mov bx,es
+                          mov ds,bx
+                          mov es,ax
+                          mov cx,di
+                          dec cx
+                          mov si,1
+                          mov di,diskdupe_pack
+                          kopiere
+                        pop ds,es,si,di
+
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+                        inc di
+                        add w [datei_start_l],di
+                        adc w [datei_start_h],0
+
+                        mov dx,[datei_start_l]
+                        mov cx,[datei_start_h]
+		        call seek
+
+                        ; Kopierer ...
+                        mov w [quell_h],0
+                        mov w [quell_o],0
+                        mov w [quell_s],[lese_puffer_seg]
+                        mov w [ziel_h],[xms_handhabe]
+                        mov w [ziel_o],0
+                        mov w [ziel_s],0
+
+
+                        ; Zaehler:=0
+                        mov al,[koepfe]
+			mov bl,[spuren]
+			mul bl
+			mov cx,ax
+                        mov si,diskdupe_pack
+
+;***************************************************************************
+
+ciscopy_spur_schleife:
+                        cmp b [si],'L'
+                        jz ciscopy_spur_spur_vorhanden
+
+
+                        mov ax,'öö'
+                        call fuelle_lese_puffer
+                        push cx
+                          mov cl,b [sekt_spur]
+                          null ch
+ciscopy_lies_muell_schleife:
+                          call kopiere_ins_xms_512
+                          loop ciscopy_lies_muell_schleife
+                        pop cx
+
+                        jmp short ciscopy_spur_schleife_loop
+
+;***************************************************************************
+
+ciscopy_spur_spur_vorhanden:
+                        push cx
+                          mov cl,b [sekt_spur]
+                          null ch
+ciscopy_lies_daten_schleife:
+                          call datei_einlesen_512
+                          call kopiere_ins_xms_512
+                          loop ciscopy_lies_daten_schleife
+                        pop cx
+
+;***************************************************************************
+ciscopy_spur_schleife_loop:
+                        inc si
+                        loop ciscopy_spur_schleife
+;***************************************************************************
+
+                        mov ax,cs
+                        mov ds,ax
+                        mov es,ax
+
+                        ret
+

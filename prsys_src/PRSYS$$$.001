@@ -1,0 +1,22 @@
+(* nicht editieren ! *)
+procedure sprach_modul;assembler;(*&FRAME-*) (*&USES NONE*) (*$S-*)
+  asm
+    db   7,'<SPRA2>'
+    db   4,'ENDE'
+    dw   7
+    db  32,'PRSYS <input file> <output file>'
+    db  30,'PRSYS <Quelldatei> <Zieldatei>'
+    db  26,'Source file is not an EXE.'
+    db  41,'Quelldatei liegt nicht im EXE-Format vor.'
+    db  22,'Source file is to big.'
+    db  27,'Die Quelldatei ist zu gro·.'
+    db  44,'Source file has no relocations. Use EXE2BIN.'
+    db  66,'Die Quelldatei hat keine Segmentkorrekturen. Benutzen Sie EXE'
+    db     '2BIN.'
+    db  41,'The source file has too many relocations.'
+    db  47,'Die Quelldatei hat zu viele Segmentkorrekturen.'
+    db  32,'The target file would be to big.'
+    db  35,'Die Zieldatei wÅrde zu gro· werden.'
+    db  37,'An relocation is out of program area.'
+    db  60,'Eine Segmentkorrektur liegt au·erhalb des Programmbereiches.'
+  end;

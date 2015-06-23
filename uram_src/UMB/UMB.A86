@@ -1,0 +1,375 @@
+; Shadow RAM -> XMS Funktion 10
+; Veit Kannegieser 26.03.1998
+
+org 0
+                        dd -1
+                        dw 08000
+                        dw strategie
+                        dw interrupt
+                        db 'UMB$$$$$'
+befehl:                 dd ?
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+strategie:
+                        mov cs:[befehl+0],bx
+                        mov cs:[befehl+2],es
+                        retf
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+interrupt:
+                        pusha
+                          push ds,es
+
+                            push cs
+                            pop ds
+                            
+include ..\..\country\country.a86
+                            bestimme_country_bx_sys
+
+                            cmp bx,49 ; D
+                            jz sprache_nicht_aendern
+
+                            cmp bx,43 ; ™
+                            jz sprache_nicht_aendern
+
+                            cmp bx,41 ; CH
+                            jz sprache_nicht_aendern
+
+                            mov w [sprache],2
+
+sprache_nicht_aendern:
+                            mov dx,titel
+                            call ausschrift
+                            
+                            les bx,cs:[befehl]
+                            mov w es:[bx+3],0           ; kein Fehler
+                            mov w es:[bx+0e+0],0        ; 0 Byte
+                            mov w es:[bx+0e+2],cs
+
+                            lds si,es:[bx+012]          ; Parameter
+
+suche_parameter_schleife:
+                            cld
+                            lodsb
+
+                            cmp al,00a
+                            jz parameterfehler
+                            cmp al,00d
+                            jz parameterfehler
+
+                            cmp al,009
+                            je suche_parameter_schleife_ende
+                            cmp al,' '
+                            jnz suche_parameter_schleife
+
+suche_parameter_schleife_ende:
+                            cld
+                            lodsb
+                            cmp al,009
+                            jz suche_parameter_schleife_ende
+                            cmp al,' '
+                            jz suche_parameter_schleife_ende
+
+                            dec si
+
+                            call lies_zahl              ; "C800"
+                            jc parameterfehler
+                            mov cx,dx
+
+                            mov es,dx
+                            mov dx,fehler_noch_rom
+                            mov es:[0],'01'
+                            cmp es:[0],'01'
+                            if ne jmp fehlermeldung
+                            mov es:[0],'10'
+                            cmp es:[0],'10'
+                            if ne jmp fehlermeldung
+
+
+                            lodsb
+                            cmp al,'-'                  ; "-"
+                            jne parameterfehler
+
+                            call lies_zahl              ; "EFFF"
+                            jc parameterfehler
+                            sub dx,cx
+                            inc dx                      ; EFFF->F000
+
+                            cmp dx,1
+                            jae parameter_gut
+
+
+parameterfehler:
+                            mov dx,fehler_parameter
+                            jmp fehlermeldung
+
+parameter_gut:
+
+                            ; CX= "C800"
+                            mov ah,052
+                            int 021
+                            mov es,es:[bx-2]    ; Start MCB
+
+  mcb_schleife:
+                            mov ax,es
+                            add ax,es:[00003]   ; L„nge
+                            inc ax              ; MCB selbst
+
+                            cmp b es:[00000],'M'
+                            je mcb_schleife
+
+                            dec w es:[00003]    ; 16 Byte weniger
+                            dec ax
+                            mov b es:[00000],'M'
+                            mov es,ax
+
+                            mov b es:[00000],'M'
+                            mov w es:[00001],7  ; ausgeschlossen (DR DOS)
+                            call teste_drdos
+                            if ne mov w es:[00001],8  ; System (PC DOS)
+                            mov w es:[00003],cx ; bis
+                            sub w es:[00003],ax ; von
+                            dec w es:[00003]    ; -16 Byte selbst
+                            mov di,5
+                            mov al,0
+                            cld
+                            push cx
+                              mov cx,11
+                              rep stosb
+                            pop cx
+                            mov w es:[00008],'CS' ; "SC"
+                            
+                            call patch_DMD_UPPER_ROOT
+                            call aendere_pc_ms_umb_variable
+
+                            mov es,cx
+                            mov b es:[00000],'Z'
+                            mov w es:[00001],0  ; frei
+                            mov w es:[00003],dx ; L„nge
+                            dec w es:[00003]    ; -16 Byte selbst
+                            mov di,5
+                            mov al,0
+                            cld
+                            mov cx,11
+                            rep stosb
+
+
+                            call link_umb_ein
+
+                            call link_umb_aus
+
+                            mov dx,erfolgreich_installiert
+
+fehlermeldung:
+
+                            call ausschrift
+
+                          pop es,ds
+                        popa
+                        retf
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+ret_c0:                 clc
+                        ret
+ret_c1:                 stc
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+lies_ziffer:
+                        cld
+                        lodsb
+
+                        cmp al,'0'
+                        jb ret_c1  ; '/','(' .. -> Fehler
+
+                        cmp al,'9'
+                        ja vielleicht_buchstabe
+
+                        sub al,'0'
+                        jmp ret_c0
+
+vielleicht_buchstabe:
+                        and al,0df ; 'a' ->'A'
+                        cmp al,'A'
+                        jb ret_c1  ; '@','=' .. -> Fehler
+
+                        cmp al,'F'
+                        ja ret_c1  ; 'G','H' .. -> Fehler
+                        
+                        sub al,'A'-10 ; A->10
+                        jmp ret_c0
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+lies_zahl:
+                        mov dx,0
+                        call lies_ziffer
+                        jc ret_c1
+                        or dl,al
+                        shl dx,4
+                        call lies_ziffer
+                        jc ret_c1
+                        or dl,al
+                        shl dx,4
+                        call lies_ziffer
+                        jc ret_c1
+                        or dl,al
+                        shl dx,4
+                        call lies_ziffer
+                        jc ret_c1
+                        or dl,al
+                        jmp ret_c0
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; ES
+patch_DMD_UPPER_ROOT:
+                        push ax,bx,cx,dx,es
+
+                          mov cx,es
+
+                          mov ah,052
+                          int 021
+                          cmp w es:[bx+066],0ffff
+                          je patch_DMD_UPPER_ROOT_jetzt
+
+                          mov dx,text_DMD_UPPER_ROOT_fehler
+                          call ausschrift
+                          jmp patch_DMD_UPPER_ROOT_weiter
+
+patch_DMD_UPPER_ROOT_jetzt:
+
+                          int 012
+                          shl ax,6
+                          dec ax        ; 09fff
+
+                          mov w es:[bx+066],ax
+
+patch_DMD_UPPER_ROOT_weiter:
+                        pop es,dx,cx,bx,ax
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+link_umb_ein:
+                        push ax,bx
+                          mov ax,05803
+                          mov bx,00001
+                          int 021
+                        pop bx,ax
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+link_umb_aus:
+                        push ax,bx
+                          mov ax,05803
+                          mov bx,00000
+                          int 021
+                        pop bx,ax
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; CS:DX
+ausschrift:
+                        push ds,si,ax
+                          push cs
+                          pop ds
+                          mov si,dx
+                          add si,w cs:[sprache]
+                          mov dx,w cs:[si]
+                          mov ah,009
+                          int 021
+                        pop ax,si,ds
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+teste_drdos:
+                        push ax,dx
+                          mov ax,'DR'
+                          int 021
+                          cmp ah,010
+                        pop dx,ax
+                        ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+aendere_pc_ms_umb_variable:
+                        call teste_drdos
+                        je ret
+
+                        push es
+                          pusha
+
+                            push ss
+                            pop es
+                            sub di,di
+                            mov al,0b4
+                            mov cx,0e000
+                            cld
+
+                            ; b4 52               ; mov ah,052
+                            ; cd 21               ; int 021
+                            ; 2e 8c 06 ?? ??      ; mov cs:[list],es
+                            ; b8 10 43            ; mov ax,04310
+                            ; cd 2f               ; int 02f
+                            ; 2e 89 1e ?? ??      ; mov cs:[xmm+0],bx
+                            ; 2e 8c 06 ?? ??      ; mov cs:[xmm+2],es
+                            ; 2e 80 3e ?? ?? 00   ; cmp b cs:[umb],0
+
+suche_xms_umb_aufruf_schleife:
+                            repne scasb
+                            jcxz suche_xms_umb_aufruf_nicht_gefunden
+
+                            cmp b es:[di],052
+                            jne suche_xms_umb_aufruf_schleife
+
+                            cmp w es:[di+1],021cd
+                            jne suche_xms_umb_aufruf_schleife
+
+                            cmp w es:[di+9],04310
+                            jne suche_xms_umb_aufruf_schleife
+
+                            cmp w es:[di+11],02fcd
+                            jne suche_xms_umb_aufruf_schleife
+
+                            cmp w es:[di+23],0802e
+                            jne suche_xms_umb_aufruf_schleife
+
+                            mov di,w es:[di+26]
+                            mov b ss:[di],0ff
+
+aendere_pc_ms_umb_variable_fertig:
+                          popa
+                        pop es
+                        ret
+
+suche_xms_umb_aufruf_nicht_gefunden:
+                            mov dx,text_pc_ms_umb_nicht_gefunden
+                            call ausschrift
+                            jmp aendere_pc_ms_umb_variable_fertig
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+sprache:                dw 0; +0=deutsch +2=englisch
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+d_titel:
+e_titel:
+                        db 'UMB.SYS * URAM -> DOS * Veit Kannegieser 26.03.úú01.05.1998',00d,00a,'$'
+
+
+d_erfolgreich_installiert:
+                        db 'Speicher erfolgreich installiert',00d,00a,'$'
+e_erfolgreich_installiert:
+                        db 'memory successfuly installed',00d,00a,'$'
+
+
+d_fehler_parameter:     db 7,'Parameterfehler !',00d,00a,'$'
+e_fehler_parameter:     db 7,'command line error !',00d,00a,'$'
+
+
+d_fehler_noch_rom:      db 7,'der angegebene Bereich ist noch schreibgeschtzt !',00d,00a,'$'
+e_fehler_noch_rom:      db 7,'upper memory area is still writeprotected !',00d,00a,'$'
+
+
+d_text_DMD_UPPER_ROOT_fehler:
+                        db '"DMD_UPPER_ROOT" bereits ver„ndert oder unbekannte DOS-Version',00d,00a,'$'
+e_text_DMD_UPPER_ROOT_fehler:
+                        db '"DMD_UPPER_ROOT" alredy modified or unknown DOS-version',00d,00a,'$'
+
+
+d_text_pc_ms_umb_nicht_gefunden:
+                        db 7,'PC,MS UMB-Variable nicht gefunden',00d,00a,'$'
+e_text_pc_ms_umb_nicht_gefunden:
+                        db 7,'PC,MS UMB-flag not found',00d,00a,'$'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+titel:                  dw d_titel,e_titel
+erfolgreich_installiert:dw d_erfolgreich_installiert,e_erfolgreich_installiert
+fehler_parameter:       dw d_fehler_parameter,e_fehler_parameter
+fehler_noch_rom:        dw d_fehler_noch_rom,e_fehler_noch_rom
+text_DMD_UPPER_ROOT_fehler: dw d_text_DMD_UPPER_ROOT_fehler,e_text_DMD_UPPER_ROOT_fehler
+text_pc_ms_umb_nicht_gefunden: dw d_text_pc_ms_umb_nicht_gefunden,e_text_pc_ms_umb_nicht_gefunden
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

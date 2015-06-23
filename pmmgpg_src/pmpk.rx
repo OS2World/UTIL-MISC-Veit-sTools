@@ -1,0 +1,9 @@
+/* presence would force PMMail think having PGP 5 */
+
+/** /
+Parse Arg arg_alt
+'@echo PGPK: %0' arg_alt '>> %tmp%\pgp.log'
+/ **/
+
+Say 'limited PGP 2.x imitation for PMMail using GnuPG'
+Return 99

@@ -1,0 +1,2 @@
+deutsch equ 1
+include ladekode.a86

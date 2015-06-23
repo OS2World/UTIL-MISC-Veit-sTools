@@ -1,0 +1,126 @@
+Title   OPTI 82C283
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_opti283                   macro
+                                  mov di,#1 ; Segment
+                                  mov cl,#2 ; Index Lesen
+                                  ;mov bl,#3 ; Bit Lesen
+                                  ;mov bh,#4 ; Bit Schreiben (Index 011)
+                                  mov bx,#3+#4*0100
+                                  mov dh,#5 ; Bit Shadow-RAM (Index 011)
+                                  call setze_opti283_prozedur
+                                #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+opti283_bit_schreiben:          db ?
+
+setze_opti283_prozedur:
+                                mov b [opti283_bit_schreiben],bh
+
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_opti283_fertig
+
+                                call ausschrift_segment
+
+                                ; Maske Lesen in BX
+                                mov bh,bl
+                                xor bl,0ff
+                                test ah,001     ; Lesen ?
+                                if z mov bh,000 ; nein->bit l”schen
+
+                                push ax
+                                  mov al,cl
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop ax
+
+
+
+                                mov bh,b [opti283_bit_schreiben]
+                                mov bl,0ff
+                                sub bl,bh
+
+                                ; Schreiben ............ 0      2      0     2
+                                ; Globaler Schreibschutz 0     [0]     1    [1]
+
+                                ; -> BX                  00ff  00ff-x  xff  00ff-x
+
+                                test ah,002
+                                jnz setze_op283_schreiben_einschalten
+
+                                mov bl,0ff       ; kein Bit l”schen
+                                cmp b [globaler_schreibschutz],'1'
+                                if ne mov bh,0   ; aber auch keins dazu
+
+                                jmp short setze_op283_schreiben_ausfuehren
+
+  setze_op283_schreiben_einschalten:
+                                mov bh,000       ; Schreibschutzbit entfernen
+
+  setze_op283_schreiben_ausfuehren:
+
+                                test ah,001     ; nochmal Lesen
+                                if nz or bh,dh  ; Bit Shadow-RAM dazu
+
+                                mov al,011      ; Index Schreiben
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_opti283_fertig:
+                                ret
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+variante_opti_82c283:
+                                ausschrift_xxxx_aehnliches_bios text_variante_opti_82c283
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,w es:[di+7+1]
+                                add ax,di
+                                add ax,7+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,w es:[di+2+1]
+                                add ax,di
+                                add ax,2+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_opti283
+
+                                setze_opti283 'C0',013,Bit4,Bit0,Bit4
+                                setze_opti283 'C4',013,Bit5,Bit0,Bit4
+                                setze_opti283 'C8',013,Bit6,Bit0,Bit4
+                                setze_opti283 'CC',013,Bit7,Bit0,Bit4
+
+                                setze_opti283 'D0',012,Bit0,Bit1,Bit5
+                                setze_opti283 'D4',012,Bit1,Bit1,Bit5
+                                setze_opti283 'D8',012,Bit2,Bit1,Bit5
+                                setze_opti283 'DC',012,Bit3,Bit1,Bit5
+
+                                setze_opti283 'E0',012,Bit4,Bit2,Bit6
+                                setze_opti283 'E4',012,Bit5,Bit2,Bit6
+                                setze_opti283 'E8',012,Bit6,Bit2,Bit6
+                                setze_opti283 'EC',012,Bit7,Bit2,Bit6
+
+                                jmp initialisieren
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+; AL=Index
+; BX=Maske
+
+aenderung_opti283:
+                                pusha
+                                  mov cl,al
+                                  call bios_aufruf__prozedur_registerlesen
+
+                                  and al,bl
+                                  or al,bh
+
+                                  mov ah,al
+                                  mov al,cl
+                                  call bios_aufruf__prozedur_registerschreiben
+                                popa
+
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

@@ -1,0 +1,166 @@
+Title   ALI 14xx
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_ali_14xx                  macro
+                                  mov di,#1
+                                  mov cx,#2
+                                  mov bh,#3
+                                  call setze_ali_14xx_prozedur
+                                #em
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+setze_ali_14xx_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_ali_14xx_prozedur_fertig
+
+                                call ausschrift_segment
+
+
+                                mov al,ah
+                                and ax,00201
+
+                                mov bl,0ff
+                                sub bl,bh
+
+                                cmp al,1 ; Lesen ?
+                                if nz null bh
+
+                                pusha
+                                  call bios_aufruf__prozedur_registeraenderung
+                                popa
+
+                                mov cx,0004a
+                                mov bl,0ff-(Bit1+Bit2)
+                                mov bh,Bit1 ; Lesen C000-FFFF
+
+                                cmp ah,2 ; Schreiben ?
+                                if e add bh,Bit2 ; Schreiben C000-FFFF
+
+                                pusha
+                                  call bios_aufruf__prozedur_registeraenderung
+                                popa
+
+
+setze_ali_14xx_prozedur_fertig: ret
+;ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
+variante_ali_14xx:
+                                ausschrift_xxxx_aehnliches_bios text_variante_ali_14xx
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+6+1]
+                                add ax,di
+                                add ax,6+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+11+1]
+                                add ax,di
+                                add ax,11+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],registeraenderung__al__and_bl__or_bh
+
+ali_14xx_gemeinsam:
+
+
+                                setze_ali_14xx 'C0',0004c,Bit0
+                                setze_ali_14xx 'C4',0004c,Bit1
+                                setze_ali_14xx 'C8',0004c,Bit2
+                                setze_ali_14xx 'CC',0004c,Bit3
+
+                                setze_ali_14xx 'D0',0004c,Bit4
+                                setze_ali_14xx 'D4',0004c,Bit5
+                                setze_ali_14xx 'D8',0004c,Bit6
+                                setze_ali_14xx 'DC',0004c,Bit7
+
+                                setze_ali_14xx 'E0',0004d,Bit0
+                                setze_ali_14xx 'E4',0004d,Bit1
+                                setze_ali_14xx 'E8',0004d,Bit2
+                                setze_ali_14xx 'EC',0004d,Bit3
+
+                                setze_ali_14xx 'F0',0004d,Bit4
+                                setze_ali_14xx 'F4',0004d,Bit5
+                                setze_ali_14xx 'F8',0004d,Bit6
+                                setze_ali_14xx 'FC',0004d,Bit7
+
+
+                                mov cx,0004a
+                                mov bx,000ff-Bit2
+                                cmp b [globaler_schreibschutz],'1'
+                                if e call bios_aufruf__prozedur_registeraenderung
+
+                                jmp initialisieren
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+chip_ali_1449:
+                                mov w [registeraenderung_emulation],aenderung_chip_ali_1449
+                                jmp ali_14xx_gemeinsam
+;úúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú
+; CX=Index
+; BX=Maske
+aenderung_chip_ali_1449:
+                                installiere_tracer
+
+                                push dx
+                                  push ax
+
+                                    ; Lesen ...
+                                    mov al,0
+                                    mov dx,00cfa
+                                    out dx,al
+
+                                    mov al,010
+                                    mov dl,0f8
+                                    out dx,al
+                                                                out 0e1,ax
+                                    mov dh,0c0
+                                    mov dl,cl
+                                    in al,dx
+                                                                out 0e1,ax
+                                    push ax
+                                      mov al,0
+                                      mov dx,00cfa
+                                      out dx,al
+
+                                      mov dl,0f8
+                                      out dx,al
+                                                                out 0e1,ax
+                                    pop ax
+
+                                    ; ndern ...
+                                    and al,bl
+                                    or al,bh
+
+                                    ; Schreiben ...
+                                    push ax
+                                      mov al,0
+                                      mov dx,00cfa
+                                      out dx,al
+
+                                      mov al,010
+                                      mov dl,0f8
+                                      out dx,al
+                                                                out 0e1,ax
+                                    pop ax
+                                    mov dh,0c0
+                                    mov dl,cl
+
+                                    out dx,al
+                                                                out 0e1,ax
+                                    mov al,0
+                                    mov dx,00cfa
+                                    out dx,al
+
+                                    mov dl,0f8
+                                    out dx,al
+                                                                out 0e1,ax
+
+                                  pop ax
+                                pop dx
+
+                                entferne_tracer
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

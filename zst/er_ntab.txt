@@ -1,0 +1,76 @@
+# quelle: ucstbl.lst (Warp 4)
+#         lynx
+#         keyboard.pdf (OS/2 4.5x)
+
+us-ascii        1
+
+# dec-mcs       ?
+# shift_jis     ?
+# macintosh     ?
+# next          ?
+# mnemonic      ?
+# mnemonic+ascii+0 ?
+# big5          ?
+# x-transparent ? 1
+# viscii        ?
+
+
+
+## UCS-2        IBM-1200
+## UNICODE      IBM-1200
+## UTF-8        IBM-1208
+IBM-037         IBM-37
+IBM-1380        IBM-1381
+IBM-28709       IBM-37
+IBM-4396        IBM-300
+IBM-4946        IBM-850
+IBM-5026        IBM-930
+IBM-5031        IBM-935
+IBM-5035        IBM-939
+IBM-926         IBM-944
+IBM-927         IBM-948
+IBM-928         IBM-946
+IBM-932         IBM-942
+IBM-934         IBM-944
+IBM-936         IBM-946
+IBM-938         IBM-948
+IBM-941         IBM-943
+IBM-947         IBM-950
+IBM-951         IBM-949
+IBM-eucCN       IBM-1383
+IBM-eucJP       IBM-954
+IBM-eucKR       IBM-970
+IBM-eucTW       IBM-964
+ISO8859-1       IBM-819
+ISO8859-2       IBM-912
+ISO8859-3       IBM-913
+ISO8859-4       IBM-914
+ISO8859-5       IBM-915
+ISO8859-6       IBM-1089
+ISO8859-7       IBM-813
+ISO8859-8       IBM-916
+ISO8859-9       IBM-920
+#...
+iso-8859-15     923
+
+JISX0201-1976   IBM-896
+JISX0208-1978   IBM-955
+JISX0208-1983   IBM-952
+JISX0208-1990   IBM-952
+IBM-5048        IBM-952
+JISX0212-1990   IBM-953
+IBM-5049        IBM-953
+KSC5601-1987    IBM-971
+IBM-5067        IBM-971
+SJIS-1          IBM-943
+SJIS-2          IBM-943
+TIS-620         IBM-874
+eucJP           IBM-954
+IBM33722        IBM-954
+eucKR           IBM-970
+eucTW-1993      IBM-964
+KOI-8R          IBM-878
+
+apple           1275
+# adobe         1276
+# adobe         1277

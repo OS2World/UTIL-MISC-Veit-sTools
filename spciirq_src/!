@@ -1,0 +1,7 @@
+Warnung wenn ein ISA-Ger„t einen IRQ schon belegt hat..
+
+Schalter: Kein IRQ fr VGA?
+
+Umgekerter Modus: statt Werte von Komnadozeile zu lesen, wird der Wert
+aus dem Router gelesen. M”gliche Fehlermdlung: 'IRQ Router needs configuration for
+LINK value $xx!' und dann alle Ger„te die davon abh„ngen

@@ -1,0 +1,7 @@
+et4000                          equ 1
+blinkx                          equ 1
+immer_rate_setzen               equ 1
+debug                           equ 1-1
+schneller_portzugriff		equ 1
+
+include font20.a86

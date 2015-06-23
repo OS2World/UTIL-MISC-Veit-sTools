@@ -1,0 +1,81 @@
+; 1997.11.27 Verzeichnis angelegt
+; 1997.12.31 file_id.*
+; 11.03.1998 deencom neu
+; 15.07.1998 Tastatur einschalten
+;            nicht mehr direkt von der Tastatur lesen
+;               -> TaskMgr-Men aufrufbar
+;            res.Programmgr”áe verkleinert
+; 04.08.1998 cli/sti umsortiert
+; 1998.08.05 Ver”ffentlichung
+; 2000.08.22 Systemsoft untersttzt F000:F065 nicht, int6s.com
+
+                        jmp einrichten
+
+include int6_i.a86
+include ..\lhtsr\lh.a86
+include ..\lhtsr\prg.a86
+
+#if systemsoft
+programm_name:          db 'INT 06 S'
+#else
+programm_name:          db 'INT 06  '
+#endif
+programm_resident_ende: dw tsr_ende
+
+programm_int            equ 006
+programm_int_neu        equ int_06_neu
+programm_int_org        equ int_06_org
+
+textbaustein            macro
+
+#if englisch            ;--------------------------------------------
+installation_text:      db 'load INT06',#1,00d,00a
+                        db '$'
+deinstallation_text:    db 'remove INT06',#1,00d,00a
+                        db '$'
+doppelt_text:           db 'multiple install of INT06',#1,' !',00d,00a
+                        db '$'
+nichtaktiv_text:        db 'INT06',#1,' not found active in memory !',00d,00a
+#else                   ;--------------------------------------------
+installation_text:      db 'lade INT06',#1,00d,00a
+                        db '$'
+deinstallation_text:    db 'entferne INT06',#1,00d,00a
+                        db '$'
+doppelt_text:           db 'mehrfache Installation von INT06',#1,' !',00d,00a
+                        db '$'
+nichtaktiv_text:        db 'INT06',#1,' nicht aktiv im Speicher gefunden !',00d,00a
+                        db '$'
+#endif                  ;--------------------------------------------
+                        #em
+
+                        #if systemsoft
+                        textbaustein '(SystemSoft)'
+                        #else
+                        textbaustein ''
+                        #endif
+einrichten:
+                        #if systemsoft
+                        push ds
+                          push 0
+                          pop ds
+                          mov ax,w [010*4+0]
+                          mov dx,w [010*4+2]
+                        pop ds
+                        mov w [int10_aufruf+0],ax
+                        mov w [int10_aufruf+2],dx
+                        #endif
+
+                        einfaches_tsr
+
+                        mov ax,04c00
+                        int 021
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+installations_prozedur:
+                        ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+deinstallations_prozedur:
+                        ret

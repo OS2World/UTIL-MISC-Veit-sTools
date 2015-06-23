@@ -1,0 +1,15 @@
+(* nicht editieren ! *)
+var
+  sprach_start:longint;
+  textz_Parameterfehler_  :^string;
+  textz_Benutzung_PATCHVPT_EXE  :^string;
+  textz_Blinken_oder_Intenstitaet  :^string;
+  textz_Intensive_Hintergrundfarben  :^string;
+  textz_Blinken  :^string;
+  textz_Frequenz_des_Bildschirmsignals  :^string;
+  textz_Tabellenindex  :^string;
+  textz_nur_fuer_VGA_Textmodus_80_25  :^string;
+  textz_nur_fuer_VGA_320_200_256  :^string;
+  textz_gemessene_Ergebnisse_im_Textmodus  :^string;
+  textz_ist_nicht_beschreibbar_  :^string;
+  textz_Damit_AEnderungen_wirksam_werden_sollte_VPT_RAM_COM_geladen_werden_  :^string;

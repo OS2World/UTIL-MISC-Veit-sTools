@@ -1,0 +1,7 @@
+create archive A:\memdisk.pf
+  output unpacking test files ...
+  add file C:\bat\*
+  newline
+  output copying remaining files ...
+  newline
+close archive

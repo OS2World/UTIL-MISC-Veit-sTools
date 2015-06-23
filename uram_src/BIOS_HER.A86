@@ -1,0 +1,607 @@
+Title   Anzeige von Informationen 갶er das geladene BIOS
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+bestimme_bios_hersteller:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_systemsoft0
+                                mov di,0e010
+                                call vergleich
+                                jc nicht_systemsoft0
+
+                                xchg_ds_es
+                                mov si,0e010
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+
+                                mov b es:[chipsatzname],'$'
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_systemsoft0:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_olivetti
+                                mov di,0e017
+                                call vergleich
+                                jc nicht_olivetti
+
+                                xchg_ds_es
+                                mov si,0e009
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+
+                                mov si,0e02b
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_x 0ff
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_olivetti:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,suchfolge_ausschrift_systemsoft1
+                                call suche
+                                jnc gefunden_systemsoft
+
+                                mov si,suchfolge_ausschrift_systemsoft2
+                                call suche
+                                jc nicht_systemsoft
+
+                                add di,4
+
+
+gefunden_systemsoft:
+                                xchg_ds_es
+
+                                push di
+                                  mov si,[di+16]
+                                  mov di,biosherstellername
+                                  kopiere_text_solange_nicht_x 00d
+                                pop di
+
+                                mov si,[di+6]
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_x 00d
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_systemsoft:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,suchcode_chips_und_technologies
+                                call suche
+                                jc nicht_chips_und_tehnologies
+
+                                xchg_ds_es
+                                mov si,[di+12+1]
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+                                xchg_ds_es
+
+                                ret
+nicht_chips_und_tehnologies:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_e000_award
+                                mov di,0e000
+                                call vergleich
+                                if c jmp nicht_award
+  doch_award_phoenix:
+
+                                xchg_ds_es
+
+                                mov si,0e000
+                                mov di,biosherstellername
+
+                                ; BootBlock  oder Software ?
+                                cmp b [0e006],0aa
+                                je kopiere_award_name_version6
+                                cmp w [0e006],'oS' ;
+                                jnz award_bootblock
+
+                                mov cx,14
+                                jmp short kopiere_award_name
+  kopiere_award_name_version6:
+                                ; K7,Version 6
+                                sub cx,cx
+                                mov cl,b [0e060]
+                                mov si,0e061
+  kopiere_award_name:
+                                rep movsb
+                                cmp b es:[di-1],0
+                                if e mov b es:[di-1],'$'
+
+
+                                mov si,0ec7a
+                                cmp b [0ec73],'/' ; Datum ?
+                                je award_chipsatz_name_gefunden
+
+                                ; 'Award Software I'
+                                cmp w [0ecde],'I '
+                                jne kein_award_chipsatzname
+                                ; ..'Inc'
+                                cmp w [0ece0],'cn'
+                                je kein_award_chipsatzname
+
+                                mov si,0ece0
+
+  award_chipsatz_name_gefunden:
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_null
+  kein_award_chipsatzname:
+                                ; Copyri...
+                                cmp w [0e091],'oC'
+                                if e cmp w [0e093],'yp'
+                                je award_kommentar_vorhanden
+                                cmp w [0e0bf],'Na' ; N=04e
+                                jne kein_award_kommentar
+
+  award_kommentar_vorhanden:
+                                mov si,0e0c1
+                                mov di,bios_kommentar
+                                kopiere_text_solange_nicht_null
+
+  kein_award_kommentar:
+                                xchg_ds_es
+                                ret
+award_bootblock:
+                                kopiere_text_solange_nicht_null
+
+                                xchg_ds_es
+                                ret
+
+nicht_award:
+                                mov si,vergleich_e000_award_phoenix
+                                mov di,0e000
+                                call vergleich
+                                jc nicht_award_phoenix
+
+                                mov si,vergleich_e00e_award_phoenix
+                                mov di,0e00e
+                                call vergleich
+                                jc nicht_award_phoenix
+
+                                jmp doch_award_phoenix
+nicht_award_phoenix:
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_8000_amibios
+                                mov di,08000
+                                call vergleich
+                                jc nicht_ami_neu
+
+                                xchg_ds_es
+
+                                mov si,08000
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_x ','
+
+                                xchg_ds_es
+
+                                call suche_ami_chipsatz
+
+                                ret
+
+nicht_ami_neu:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_8000_aammii
+                                mov di,08000
+                                call vergleich
+                                jc nicht_ami_alt
+
+                                xchg_ds_es
+
+                                mov si,08010
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+
+                                xchg_ds_es
+
+                                call suche_ami_chipsatz
+
+                                ret
+
+nicht_ami_alt:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_ami_0123
+                                mov di,0
+                                call vergleich
+                                jc nicht_ami_uralt
+
+                                cmp b es:[0007a],'-'
+                                jne nicht_ami_uralt
+
+                                xchg_ds_es
+
+                                mov si,00020
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+
+                                mov si,00078
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_null
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_ami_uralt:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_mrbios
+                                mov di,0e000
+                                call vergleich
+                                jc nicht_microid
+
+                                xchg_ds_es
+
+                                mov si,0FFD2
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_x 009
+
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_x 0EA
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_microid:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_acer
+                                mov di,0e000
+                                call vergleich
+                                jc nicht_acer
+
+                                mov ax,w es:[0e000]
+                                mov w [biosherstellername+0],ax
+                                mov ax,w es:[0e000+2]
+                                mov w [biosherstellername+2],ax
+
+                                mov si,es:[00151]
+                                cmp si,0
+                                jz kein_chipsatz_acer
+
+                                xchg_ds_es
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_null
+                                xchg_ds_es
+kein_chipsatz_acer:
+                                ret
+
+nicht_acer:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_phoenixnubios
+                                mov di,0e020
+                                call vergleich
+                                jc nicht_phoenix_nubios
+
+                                xchg_ds_es
+
+                                mov si,0e020
+                                mov di,biosherstellername
+                                mov cx,14
+                                rep movsb
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_phoenix_nubios:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_uram
+                                mov di,0ffa6
+                                call vergleich
+                                jc nicht_uram_ersatz
+
+                                xchg_ds_es
+
+                                mov si,0ffac
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_x 00d
+
+                                mov si,0ffd6
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_x 00d
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_uram_ersatz:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_ibm
+                                mov di,0e008
+                                call vergleich
+                                jc nicht_ibm_original
+
+                                xchg_ds_es
+
+                                mov si,0e008
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_ibm_original:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                ; International Computers Limited
+                                ; ' COMEXEBATASMLIBMAPOBJSYM '
+                                ;                ^^^
+                                mov si,vergleich_icl
+                                mov di,0e001
+                                call vergleich
+                                jc nicht_icl
+
+                                xchg_ds_es
+
+                                mov si,00001
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_x 'P' ; push ax ...
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_icl:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                ; Phoenix Tech. 1992 (10019V0.EXE)
+
+                                ; "IBM COMPATIBLE '
+                                mov si,vergleich_ibm_aehnlich
+                                mov di,0e00e
+                                call vergleich
+                                jc nicht_ibm_aehnlich
+
+
+                                ; "(C)1985-199_,American Mega"..
+                                mov si,vergleich_ami199x
+                                mov di,0e0d8
+                                call vergleich
+                                jc nicht_amibios_mirko
+
+                                xchg_ds_es
+
+                                mov si,0e0d8
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_x ','
+
+                                xchg_ds_es
+
+                                call suche_ami_chipsatz
+
+                                ret
+
+nicht_amibios_mirko:
+;--------------------------------------------------------------------------
+                                xchg_ds_es
+
+                                mov si,0e020
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_ibm_aehnlich:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_quadtel
+                                mov di,0e00e
+                                call vergleich
+                                jc nicht_quadtel
+
+                                xchg_ds_es
+
+                                mov si,0e00e
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+
+                                xchg_ds_es
+
+                                mov si,quadtel_chipsatz
+                                call suche
+                                jc quatel_chipsatz_nich_gefunden
+
+                                xchg_ds_es
+                                mov si,[di+8+1]
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_x 00d
+                                xchg_ds_es
+
+quatel_chipsatz_nich_gefunden:
+                                ret
+
+nicht_quadtel:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_compaq
+                                mov di,0ffea
+                                call vergleich
+                                jc nicht_compaq
+
+                                mov si,suchfolge_compaq
+                                call suche
+                                jc nicht_compaq
+
+                                add di,4
+
+                                xchg_ds_es
+
+                                mov si,di
+                                mov di,biosherstellername
+                                mov cx,00023
+                                kopiere
+
+                                xchg_ds_es
+
+                                call suche_compaq_chipsatz
+
+                                ret
+
+suchfolge_compaq:               pstr 'ght COMP'
+
+nicht_compaq:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                ; e010 "TOSHIBA"
+                                ; e100 "(c) COPY"...
+                                mov si,vergleich_toshiba
+                                mov di,0e010
+                                call vergleich
+                                jc nicht_toshiba
+
+                                cmp w es:[0e100],'c('
+                                jnz nicht_toshiba
+
+                                xchg_ds_es
+
+                                mov si,0e100
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_x '.'
+
+                                mov si,0e000
+                                mov di,chipsatzname
+                                mov cx,8+8
+                                kopiere
+
+                                xchg_ds_es
+
+                                ret
+
+nicht_toshiba:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                ; "AMIBOOT ROM",0
+                                mov si,vergleich_rom
+                                mov di,0e00b
+                                call suche
+                                jc nicht_ami_bootrom_e003
+
+                                xchg_ds_es
+
+                                mov si,0e000
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+                                xchg_ds_es
+
+                                ret
+
+nicht_ami_bootrom_e003:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+                                mov si,vergleich_rom
+                                mov di,0e008
+                                call suche
+                                jc nicht_ami_bootrom_e000
+
+                                xchg_ds_es
+
+                                mov si,0e000
+                                mov di,biosherstellername
+                                kopiere_text_solange_nicht_null
+                                xchg_ds_es
+
+                                ret
+
+nicht_ami_bootrom_e000:
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+
+                                ret
+
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+                                ;            '51-0222-001223-00111111-071595-82430VX'
+suchfolge_ami_chipsatz:         pstr 000,000,'??-????-??????-????????-??????-'
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suche_ami_chipsatz:
+                                mov si,suchfolge_ami_chipsatz
+                                call suche
+                                if c ret
+
+                                xchg_ds_es
+
+                                inc di ; 000
+                                inc di
+                                mov si,di
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_null
+
+                                xchg_ds_es
+
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_compaq_chipsatz:      pstr 00e, 007, 0bf,'??', 0f8, 0c3
+                                ; oder 03d 030 038
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suche_compaq_chipsatz:
+                                mov si,suchfolge_compaq_chipsatz
+                                call suche
+                                if c ret
+
+                                xchg_ds_es
+
+                                mov si,[di+2+1]
+                                mov di,chipsatzname
+                                kopiere_text_solange_nicht_null
+
+                                xchg_ds_es
+
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchfolge_ausschrift_systemsoft1:
+                                pstr 0b0,022, 0e6,080, 00e, 068,'??', 0e8,'??', 083,0c4,004, 00e, 068,'??', 0e8
+suchfolge_ausschrift_systemsoft2:
+                                pstr 0b0,022, 0e6,080, 0ba,078,003, 0ee, 00e, 068,'??', 0e8,'??', 083,0c4,004, 00e, 068,'??', 0e8
+                                ; mov al,022
+                                ; out 080,al
+                                ; 2: mov dx,00378
+                                ; 2: out dx,al
+                                ; push cs
+                                ; push ...
+                                ; call ausschrift
+                                ; add sp,4
+                                ; push cs
+                                ; push ...
+                                ; call ausschrift
+                                ; add sp,4
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+suchcode_chips_und_technologies:
+                                pstr 0e8,'??', 0b0,019, 0e6,080, 033,0c0, 0b9,050,000, 0be,'??', 02e,002,004, 080,0d4,000
+                                ; call ??
+                                ; mov al,019
+                                ; out 080,al
+                                ; xor ax,ax
+                                ; mov cx,00050
+                                ; mov si,text_copyr_chips_tech
+                                ; add al,cs:[si]
+                                ; adc ah,0
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+quadtel_chipsatz:               pstr 02e,0f6,006,00b,071,001, 074,006, 0be,'??', 0e8,'??', 02e,0f6,006,00b,071,004, 074,006
+                                ; test cs:bits,001
+                                ; jz @@1
+                                ; mov si,chipsatzname
+                                ; call ausschrift
+                                ;@@1:
+                                ; test cs:bits,4
+                                ; jz @@2
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+vergleich_e000_award:           pstr 'Award'
+vergleich_e000_award_phoenix:   pstr 'Phoeni'
+vergleich_e00e_award_phoenix:   pstr 'IBM'
+vergleich_8000_amibios:         pstr 'AMIBIOS'
+vergleich_8000_aammii:          pstr '((AAM'
+vergleich_ami_0123:             pstr '0123'
+vergleich_mrbios:               pstr 'MR BIOS (r)'
+vergleich_acer:                 pstr 'ACER'
+vergleich_phoenixnubios:        pstr 'Phoenix NuBIOS'
+vergleich_uram:                 pstr 'URAM',00d,00a
+vergleich_ibm:                  pstr 'COPR. IBM 198'
+vergleich_icl:                  pstr 'COMEXEBATA'
+vergleich_ibm_aehnlich:         pstr 'IBM'
+vergleich_ami199x:              pstr 'Ameri'
+vergleich_quadtel:              pstr 'Quadtel'
+vergleich_compaq:               pstr 'COMPAQ'
+vergleich_toshiba:              pstr 'TOSHIBA'
+vergleich_olivetti:             pstr 'OLIVETTI'
+vergleich_rom:                  pstr ' ROM',000
+vergleich_systemsoft0:          pstr 'SystemSoft'
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

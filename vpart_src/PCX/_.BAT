@@ -1,0 +1,6 @@
+@ECHO OFF
+DEL ..\512\*.512
+FOR %%D IN (*.PCX) DO ..\IMPPCX\IMPPCX.EXE %%D ..\512\%%D
+CD ..\512
+REN *.PCX *.512
+CD ..\PCX

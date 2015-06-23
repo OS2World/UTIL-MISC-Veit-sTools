@@ -1,0 +1,172 @@
+Title   Tabelle fr Parameter c=CHIP
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+liste_chipsaetze_ohne_bios__anfang:
+                                dw chip_ali_1449
+                                pstr 'ALI_1449$'
+
+                                dw chip_ali_148x
+                                pstr 'ALI_148X$'
+
+                                dw chip_ali_aladdin_v
+                                pstr 'ALI_ALD_V$'
+
+                                dw chip_amd_k7__ALiMAGiK_1
+                               ;pstr 'ALI_MAGiK_1_AMDK7$' - zu lang
+                                pstr 'ALI_MAGiK_1$'
+
+                                dw chip_amdk7
+                                pstr 'AMD_K7$'
+
+                                dw chip_ct_scat
+                                pstr 'CT_SCAT$'
+
+                                dw chip_i824x0
+                                pstr 'I824X0$'
+
+                                dw chip_i824x0_saturn
+                                pstr 'I824X0_SATURN$'
+
+                                dw chip_i824x0_mercury
+                                pstr 'I824X0_MERCURY$'
+
+                                dw chip_intel810
+                                pstr 'INTEL810$'
+
+                                dw chip_intel845
+                                pstr 'INTEL845$'
+
+                                dw chip_opti55x
+                                pstr 'OPTI55X$'
+
+                                dw chip_sis471
+                                pstr 'SIS471$'
+
+                                dw chip_sis496
+                                pstr 'SIS496$'
+
+                                dw chip_sis50x
+                                pstr 'SIS50X$'
+
+                                dw chip_sis551x
+                                pstr 'SIS551X$'
+
+                                dw chip_sis5591
+                                pstr 'SIS5591$'
+
+                                dw chip_sis_645
+                                pstr 'SIS645$'
+
+                                dw chip_umc491
+                                pstr 'UMC491$'
+
+                                dw chip_umc88x
+                                pstr 'UMC88X$'
+
+                                dw chip_umc89x
+                                pstr 'UMC89X$'
+
+                                dw chips_via5x0
+                                pstr 'VIA5X0$'
+
+                                dw chip_vlsi_lynx
+                                pstr 'VLSI_LYNX$'
+
+
+liste_chipsaetze_ohne_bios__ende:
+
+chipname_tab:                   db   '                 $'
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+bearbeite_geforderten_chip:
+                                mov es,cs
+                                mov si,liste_chipsaetze_ohne_bios__anfang
+                                mov di,chipsatzname_gefordert
+
+  bearbeite_geforderten_chip_schleife:
+                                cmp si,liste_chipsaetze_ohne_bios__ende
+                                je bearbeite_geforderten_chip_unbekannt
+
+                                add si,2
+                                call vergleich
+                                if nc jmp [si-2]
+                                add si,[si]
+                                inc si,2
+                                jmp bearbeite_geforderten_chip_schleife
+
+bearbeite_geforderten_chip_unbekannt:
+                                mov b [stumm],'0'
+                                ausschrift text_unbekannter_chip_para
+
+                                call liste_der_direkt_implementierten_chipsaetze
+
+                                halt 1
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+liste_der_direkt_implementierten_chipsaetze:
+                                mov si,liste_chipsaetze_ohne_bios__anfang
+                                mov cx,0
+                                ausschrift_a chip_einruecken
+
+liste_der_direkt_implementierten_chipsaetze_schleife:
+                                cmp si,liste_chipsaetze_ohne_bios__ende
+                                je liste_der_direkt_implementierten_chipsaetze_ende
+
+                                add si,2+2
+                                ausschrift_a si
+                                mov ax,chipname_tab
+                                add ax,w [si-2] ; .. Leerzeichen nicht ausgeben
+                                ausschrift_a ax
+                                add si,[si-2]
+                                inc cx
+                                cmp cx,4
+                                jne liste_der_direkt_implementierten_chipsaetze_schleife
+
+                                ausschrift_a zeilenumbruch
+                                ausschrift_a chip_einruecken
+                                mov cx,0
+                                jmp liste_der_direkt_implementierten_chipsaetze_schleife
+liste_der_direkt_implementierten_chipsaetze_ende:
+                                ausschrift_a zeilenumbruch
+                                ret
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; CX=Index
+; BX=Maske
+; ge„ndert: EAX,DX
+aenderung_standard_pci:
+                                installiere_tracer
+
+                                ; Lesen ...
+                                mov_eax_080000000
+                                mov ax,cx
+                                and al,0fc
+                                mov dx,00cf8
+                                out_dx_eax
+                                                        out 0e1,ax
+
+                                mov dl,cl
+                                and dl,003
+                                add dx,0fc              ; 00cf8+4=00cfc
+
+                                in al,dx
+                                                        out 0e1,ax
+
+                                ; ndern ...
+                                and al,bl
+                                or al,bh
+
+                                ; Schreiben ...
+                                push ax
+                                  mov al,cl             ; 08000ø_cx_
+                                  push dx
+                                    mov dx,00cf8
+                                    out_dx_eax
+                                                        out 0e1,ax
+                                  pop dx
+                                pop ax
+
+                                out dx,al
+                                                        out 0e1,ax
+                                entferne_tracer
+
+                                ret
+
+;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

@@ -1,0 +1,20 @@
+ษอ[þ]ออออออออออออออออออออออ F:\082\utf8\utf8.pas ออออออออออออออออออออ2อ[]อป
+บ        c:=Ord(source[sourcepos]);                                        
+บ        case c of                                                         ฑ
+บ(*                                                                        ฑ
+บ U-00000000 - U-0000007F: 0xxxxxxx                                        ฑ
+บ U-00000080 - U-000007FF: 110xxxxx 10xxxxxx                               þ
+บ U-00000800 - U-0000FFFF: 1110xxxx 10xxxxxx 10xxxxxx                      ฑ
+บ U-00010000 - U-001FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx             ฑ
+บ U-00200000 - U-03FFFFFF: 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx    ฑ
+บ U-04000000 - U-7FFFFFFF: 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xฑ
+บ                                                                          ฑ
+บ        $00..$7f: (* 1 byte *)                                            ฑ
+บ          begin                                                           ฑ
+บ            (*c:=c and $7f;*)                                             ฑ
+บ            trail:=0;                                                     ฑ
+บ            Inc(sourcepos);                                               ฑ
+บ          end;                                                            ฑ
+บ                                                                          ฑ
+บ        $80..$bf: (* broken code ! *)                                     
+ศออออออ 39:1 อออออþฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฑฤู

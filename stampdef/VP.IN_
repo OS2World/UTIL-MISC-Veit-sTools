@@ -1,0 +1,13 @@
+[Tools]
+Tools=PE to LE Exe converter;PE to ELF converter;description data file stamper
+
+[description data file stamper]
+Description=desription data file stamper
+Executable=stampdef.exe
+Parameters=$primaryname.def
+FilterExe=
+IDEPlatforms=Linux;OS/2;Win9x;WinNT
+Prompt=0
+SaveAll=1
+Action=Compile
+TargetPlatforms=OS2;D32

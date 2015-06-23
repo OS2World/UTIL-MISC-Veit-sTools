@@ -1,0 +1,105 @@
+;********************************************************************
+bit0                    equ 1
+bit1                    equ 2
+bit2                    equ 4
+bit3                    equ 8
+bit4                    equ 16
+bit5                    equ 32
+bit6                    equ 64
+bit7                    equ 128
+
+;********************************************************************
+
+segment_00000           equ 00000
+segment_00040           equ 00040
+segment_0a000           equ 0a000
+segment_0b800           equ 0b800
+
+;********************************************************************
+pushad                  macro
+                          db 066
+                          pusha
+                        #em
+
+popad                   macro
+                          db 066
+                          popa
+                        #em
+
+sub_edx_edx             macro
+                          db 066
+                          sub dx,dx
+                        #em
+
+sub_ebx_ebx             macro
+                          db 066
+                          sub bx,bx
+                        #em
+sub_edi_edi             macro
+                          db 066
+                          sub di,di
+                        #em
+
+shr_eax_1               macro
+                          db 066
+                          shr ax,1
+                        #em
+
+shr_eax_8               macro
+                          db 066,
+                          shr ax,8
+                        #em
+
+xor_eax_0EDB88320       macro
+                          db 066
+                          xor ax,08320
+                          dw 0EDB8
+                        #em
+
+stosd                   macro
+                          db 066
+                          stosw
+                        #em
+
+mov_eax_minus1          macro
+                          db 066,083,0c8,0ff
+                        #em
+
+mov_eax_edx             macro
+                          db 066
+                          mov ax,dx
+                        #em
+
+xor_eax__edi_plus_ebx_mal_4 macro
+                          db 066,067,033,004,09f
+                        #em
+;********************************************************************
+fuelle_bis              macro
+                          ;#if (#1-$)
+                          db #1-$ dup #2
+                          ;#endif
+                        #em
+;********************************************************************
+pstr macro
+                        db (>a2->a1)
+  a1:
+                        #Rx1L
+                          db #x
+                        #ER
+  a2:
+#em
+;********************************************************************
+duppstr macro
+                        db #1,#1 dup #2
+#em
+;********************************************************************
+null macro
+                        #Rx1L
+                          sub #x,#x
+                        #ER
+#em
+;********************************************************************
+warten macro
+                        db 0eb,000
+#em
+;**************************************************************************

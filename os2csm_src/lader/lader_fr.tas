@@ -1,0 +1,4 @@
+Title   produce os2csm.f or os2csm.f_m -- french
+
+language_fr=1
+include lader.inc

@@ -1,0 +1,87 @@
+                        jmp einrichten
+
+even 010
+;***************************************************************************
+int_21_neu:
+                        pushf
+                          cmp ax,06602
+                          je behandlung
+                        popf
+			;jmp d cs:[int_21_org]
+                        db 0ea
+int_21_org:
+int_21_org_o		dw ?
+int_21_org_s		dw ?                        
+behandlung:
+                        ;popf
+                        ;pushf
+                        call d cs:[int_21_org]
+
+                        pushf
+                          pusha
+                            push ds
+
+                              push 00040
+                              pop ds
+                              mov al,b [00049]
+                              and al,07f
+                              cmp al,3
+                              jne nicht_m3
+
+                              mov cl,b [00084]
+                              mov ax,01114              ; 8*16 (9*20)
+                              cmp cl,25-1
+                              jbe setze_bios_font
+
+                              mov al,011                ; 8*14 (9*18)
+                              cmp cl,28-1
+                              jbe setze_bios_font
+
+                              mov al,012                ; 8* 8 (9*10)
+  setze_bios_font:
+                              mov bl,0
+                              int 010
+  nicht_m3:
+                            pop ds
+                          popa
+                        popf
+                        iret
+tsr_ende:
+
+;***************************************************************************
+
+include ..\..\lhtsr\lh.a86
+include ..\..\lhtsr\prg.a86
+
+programm_name:		db 'I_216602'
+programm_resident_ende: dw tsr_ende
+
+programm_int            equ 021
+programm_int_neu        equ int_21_neu
+programm_int_org        equ int_21_org
+
+installation_text:	db 'lade I_216602',00d,00a
+			db '$'
+deinstallation_text:	db 'entferne I_216602',00d,00a
+			db '$'
+doppelt_text:		db 'mehrfache Installation von I_216602 !',00d,00a
+			db '$'
+nichtaktiv_text:	db 'I_216602 nicht aktiv im Speicher gefunden !',00d,00a
+			db '$'
+
+
+einrichten:
+                        einfaches_tsr
+
+			mov ax,04c00
+			int 021
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+installations_prozedur:
+			ret
+
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+
+deinstallations_prozedur:
+			ret

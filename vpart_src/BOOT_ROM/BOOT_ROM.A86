@@ -1,0 +1,225 @@
+; Kopieren und Aufrufen des Netzwerkkarten-ROM
+; Veit Kannegieser * 2000.12.04
+;********************************************************************
+org 0           ; 0070:0000
+
+                mov ax,cs
+                mov ds,ax
+                add ah,010 ; + 64K
+                cli
+                mov ss,ax
+                mov sp,01000
+                sti
+
+                ; ROM Prfen
+                cmp w [rom_kopf_signatur],0aa55
+                je rom_kopf_gefunden
+
+  kein_rom_copy_b:
+                mov si,text_kein_rom_copy_b
+                call ausschrift
+                sub ax,ax
+                int 016
+                int 019
+
+  rom_kopf_gefunden:
+                sub ax,ax
+                mov al,b [rom_kopf_p512]
+                cmp al,0   ; 512 Byte
+                je kein_rom_copy_b
+                cmp al,080 ; .. 64 KB
+                ja kein_rom_copy_b
+
+                mov cx,ax
+                shl cx,8                ; *512/2
+
+                inc ax                  ; KB
+                shr ax,1
+
+                ; Speicher anfordern
+                push 00040
+                pop es
+                sub w es:[00013],ax
+                mov ax, w es:[00013]
+                shl ax,6                ; 1024/16
+                mov es,ax
+
+                ;Kopieren
+                sub si,si
+                mov ax,cs
+                add ax,(rom_kopf/16)
+                mov ds,ax
+                sub di,di
+                cld
+                rep movsw
+
+                push 0
+                pop ds
+                mov si,w [018*4+2]
+                mov w cs:[segi18],si
+                mov si,w [019*4+2]
+                mov w cs:[segi19],si
+
+                mov ds,es
+
+                ; PCIR ?
+                mov di,w [00018]
+                cmp w [di+0],'CP'
+                jne nich_pcir
+                cmp w [di+2],'RI'
+                jne nich_pcir
+
+                mov cx,w [di+6]
+                mov dx,w [di+4]
+
+                mov ax,cx
+                mov di,geraet
+                call int_zu_hex
+                mov ax,dx
+                mov di,hersteller
+                call int_zu_hex
+                mov si,text_pci
+                call ausschrift
+
+                mov ax,0b102            ; find pci device
+                sub bx,bx
+                sub si,si               ; Ger„t 0..
+                int 01a
+                jnc pci_gefunden
+
+                mov si,text_pci_nicht_gefunden
+                call ausschrift
+                call warte_auf_taste
+
+  pci_gefunden:
+  nich_pcir:
+
+                mov ax,bx               ; BUS/Ger„t/Funktion
+
+                ;****************************************************
+                ; Einrichten
+
+aufruf_schleife:
+                push ax
+                  push cs,weiter,ds,3
+                    sub bx,bx
+                    sub cx,cx
+                    sub dx,dx
+                    sub si,si
+                    sub di,di
+                    sub bp,bp
+                  retf
+
+weiter:           ;****************************************************
+                  ; Ausfhren
+                  push 0
+                  pop ds
+                  mov si,[4*018+2]
+                  push es
+                  pop ds
+                  cmp si,w cs:[segi18]
+                  if ne int 018
+
+                  push 0
+                  pop ds
+                  mov si,[4*019+2]
+                  push es
+                  pop ds
+                  cmp si,w cs:[segi19]
+                  if ne int 019
+
+
+                  mov si,text_nichts_passiert
+                  call ausschrift
+                pop ax
+                jmp aufruf_schleife
+
+;********************************************************************
+; AX->DI
+int_zu_hex:
+                pusha
+                  push es
+
+                    mov es,cs
+                    cld
+                    mov cx,4
+  int_zu_hex_schleife:
+                    rol ax,4
+                    push ax
+                      and al,00f
+                      add al,'0'
+                      cmp al,'9'
+                      if a add al,'a'-'0'-10
+                      stosb
+                    pop ax
+                    loop int_zu_hex_schleife
+
+                  pop es
+                popa
+                ret
+
+;********************************************************************
+
+ausschrift:
+                pusha
+                  push ds
+
+                    mov ds,cs
+
+                    mov ah,00e
+                    mov bx,00007
+                    cld
+  ausschrift_schleife:
+                    lodsb
+                    or al,al
+                    jz ausschrift_ende
+
+                    int 010
+                    jmp short ausschrift_schleife
+
+  ausschrift_ende:
+                  pop ds
+                popa
+                ret
+
+;********************************************************************
+warte_auf_taste:
+                sub ax,ax
+                int 016
+                ret
+;********************************************************************
+
+text_pci:       db 'PCI $'
+  hersteller:   db '????'
+                db ' $'
+  geraet:       db '????'
+                db 13,10
+                db 0
+                
+text_pci_nicht_gefunden:
+		;db 'Ger„t nicht gefunden !',13,10,0
+		db 'Device not found !',13,10,0
+
+
+text_kein_rom_copy_b:
+                db 'ROM-header missing.',13,10
+                db 'Did you use "COPY /B BOOT_ROM.VPA + A:\RTSROM_M.LOM C:\BOOT_ROM.EMU" ?',13,10
+                db 13,10
+                db 'press key to continue',13,10
+                db 0
+
+text_nichts_passiert:
+                db '======================== ??? ===========================================',13,10,0
+
+segi18:         dw 0
+segi19:         dw 0
+
+
+;********************************************************************
+
+                even 16
+
+rom_kopf:
+rom_kopf_signatur       equ rom_kopf
+rom_kopf_p512           equ rom_kopf_signatur+2
+

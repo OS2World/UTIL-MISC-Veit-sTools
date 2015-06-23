@@ -1,0 +1,107 @@
+;*****************************************************************************
+
+;...include lh.a86
+
+;*****************************************************************************
+
+einfaches_tsr_prozedur:
+			int_vergleich programm_int,programm_name,programm_int_neu
+			push dx
+
+			  mov cx,0 ; Annahme: nicht /u oder /r
+			  mov si,00081
+			  cld
+
+einfaches_tsr_prozedur_parameterschleife:
+			  lodsb
+
+			  cmp al,' '
+			  jz einfaches_tsr_prozedur_parameterschleife
+			  cmp al,'/'
+			  jz einfaches_tsr_prozedur_parameterschleife
+			  cmp al,'-'
+			  jz einfaches_tsr_prozedur_parameterschleife
+			  cmp al,9
+			  jz einfaches_tsr_prozedur_parameterschleife
+
+			  or al,('a'-'A')
+
+			  cmp al,'u'
+			  if z inc cx
+			  cmp al,'r'
+			  if z inc cx
+
+			pop dx
+
+			cmp cx,0
+			jnz deinstallation
+
+			mov ah,009
+			cmp dx,0
+			if z mov dx,installation_text  ; normal
+			if nz mov dx,doppelt_text      ; doppelt
+			int 021
+
+
+			hochladen w [programm_resident_ende],programm_name
+
+			; getintvec(programm_int)
+			push es
+			  mov ax,03500+programm_int
+			  int 021
+			  mov ax,es
+			pop es
+
+			mov es:[programm_int_org+0],bx
+			mov es:[programm_int_org+2],ax
+
+			call installations_prozedur ; weitere Installationsvorbereitungen
+
+			; setintvec(programm_int)
+			mov ax,02500+programm_int
+			mov dx,programm_int_neu
+			push ds
+			  mov bx,es
+			  mov ds,bx
+			  int 021
+			pop ds
+
+                        ret
+
+;*****************************************************************************
+
+deinstallation:
+			cmp dx,0
+			jz deinstallation_fehler
+
+  			mov es,dx
+			call deinstallations_prozedur ; weitere DeInstallationsmaánahmen
+
+			mov ah,009
+			mov dx,deinstallation_text
+			int 021
+
+			push ds
+			  mov ax,02500+programm_int
+			  mov dx,es:[programm_int_org+0]
+			  mov ds,es:[programm_int_org+2]
+			  int 021
+			pop ds
+
+			entfernen es,programm_name
+
+                        ret
+
+;*****************************************************************************
+deinstallation_fehler:
+			mov ah,009
+			mov dx,nichtaktiv_text
+			int 021
+
+			ret
+
+;*****************************************************************************
+einfaches_tsr macro
+			call einfaches_tsr_prozedur
+#em
+;*****************************************************************************

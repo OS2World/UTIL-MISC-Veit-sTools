@@ -1,0 +1,222 @@
+Title   Chips & Technologies SCAT
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; Index: port[22]
+; Daten: port[23]
+;
+; 49.7 Schreibschutz F800
+;    6 Schreibschutz F000
+;    5 Schreibschutz E800
+;    4 Schreibschutz E000
+;    3 Schreibschutz D800
+;    2 Schreibschutz D000
+;    1 Schreibschutz C800
+;    0 Schreibschutz C000
+;
+; 4A.7 RAM BC00
+;    6 RAM B800
+;    5 RAM B400
+;    4 RAM B000
+;    3 RAM AC00
+;    2 RAM A800
+;    1 RAM A400
+;    0 RAM A000
+;
+; 4B.7 RAM DC00
+;    6 RAM D800
+;    5 RAM D400
+;    4 RAM D000
+;    3 RAM CC00
+;    2 RAM C800
+;    1 RAM C400
+;    0 RAM C000
+;
+; 4C.7 RAM FC00
+;    6 RAM F800
+;    5 RAM F400
+;    4 RAM F000
+;    3 RAM EC00
+;    2 RAM E800
+;    1 RAM E400
+;    0 RAM E000
+;
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_scat                      macro
+                                  mov di,#1 ; Segment
+                                  ;mov cl,#2 ; Index LESEN
+                                  ;mov ch,#4 ; Index SCHREIBSCHUTZ
+                                  mov cx,#2+#4*0100
+                                  ;mov dl,#3 ; Bit   LESEN
+                                  ;mov dh,#5 ; Bit   SCHREIBSCHUTZ
+                                  mov dx,#3+#5*0100
+                                  call setze_scat_prozedur
+                                #em
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+setze_scat_prozedur:
+                                call berechne_wert_ax
+
+                                cmp al,unveraendert
+                                jz setze_scat_prozedur_fertig
+
+                                call ausschrift_segment
+
+                                push ax
+                                  and ah,001
+                                  mov bl,dl  ; Bit LESEN
+                                  mov bh,0ff
+                                  xor bh,bl
+                                  cmp al,001
+                                  if ne mov bl,0
+
+                                  mov al,cl ; Index LESEN
+                                  call bios_aufruf__prozedur_registeraenderung
+                                pop ax
+
+                                cmp ch,-1
+                                je setze_scat_prozedur_fertig
+
+
+                                mov bx,0ff00
+                                sub bh,dh    ; Maske Bit Schreibschutz
+
+                                cmp b [globaler_schreibschutz],'1'
+                                je setze_scat_prozedur__kein_schreibe_wird_auch_beachtet
+
+                                and ah,002
+                                cmp ah,002
+                                jne setze_scat_prozedur_fertig
+
+  setze_scat_prozedur__kein_schreibe_wird_auch_beachtet:
+
+                                cmp ah,002
+                                if ne or bl,dh ; Schreibschutzbit wieder dazu
+
+
+                                mov al,ch    ; Index SCHREIBSCHUTZ
+                                call bios_aufruf__prozedur_registeraenderung
+
+setze_scat_prozedur_fertig:
+                                ret
+;袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴袴
+variante_chips_technologies_peacock:
+                                ausschrift_xxxx_aehnliches_bios text_variante_chips_technologies_peacock
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+24+1]
+                                add ax,di
+                                add ax,24+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+29+1]
+                                add ax,di
+                                add ax,29+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_chips_und_technologies_scat
+
+chips_und_technologies_scat:
+
+                                setze_scat 'A0',04a,Bit0, -1,   0
+                                setze_scat 'A4',04a,Bit1, -1,   0
+                                setze_scat 'A8',04a,Bit2, -1,   0
+                                setze_scat 'AC',04a,Bit3, -1,   0
+
+                                setze_scat 'B0',04a,Bit4, -1,   0
+                                setze_scat 'B4',04a,Bit5, -1,   0
+                                setze_scat 'B8',04a,Bit6, -1,   0
+                                setze_scat 'BC',04a,Bit7, -1,   0
+
+                                setze_scat 'C0',04b,Bit0,049,Bit0
+                                setze_scat 'C4',04b,Bit1,049,Bit0
+                                setze_scat 'C8',04b,Bit2,049,Bit1
+                                setze_scat 'CC',04b,Bit3,049,Bit1
+
+                                setze_scat 'D0',04b,Bit4,049,Bit2
+                                setze_scat 'D4',04b,Bit5,049,Bit2
+                                setze_scat 'D8',04b,Bit6,049,Bit3
+                                setze_scat 'DC',04b,Bit7,049,Bit3
+
+                                setze_scat 'E0',04c,Bit0,049,Bit4
+                                setze_scat 'E4',04c,Bit1,049,Bit4
+                                setze_scat 'E8',04c,Bit2,049,Bit5
+                                setze_scat 'EC',04c,Bit3,049,Bit5
+
+                                setze_scat 'F0',04c,Bit4,049,Bit6
+                                setze_scat 'F4',04c,Bit5,049,Bit6
+                                setze_scat 'F8',04c,Bit6,049,Bit7
+                                setze_scat 'FC',04c,Bit7,049,Bit7
+
+                                jmp initialisieren
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+variante_chips_technologies_siemens:
+                                ausschrift_xxxx_aehnliches_bios text_variante_chips_technologies_siemens
+
+                                ausschrift text_prozedur_lesen
+                                mov ax,es:[di+40+1]
+                                add ax,di
+                                add ax,40+3
+                                mov w [prozedur_registerlesen],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                ausschrift text_prozedur_schreiben
+                                mov ax,es:[di+2+1]
+                                add ax,di
+                                add ax,2+3
+                                mov w [prozedur_registerschreiben],ax
+                                call ausschrift_word
+                                ausschrift_a zeilenumbruch
+
+                                mov w [registeraenderung_emulation],aenderung_chips_und_technologies_scat
+
+                                jmp chips_und_technologies_scat
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+; Index AL
+; Maske BX (BH=AND !!! BL=OR !!! )
+aenderung_chips_und_technologies_scat:
+                                call bios_aufruf__prozedur_registerlesen
+                                and ah,bh
+                                or ah,bl
+                                call bios_aufruf__prozedur_registerschreiben
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+chip_ct_scat:
+                                mov w [registeraenderung_emulation],registeraenderung_chip_ct_scat
+                                jmp chips_und_technologies_scat
+;頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰頰
+registeraenderung_chip_ct_scat:
+                                installiere_tracer
+
+                                pushf
+                                  cli
+                                  out 022,al
+                                                        jmp $+2
+                                                        jmp $+2
+                                  xchg al,ah
+                                  in al,023
+                                                        jmp $+2
+                                                        jmp $+2
+                                  xchg al,ah
+
+
+                                  and ah,bh
+                                  or ah,bl
+
+                                  out 022,al
+                                                        jmp $+2
+                                                        jmp $+2
+                                  xchg al,ah
+                                  out 023,al
+                                                        jmp $+2
+                                                        jmp $+2
+
+                                  xchg al,ah
+                                popf
+
+                                entferne_tracer
+                                ret
+;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

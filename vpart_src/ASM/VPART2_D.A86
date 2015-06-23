@@ -1,0 +1,39 @@
+deutsch=1
+;englisch=1
+include mac.a86
+include vpart2a.a86
+db 0d,0a,'***Hauptspeichergr”áe***>',0d,0a
+include speicher.a86
+db 0d,0a,'***Paáwortabfrage***>',0d,0a
+include passwort.a86
+db 0d,0a,'***SCHONER***>',0d,0a
+include schoner.a86
+db 0d,0a,'***POINT***>',0d,0a
+include point.a86
+db 0d,0a,'***A20***>',0d,0a
+include a20.a86
+db 0d,0a,'***APMB***>',0d,0a
+include apmb.a86
+db 0d,0a,'***BIOS***>',0d,0a
+include bios.a86
+db 0d,0a,'***CMOS***>',0d,0a
+include cmos.a86
+db 0d,0a,'***CRC32***>',0d,0a
+include crc32.a86
+db 0d,0a,'***VERSTECKEN***>',0d,0a
+include versteck.a86
+db 0d,0a,'***FAT_CFG***>',0d,0a
+include fat_cfg.a86
+db 0d,0a,'***CWBOOT***>',0d,0a
+include cwboot.a86
+db 0d,0a,'***CDBOOT***>',0d,0a
+include cdboot.a86
+db 0d,0a,'***TAUSCHER***>',0d,0a
+include tauscher.a86
+db 0d,0a,'***BOOTSECT***>',0d,0a
+include bootsekt.a86
+db 0d,0a,'***PLUGIN***>',0d,0a
+include plugin.a86
+db 0d,0a,'***VPART2B***>',0d,0a
+include vpart2b.a86
+

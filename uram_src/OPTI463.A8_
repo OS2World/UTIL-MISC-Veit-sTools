@@ -1,0 +1,30 @@
+; OPTI 82C463
+; OLIVETTI Echos 44
+;   
+;   32.7
+;      6
+;      5
+;      4
+;      3 Schreibschutz E000-EFFF
+;      2
+;      1
+;      0
+;
+;   33.7 EC00 lesen
+;      6 E800 lesen
+;      5 E400 lesen
+;      4 E000 lesen
+;      3 DC00 lesen
+;      2 D800 lesen
+;      1 D400 lesen
+;      0 D000 lesen
+;
+;   36.7
+;      6
+;      5 c000-cfff schreibschutz
+;      4
+;      3 cc00 lesen
+;      2 c800 lesen
+;      1 c400 lesen
+;      0 c000 lesen
+;

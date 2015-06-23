@@ -1,0 +1,175 @@
+even 010
+
+;***************************************************************************
+
+debug                   macro
+                          ;push ax,dx
+                          ;  mov ah,002
+                          ;  mov dl,#1
+                          ;  int 021
+                          ;pop dx,ax
+                          int 3
+                        #em
+
+;***************************************************************************
+; CRT
+
+patch1:
+                        dw vergleichsfolge1_ende-vergleichsfolge1-1
+vergleichsfolge1:
+
+                                                ; @sl:
+                        db 02d,001,000          ;  sub ax,00001
+                        db 083,0da,000          ;  sbb dx,000
+                        db 072,005              ;  jb  @ret
+                        db 026,03a,01d          ;  cmp bl,es:[di]
+                        db 074,0f3              ;  je  @sl
+                                                ; @ret:
+                        db 0c3                  ;  ret
+vergleichsfolge1_ende:
+
+
+delay_loop_neu1:
+                        ; debug 007
+  noch_keine_aenderung:
+                        out 0ed,al
+                        sub ax,1
+                        sbb dx,0
+                        jc abgelaufen
+                        cmp bl,es:[di]
+                        jz noch_keine_aenderung
+  abgelaufen:
+                        retf
+
+;***************************************************************************
+; OPCRT
+
+patch2:
+                        dw vergleichsfolge2_ende-vergleichsfolge2-1
+vergleichsfolge2:
+                                                ; @sl1:
+                        ; db 0bb,004,000        ;  mov bx,4
+                                                ; @sl2:
+                        db 04b                  ;  dec bx
+                        db 075,0fd              ;  jnz @sl2
+                        db 026,03a,005          ;  cmp al,es:[di]
+                        db 0e1,0f5              ;  loope @sl1
+                        db 0c3                  ;  ret
+vergleichsfolge2_ende:
+
+delay_loop_neu2:
+                        ; debug 007
+  @sl1:
+                        mov bx,4
+  @sl2:
+                        out 0ed,al
+                        dec bx
+                        jnz @sl2
+                        cmp al,es:[di]
+                        loope @sl1
+                        retf
+
+;***************************************************************************
+
+maximale_entfernung     equ 01000 ; in 16 Byte Schritten
+
+; Annahme : Crt.TPU ist nah genug  an der System.TPU
+; "uses crt,dos,..."
+
+;***************************************************************************
+
+int_21_neu:
+                        pushf
+                          xchg si,dx
+
+                          cmp ax,02500
+                          jnz weiter
+
+                          cmp si,00200 ; variabel
+                          ja weiter
+
+                          ; Vergleiche ..
+                          ; mov ax,200         ; b8 c8 00
+                          ; pop cx             ; 59
+                          ; pop bx             ; 5b
+                          ; jmp runtime_error  ; eb (07)
+
+                          cmp w [si],0c8b8
+                          jnz weiter
+
+                          cmp w [si+2],05900
+                          jnz weiter
+
+                          cmp w [si+4],0eb5b
+                          jnz weiter
+
+                          push ax,si,es
+
+                            mov ax,ds
+                            sub ax,maximale_entfernung
+                            if c sub ax,ax ; nicht bei ffff:0 suchen
+                            mov es,ax
+                            cld
+
+                            mov si,patch1
+                            call suche_und_aendere
+
+                            mov si,patch2
+                            call suche_und_aendere
+
+                          pop es,si,ax
+weiter:
+                          xchg si,dx
+                        popf
+                        ;jmp d cs:[int_21_org]
+                        db 0ea
+int_21_org:
+int_21_org_o            dw ?
+int_21_org_s            dw ?
+
+;***************************************************************************
+suche_und_aendere:
+                        pusha ; cx,dx,di
+
+                          cs:
+                          lodsw                 ; LÑnge ohne erstes Zeichen
+                          mov dx,ax
+
+                          mov cx,0ffff
+                          sub di,di
+
+                          cs:
+                          lodsb                 ; erstes Zeichen
+  weitersuchen:
+                          repnz scasb
+                          jnz nicht_gefunden
+
+                          pusha ; ax,cx,si,di
+                            mov cx,dx
+                            rep
+                              cs: cmpsb
+
+                            jne ungleich
+
+                            sub di,dx           ; wieder zurÅck
+                            dec di              ; zum 1. Zeichen
+
+                            mov al,09a
+                            stosb               ; call d
+                            mov ax,si
+                            stosw               ; :delay_loop_neu
+                            mov ax,cs
+                            stosw               ; cs:
+                            mov al,0c3
+                            stosb               ; ret
+  ungleich:
+                          popa ; di,si,cx,ax
+
+                          jmp weitersuchen
+  nicht_gefunden:
+                        popa ; di,dx,cx
+                        ret
+;***************************************************************************
+tsr_ende:
+;***************************************************************************
+

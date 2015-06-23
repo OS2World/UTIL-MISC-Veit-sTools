@@ -1,0 +1,12 @@
+Library EraseFil NewFiles
+Protmode
+Stub None
+Imports
+  Dos16Delete     = DOSCALLS.60
+  Dos16FindFirst  = DOSCALLS.64
+  Dos16FindNext   = DOSCALLS.65
+  Dos16FindClose  = DOSCALLS.63
+Segments
+  DATA ReadWrite   Shared Single Alias
+  CODE ExecuteOnly Shared        Alias
+Description '@#V.K:2009.01.07#@erase files'
